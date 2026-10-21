@@ -39,3 +39,25 @@ records session ordinal, effective stamp and scheduled/published monotonic ns;
 online trajectory `publish_wall_ns` measures publication against that deadline.
 Simulation-time latency, wall end-to-end latency and processing duration are
 reported separately. Snapshot scope remains explicit.
+
+### Declared UWB transport replay
+
+Optional `metadata/config/delivery.json` is snapshotted and hashed. The bounded
+replay scheduler retains original bytes and effective measurement time; its
+separate monotonic delivery deadline may reorder messages. Every omission is an
+explicit outage action, every duplicate preserves its physical identity.
+`export/simulation/delivery.csv` records identity, effective time, source/delivery
+elapsed time and action. Publisher runtime records actual delivered hashes and
+expected duplicates; observer hashes must match these, while unchanged topics
+must still match the frozen source. Such a run reports `delivered_input_verified`
+and does not claim unmodified `frozen_input_verified` for the altered UWB stream.
+Estimator `uwb.csv` records decision wall time and rejection reasons; shutdown
+pending samples are accounted explicitly. Trajectory `state_reason` records
+absence even when the public state was already DEGRADED. The delivery audit
+checks unique ingestion, expired/duplicate rejection, output continuity and
+first fresh TA recovery; navigation accuracy and timing remain independent gates.
+
+Simulation map fixtures may declare `simulation_anchor_layout`. The owner rejects
+fixtures whose layout differs from the selected live scene or frozen capture.
+This metadata check does not derive estimator coordinates from IDs or require
+external field-survey maps to reveal simulation ground truth.

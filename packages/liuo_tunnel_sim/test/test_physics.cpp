@@ -48,7 +48,7 @@ TEST(Uwb, GaussianAndIndependentStreams) {
   EXPECT_NE(sample, normal(1, 3, 100));
 }
 TEST(Uwb, WorldLosIncludesCabinetsOutsideLidarCache) {
-  EXPECT_FALSE(line_of_sight(anchor(0), anchor(2)));
+  EXPECT_FALSE(line_of_sight({0, 2.8, 2}, {400, 2.8, 2}));
   EXPECT_TRUE(line_of_sight(anchor(2), anchor(4)));
   EXPECT_FALSE(line_of_sight({100, 0, 1.2}, {100, 4, 2}));
   EXPECT_TRUE(line_of_sight({100, 0, 1.2}, {100, 2.8, 2}));
@@ -56,11 +56,32 @@ TEST(Uwb, WorldLosIncludesCabinetsOutsideLidarCache) {
 
 #include <Eigen/SVD>
 TEST(Uwb, EveryLocalAnchorQuartetIsNoncoplanar) {
-  for (int start = 0; start < 10; start++) {
+  for (int start = 0; start + 3 < anchor_count; start++) {
     Eigen::Matrix3d offsets;
     for (int j = 0; j < 3; j++) offsets.col(j) = anchor(start + j + 1) - anchor(start);
     auto spectrum = offsets.jacobiSvd().singularValues();
     std::cout << "anchor quartet " << start << " minimum singular value=" << spectrum[2] << std::endl;
     EXPECT_GT(spectrum[2], .01);
+  }
+}
+
+TEST(Uwb, AnchorExchangeReservation) {
+  int reserved = 0;
+  for (uint64_t slot = 0; slot < 250; ++slot) reserved += prefer_anchor_exchange(slot);
+  EXPECT_EQ(reserved, 25);
+}
+
+#include <nlohmann/json.hpp>
+#include <fstream>
+TEST(Uwb, OracleFixtureMatchesPhysicalLayout) {
+  std::ifstream stream(LIUO_ORACLE_FIXTURE);
+  ASSERT_TRUE(stream.good());
+  nlohmann::json map;
+  stream >> map;
+  ASSERT_EQ(map.at("anchors").size(), anchor_count);
+  for (int i = 0; i < anchor_count; ++i) {
+    const auto& entry = map.at("anchors").at(i);
+    ASSERT_EQ(entry.at("id").get<int>(), i);
+    for (int k = 0; k < 3; ++k) EXPECT_DOUBLE_EQ(entry.at("mean_m").at(k).get<double>(), anchor(i)[k]);
   }
 }

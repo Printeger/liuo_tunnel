@@ -70,10 +70,15 @@ inline Motion motion(double seconds, double radius = 0) {
 inline Eigen::Vector3d specific_force(const Motion& m) {
   return m.R.transpose() * (m.a - Eigen::Vector3d(0, 0, -9.80665));
 }
+// User-authorized v3 geometry: four wall/height combinations over each 200 m.
+// Coordinates belong only to the simulator; the estimator loads its external map.
+inline constexpr int anchor_count = 49;
 inline Eigen::Vector3d anchor(int i) {
-  // Alternating nominal 2/3 m height with surveyed installation staggering.
-  // Exact parity-locked wall/height pairs are coplanar and violate the scene contract.
-  return {200.0 * i, i % 2 ? -2.8 : 2.8, (i % 2 ? 3.0 : 2.0) + .3 * std::sin(1.7 * i)};
+  return {50.0 * i, i % 4 < 2 ? 2.8 : -2.8, (i % 4 == 0 || i % 4 == 3) ? .4 : 4.6};
+}
+// Reserve one in ten exchange slots for AA to prevent starvation under TA overload.
+inline bool prefer_anchor_exchange(uint64_t slot) {
+  return slot % 10 == 9;
 }
 inline std::pair<Eigen::Vector3d, Eigen::Vector3d> cabinet_bounds(int k) {
   double center = 3.1 + k * 5.7 + std::sin(k * 1.7);

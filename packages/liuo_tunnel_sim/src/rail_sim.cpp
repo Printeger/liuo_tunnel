@@ -61,9 +61,9 @@ public:
     cloud_pub = create_publisher<sensor_msgs::msg::PointCloud2>("/sensors/lidar/points", rclcpp::SensorDataQoS().keep_last(32));
     truth_pub = create_publisher<nav_msgs::msg::Odometry>("/sim/truth/odom", 100);
     uwb_pub = create_publisher<liuo_tunnel_msgs::msg::UwbRange>("/sensors/uwb/range", rclcpp::SensorDataQoS().keep_last(2048));
-    for (int i = 0; i < 13; i++) links.push_back({0, 0, i, 0, 0});
-    for (int i = 0; i < 13; i++)
-      for (int j = i + 1; j < 13; j++) links.push_back({1, i, j, 0, 0});
+    for (int i = 0; i < anchor_count; i++) links.push_back({0, 0, i, 0, 0});
+    for (int i = 0; i < anchor_count; i++)
+      for (int j = i + 1; j < anchor_count; j++) links.push_back({1, i, j, 0, 0});
     timer = create_wall_timer(std::chrono::milliseconds(1), [this] { service(); });
     logger->info("snapshot simulation ready seed={} duration={}s", seed, duration);
   }
@@ -266,7 +266,8 @@ private:
   void schedule(double t) {
     auto m = motion(t);
     Eigen::Vector3d tag_w = liuo_tunnel::tag_in_world(m.p, m.R, tag);
-    // TA priority; AA round-robin by oldest deadline; one exchange per 4ms slot.
+    // 9 TA-priority slots, then 1 AA-priority slot; oldest deadline within class.
+    // The other class can use an otherwise idle slot. Never exceed 250 exchanges/s.
     int best = -1;
     double deadline = 1e100;
     for (size_t i = 0; i < links.size(); i++) {
@@ -283,7 +284,7 @@ private:
         l.next = t + (l.type ? 1 : .05);
         continue;
       }
-      double rank = l.next + (l.type ? 10000 : 0);
+      double rank = l.next + (bool(l.type) == prefer_anchor_exchange(exchange - 1) ? 0 : 10000);
       if (rank < deadline) {
         deadline = rank;
         best = i;

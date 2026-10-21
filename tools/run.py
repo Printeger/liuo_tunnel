@@ -137,6 +137,14 @@ def main():
             map_path = run / "metadata/config/map.json"
             shutil.copyfile(args.map, map_path)
             rd.register_config_snapshot(run, map_path)
+            declared_layout = json.loads(map_path.read_text()).get("simulation_anchor_layout")
+            physical_layout = (
+                source_scenario["anchor_layout"] if args.replay else "four_corner_50m_49_anchors_v3"
+            )
+            if declared_layout is not None and declared_layout != physical_layout:
+                raise RuntimeError(
+                    "MAP_SCENE_LAYOUT_MISMATCH: simulation fixture belongs to another layout"
+                )
         if args.formal and (selected_backend != "gpu" or args.rate != 1.0):
             raise RuntimeError("formal validation requires GPU backend and requested rate 1.0")
         if selected_backend == "gpu":
@@ -164,7 +172,7 @@ def main():
                 "width_m": 6,
                 "height_m": 5,
                 "gauge_m": 1.435,
-                "anchor_layout": "nominal_alternating_2_3m_plus_0.3sin(1.7id)_v2",
+                "anchor_layout": "four_corner_50m_49_anchors_v3",
                 "duration_s": args.duration,
                 "requested_rate": args.rate,
                 "seed": args.seed,

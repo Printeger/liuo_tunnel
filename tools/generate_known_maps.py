@@ -2,7 +2,6 @@
 """Simulation-only oracle/survey fixtures. Never called by the estimator."""
 import argparse
 import json
-import math
 from pathlib import Path
 import random
 
@@ -15,22 +14,25 @@ def generate(directory):
         "axis_convention": "ENU",
         "valid": True,
         "frame": "map",
+        "simulation_anchor_layout": "four_corner_50m_49_anchors_v3",
         "tag_lever_m": [0.1, 0.15, 0.25],
         "coordinate_reference": "simulation world survey datum; no vehicle start pose constraint",
         "anchors": [
             {
                 "id": i,
                 "mean_m": [
-                    200.0 * i,
-                    -2.8 if i % 2 else 2.8,
-                    (3.0 if i % 2 else 2.0) + 0.3 * math.sin(1.7 * i),
+                    50.0 * i,
+                    2.8 if i % 4 < 2 else -2.8,
+                    0.4 if i % 4 in (0, 3) else 4.6,
                 ],
             }
-            for i in range(13)
+            for i in range(49)
         ],
     }
     base.update(
-        map_id="rail_oracle_v2_noncoplanar", mode="oracle_map", provenance="SIMULATION_TRUTH_ORACLE"
+        map_id="rail_oracle_v3_four_corner_50m",
+        mode="oracle_map",
+        provenance="SIMULATION_TRUTH_ORACLE",
     )
     (directory / "oracle_map.json").write_text(json.dumps(base, indent=2) + "\n")
     # Survey error is independent of every raw sensor random stream, and contains
@@ -42,7 +44,7 @@ def generate(directory):
             v + common[k] + rng.gauss(0, 0.02) for k, v in enumerate(anchor["mean_m"])
         ]
     base.update(
-        map_id="rail_synthetic_survey_v2_noncoplanar",
+        map_id="rail_synthetic_survey_v3_four_corner_50m",
         mode="surveyed_map",
         provenance="SIMULATED_SURVEY_NOT_REAL_MEASUREMENTS",
         survey_seed=67129,
@@ -50,8 +52,11 @@ def generate(directory):
         independent_sigma_m=0.02,
     )
     base["joint_covariance_m2"] = [
-        [(0.01**2 if i % 3 == j % 3 else 0) + (0.02**2 if i == j else 0) for j in range(39)]
-        for i in range(39)
+        [
+            (0.01**2 if i % 3 == j % 3 else 0) + (0.02**2 if i == j else 0)
+            for j in range(3 * len(base["anchors"]))
+        ]
+        for i in range(3 * len(base["anchors"]))
     ]
     (directory / "surveyed_map.json").write_text(json.dumps(base, indent=2) + "\n")
 

@@ -40,3 +40,28 @@ appear in the analysis report and currently reveal substantial overconfidence.
 Angular velocity and its full covariance remain unfinished phase-two work.
 The 180 s seed-0 captured run reaches 1× but fails 3D accuracy and truthful status;
 see the acceptance record before treating this development path as deployable.
+
+The current **unaccepted v3** simulation layout has 49 anchors at 50 m spacing,
+cycling four wall/height combinations. This is a user-authorized replacement of
+the original 13-anchor scene; thresholds and range/noise remain unchanged. Of
+250 exchange slots/s, 225 prefer TA and 25 prefer AA; idle slots may be borrowed.
+Requested 20 Hz TA/1 Hz AA rates may be delayed by the budget; inspect actual
+per-link timestamps and `export/simulation/scheduling.csv`. Bundled maps are v3
+fixtures. Historical v2 captures require their matching archived maps; do not
+apply the new fixture to old observations.
+
+Frozen transport fault example:
+
+```bash
+./tools/run.sh --formal --replay log/<180s_captured_run_id> \
+  --config packages/liuo_tunnel/config/phase2.json \
+  --map packages/liuo_tunnel/config/maps/surveyed_map.json \
+  --delivery-profile config/delivery/long_transport.json
+```
+
+The declared profile delays/reorders/duplicates or omits UWB delivery while
+preserving original payloads, identities and effective measurement timestamps.
+The bounded scheduler fails on overflow. `delivery.csv` records actions; the
+report separately checks unchanged sensor hashes, actual delivered UWB hashes,
+unique graph ingestion and LIO continuity/recovery. These transport checks do
+not replace accuracy, latency or state-credibility acceptance.
