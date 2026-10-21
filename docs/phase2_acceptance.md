@@ -679,3 +679,18 @@ LOST误当成未发布，也不把它算成名义有效定位。已有断流运�
 `20261021T133937Z_402`重新审计输出覆盖PASS，原始精度FAIL仍保留。
 38项Python测试通过（`log/phase2-pressure-coverage-tests.txt`），审计
 输出见`log/phase2-pressure-coverage-recheck.txt`。
+
+## 名义campaign空间中断：seed 2未验收
+
+`20261021T145105Z_234`采集中，campaign监测到可用空间降至
+2,145,714,176字节，低于2 GiB保留量；仅向自身owner PID2735924
+发SIGINT并等待收尾，owner退出1、manifest为failed。原始部分输入、
+日志和失败均保留，不能拿该run当作完整540 s输入或seed 2通过证据。
+控制记录位于`log/campaign_20261021T142344565876Z/campaign_progress.json`，
+run内`metadata/manifests/campaign_stop.json`补充实际空间中断原因；
+原owner的通用中断标签不代表用户主动取消。未来controller自动写该补充
+证据文件，不改写owner已完成的manifest。
+
+因此目前仅seeds0、1完成全组；seeds2–9未完成。已请求至少增加10 GB
+可用空间，未收到落实信息；不删除已有输入或失败记录。现有完整180 s
+冻结输入可用于占用较小的压力回放，继续完成不依赖新大规模采集的工作。

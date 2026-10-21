@@ -122,6 +122,15 @@ def main():
             raise RuntimeError(f"unexpected run directory in {log}")
         entry["run"] = str(run)
         if stop_reason:
+            cause = {
+                "reason": stop_reason,
+                "campaign_directory": str(directory),
+                "owner_pid": owner.pid,
+                "observed_exit_code": returncode,
+                "origin": "campaign disk reserve monitor",
+            }
+            stop_path = run / "metadata/manifests/campaign_stop.json"
+            stop_path.write_text(json.dumps(cause, indent=2) + "\n")
             save()
             raise RuntimeError(stop_reason)
         evidence = audit(run)
