@@ -443,3 +443,47 @@ TEST(Smoother, DoglegMarginalPriorMustContributeToNonlinearAcceptanceCost) {
   }
   EXPECT_EQ(marginal_count, 1);
 }
+
+#include <gtsam/nonlinear/Marginals.h>
+TEST(Smoother, RepeatedBranchedMarginalizationMatchesFullHistoryInformation) {
+  using gtsam::symbol_shorthand::A;
+  using gtsam::symbol_shorthand::X;
+  gtsam::ISAM2Params params;
+  params.setOptimizationParams(gtsam::ISAM2DoglegParams());
+  params.relinearizeSkip = 1;
+  liuo_tunnel::solver::IncrementalFixedLagSmootherExt smoother(2.5, params);
+  gtsam::NonlinearFactorGraph history;
+  gtsam::Values all;
+  const auto motion = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(.1, .2, .3));
+  const auto observation = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(.3, .1, .2));
+  const auto prior = gtsam::noiseModel::Isotropic::Sigma(3, 1.0);
+  const gtsam::Point3 anchors[] = {{0, 2, 3}, {10, -2, 4}};
+  for (size_t i = 0; i < 40; ++i) {
+    gtsam::NonlinearFactorGraph factors;
+    gtsam::Values initial;
+    const gtsam::Point3 position(double(i), .2 * i, -.1 * i);
+    initial.insert(X(i), position);
+    if (i == 0) {
+      for (size_t j = 0; j < 2; ++j) {
+        initial.insert(A(j), anchors[j]);
+        factors.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(A(j), anchors[j], prior);
+      }
+      factors.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(X(i), position, prior);
+    } else {
+      factors.emplace_shared<gtsam::BetweenFactor<gtsam::Point3>>(X(i - 1), X(i), gtsam::Point3(1, .2, -.1), motion);
+    }
+    if (i >= 2) factors.emplace_shared<gtsam::BetweenFactor<gtsam::Point3>>(X(i - 2), X(i), gtsam::Point3(2, .4, -.2), observation);
+    const size_t j = i % 2;
+    factors.emplace_shared<gtsam::BetweenFactor<gtsam::Point3>>(X(i), A(j), anchors[j] - position, observation);
+    history.add(factors);
+    all.insert(initial);
+    smoother.update(factors, initial, {{X(i), double(i)}, {A(0), double(i)}, {A(1), double(i)}});
+    const gtsam::Marginals batch(history, all);
+    for (const auto key : {A(0), A(1), X(i)}) {
+      EXPECT_LT((smoother.marginalCovariance(key) - batch.marginalCovariance(key)).norm(), 1e-8) << "step=" << i;
+    }
+    const gtsam::KeyVector keys{A(0), A(1), X(i)};
+    EXPECT_LT((selected_covariance(smoother.getISAM2(), keys) - batch.jointMarginalCovariance(keys).fullMatrix()).norm(), 1e-8) << "step=" << i;
+    if (i >= 3) EXPECT_FALSE(smoother.getISAM2().getLinearizationPoint().exists(X(i - 3)));
+  }
+}
