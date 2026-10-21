@@ -268,3 +268,33 @@ TEST(VgicpGPU, ExplicitTangentVarianceChangesActualFactorInformation) {
   EXPECT_THROW(liuo_tunnel::CloudCovarianceEstimation(1, true, 0), std::invalid_argument);
   EXPECT_THROW(liuo_tunnel::CloudCovarianceEstimation(1, true, 101), std::invalid_argument);
 }
+
+TEST(VgicpGPU, PointCountNormalizationScalesCostGradientAndInformationTogether) {
+  std::vector<Eigen::Vector4d> points;
+  for (int i = -10; i <= 10; i++)
+    for (int j = -10; j <= 10; j++) points.emplace_back(i * .13, j * .13, .173, 1);
+  auto cpu = std::make_shared<gtsam_points::PointCloudCPU>(points);
+  cpu->add_covs(std::vector<Eigen::Matrix4d>(points.size(), Eigen::Matrix4d::Identity()));
+  auto source = gtsam_points::PointCloudGPU::clone(*cpu);
+  auto target = std::make_shared<gtsam_points::GaussianVoxelMapGPU>(.5);
+  target->insert(*source);
+  const double weight = 1.0 / points.size();
+  auto original = gtsam::make_shared<liuo_tunnel::GaugeConsistentVGICPFactorGPU>(0, 1, target, source);
+  auto normalized = gtsam::make_shared<liuo_tunnel::GaugeConsistentVGICPFactorGPU>(0, 1, target, source, nullptr, nullptr, weight);
+  auto cloned = normalized->clone();
+  gtsam::Values values;
+  values.insert(0, gtsam::Pose3());
+  values.insert(1, gtsam::Pose3(gtsam::Rot3(), {.01, .02, .03}));
+  gtsam_points::NonlinearFactorSetGPU batch;
+  batch.add(original);
+  batch.add(normalized);
+  batch.add(cloned);
+  batch.linearize(values);
+  batch.error(values);
+  gtsam::HessianFactor h(*original->linearize(values)), scaled(*normalized->linearize(values)), copy(*cloned->linearize(values));
+  EXPECT_GT(original->error(values), 0);
+  EXPECT_NEAR(normalized->error(values), weight * original->error(values), 1e-12);
+  EXPECT_LT((scaled.augmentedInformation() - weight * h.augmentedInformation()).norm(), 1e-10);
+  EXPECT_LT((copy.augmentedInformation() - scaled.augmentedInformation()).norm(), 1e-10);
+  EXPECT_NEAR(cloned->error(values), normalized->error(values), 1e-12);
+}

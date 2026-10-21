@@ -415,6 +415,7 @@ private:
     } else
       voxel = std::make_shared<gtsam_points::GaussianVoxelMapCPU>(resolution);
     voxel->insert(*match_cloud);
+    const double lidar_weight = cfg.at("odometry").value("normalize_lidar_by_point_count", false) ? 1.0 / points.size() : 1.0;
     auto preprocessed = std::chrono::steady_clock::now();
     gtsam::Values initial;
     gtsam::NonlinearFactorGraph factors, lidar;
@@ -463,7 +464,7 @@ private:
         gtsam::NonlinearFactor::shared_ptr f;
         if (backend == "gpu") {
           auto sb = streams->get_stream_buffer();
-          f = gtsam::make_shared<GaugeConsistentVGICPFactorGPU>(X(it->id), X(count), it->voxels, match_cloud, sb.first, sb.second);
+          f = gtsam::make_shared<GaugeConsistentVGICPFactorGPU>(X(it->id), X(count), it->voxels, match_cloud, sb.first, sb.second, lidar_weight);
         } else {
           auto cpu = gtsam::make_shared<gtsam_points::IntegratedVGICPFactor>(X(it->id), X(count), it->voxels, match_cloud);
           cpu->set_num_threads(cfg.at("odometry").at("threads"));
@@ -676,7 +677,7 @@ private:
     icp << session << ',' << t << ',' << points.size() << ',' << fraction << ',' << cost;
     for (int i = 0; i < 6; i++) icp << ',' << eigen[i];
     for (int i = 0; i < 6; i++) icp << ',' << weak[i];
-    icp << ",covariance_planarity_guard_tangent_variance=" << tangent_variance << "," << nonplanar << '\n';
+    icp << ",covariance_planarity_guard_tangent_variance=" << tangent_variance << "_native_cost_weight=" << lidar_weight << "," << nonplanar << '\n';
     timing << session << ',' << t << ',' << ms(start, preprocessed) << ',' << ms(preprocessed, finish) << ',' << ms(start, finish) << ',' << now().seconds() - t << ','
            << imu->imu_data_in_queue().size() << ',' << clouds.size() << ',' << pred_x;
     for (int i = 0; i < 6; i++) timing << ',' << bias.vector()[i];

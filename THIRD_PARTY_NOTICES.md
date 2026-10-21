@@ -48,3 +48,8 @@ It preserves the native correspondence, cost, source Hessian and gradient, and
 reconstructs target/cross blocks using the relative-pose adjoint in double
 precision to preserve common-motion gauge consistency. Tests compare these
 preserved quantities and the gauge nullspace directly.
+
+The local ISAM2 marginalization now attaches its existing linearization point to
+LinearContainerFactor so Dogleg evaluates the retained historical prior rather
+than a zero nonlinear cost. The Gaussian information is unchanged. A three-state
+regression demonstrates the formerly omitted, analytically known prior cost.
