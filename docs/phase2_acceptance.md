@@ -1454,3 +1454,11 @@ S21实际GPU复验 `20261021T180641Z_706`（6de9792）保留趋零症状消失�
 证据在该run `export/analysis/{s21_cost_contract_comparison,velocity_feedback,
 velocity_collapse_reproduction}.json`；脚本`log/sparse_s21_compare.py`。
 原始GPU默认（未投影）及完整名义路线在修复后仍待复验，阶段未完成。
+
+### S22：S21修复后的默认GPU路径复验
+
+保持正式默认（弱平移投影关闭）、surveyed地图、单次20秒断流、同一冻结
+MCAP及65秒owner预算。检验S21代价合同修复是否也消除了默认路径的趋零
+症状：沿用十帧[60,61)中至少8帧|vx|<1的红信号；同时报告真实速度误差，
+不将仅症状消失当精度通过。与S15配置/地图/delivery相同，二进制改变。
+不修改阈值/噪声，不以此前投影路径结果代替默认路径复验。
