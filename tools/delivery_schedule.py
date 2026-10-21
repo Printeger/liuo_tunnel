@@ -1,7 +1,9 @@
-"""Bounded deterministic transport faults; message bytes and effective time never change."""
+"""Bounded transport scheduling preserves bytes; optional range bias is applied explicitly by replay."""
 
 import heapq
 import math
+import hashlib
+import random
 
 
 class DeliverySchedule:
@@ -18,6 +20,7 @@ class DeliverySchedule:
             "expired_delay_s",
             "outages",
             "anchor_outages",
+            "nlos_bias",
         }
         if set(self.profile) - allowed:
             raise ValueError("unknown delivery profile fields")
@@ -62,12 +65,85 @@ class DeliverySchedule:
                 raise ValueError("invalid anchor outage time")
             if not self.begin <= a < b <= self.end:
                 raise ValueError("anchor outage outside delivery window")
-        if self.anchor_outages and anchor_ids is None:
-            raise ValueError("anchor outage requires endpoint decoder")
+        self.nlos = self.profile.get("nlos_bias")
+        self.bias_series = {}
+        self.bias_values = 0
+        if self.nlos is not None:
+            required = {
+                "anchor_id",
+                "begin_s",
+                "end_s",
+                "seed",
+                "mean_m",
+                "log_sigma",
+                "correlation_s",
+                "step_s",
+            }
+            if set(self.nlos) != required:
+                raise ValueError("invalid NLOS bias fields")
+            for key in ["anchor_id", "seed"]:
+                if type(self.nlos[key]) is not int or self.nlos[key] < 0:
+                    raise ValueError("invalid NLOS " + key)
+            for key in required - {"anchor_id", "seed"}:
+                value = self.nlos[key]
+                if (
+                    type(value) not in (int, float)
+                    or not math.isfinite(value)
+                    or value < 0
+                    or (value == 0 and key != "begin_s")
+                ):
+                    raise ValueError("invalid NLOS " + key)
+            if not self.begin <= self.nlos["begin_s"] < self.nlos["end_s"] <= self.end:
+                raise ValueError("NLOS bias outside delivery window")
+            self.bias_steps = math.ceil(
+                (self.nlos["end_s"] - self.nlos["begin_s"]) / self.nlos["step_s"]
+            )
+            if not 1 <= self.bias_steps <= 10000:
+                raise ValueError("NLOS time series bound exceeded")
         self.capacity = capacity
         self.peak = 0
 
+    def range_bias(self, elapsed, anchor_ids):
+        """Stationary lognormal AR(1) per physical link; effective record time only.
+
+        Discrete values are held over step_s. Query order, delays and duplicate
+        delivery never advance a random stream or change a physical sample.
+        """
+        fault = self.nlos
+        endpoints = tuple(sorted(anchor_ids))
+        if (
+            fault is None
+            or fault["anchor_id"] not in endpoints
+            or not fault["begin_s"] <= elapsed < fault["end_s"]
+        ):
+            return 0.0
+        if endpoints not in self.bias_series:
+            if self.bias_values + self.bias_steps > 65536:
+                raise ValueError("NLOS aggregate series bound exceeded")
+            seed = int.from_bytes(
+                hashlib.sha256(f"{fault['seed']}:{endpoints}".encode()).digest()[:8], "big"
+            )
+            rng = random.Random(seed)
+            sigma = fault["log_sigma"]
+            rho = math.exp(-fault["step_s"] / fault["correlation_s"])
+            innovation = sigma * math.sqrt(1 - rho * rho)
+            state = rng.gauss(0, sigma)
+            values = []
+            for index in range(self.bias_steps):
+                if index:
+                    state = rho * state + rng.gauss(0, innovation)
+                value = fault["mean_m"] * math.exp(state - 0.5 * sigma * sigma)
+                if not math.isfinite(value) or value < 0 or (value == 0 and key != "begin_s"):
+                    raise ValueError("nonfinite NLOS bias")
+                values.append(value)
+            self.bias_series[endpoints] = values
+            self.bias_values += len(values)
+        index = min(self.bias_steps - 1, int((elapsed - fault["begin_s"]) / fault["step_s"]))
+        return self.bias_series[endpoints][index]
+
     def events(self, records):
+        if self.anchor_outages and self.anchor_ids is None:
+            raise ValueError("anchor outage requires endpoint decoder")
         pending = []
         order = 0
         count = 0

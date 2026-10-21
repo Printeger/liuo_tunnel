@@ -110,7 +110,37 @@ class DeliveryScheduleTest(unittest.TestCase):
         )
         self.assertEqual([(e[0], e[1], e[2]) for e in events], source)
         with self.assertRaisesRegex(ValueError, "decoder"):
-            DeliverySchedule(profile)
+            list(DeliverySchedule(profile).events(source))
         profile["anchor_outages"][0]["anchor_id"] = True
         with self.assertRaisesRegex(ValueError, "ID"):
             DeliverySchedule(profile, anchor_ids=lambda data: data)
+
+    def test_nlos_is_positive_correlated_and_independent_of_delivery_order(self):
+        fault = dict(
+            anchor_id=4,
+            begin_s=1,
+            end_s=21,
+            seed=38591,
+            mean_m=2.0,
+            log_sigma=0.25,
+            correlation_s=2.0,
+            step_s=0.1,
+        )
+        profile = dict(schema_version="liuo_delivery_v1", begin_s=0, end_s=22, nlos_bias=fault)
+        forward, reverse = DeliverySchedule(profile), DeliverySchedule(profile)
+        times = [1.05 + 0.1 * i for i in range(200)]
+        values = [forward.range_bias(t, [4]) for t in times]
+        backward = {t: reverse.range_bias(t, [4]) for t in reversed(times)}
+        self.assertTrue(all(v > 0 for v in values))
+        self.assertEqual(values, [backward[t] for t in times])
+        self.assertEqual(forward.range_bias(0.99, [4]), 0)
+        self.assertEqual(forward.range_bias(21, [4]), 0)
+        self.assertEqual(forward.range_bias(5, [3]), 0)
+        self.assertNotEqual(forward.range_bias(5, [3, 4]), forward.range_bias(5, [4]))
+        near = sum((a - b) ** 2 for a, b in zip(values, values[1:])) / 199
+        far = sum((a - b) ** 2 for a, b in zip(values, values[40:])) / 160
+        self.assertLess(near, far)
+        self.assertLessEqual(forward.bias_values, 65536)
+        fault["step_s"] = 0.00001
+        with self.assertRaisesRegex(ValueError, "bound"):
+            DeliverySchedule(profile)

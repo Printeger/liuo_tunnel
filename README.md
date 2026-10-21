@@ -138,3 +138,8 @@ Campaign在启动前检查预计产物空间，每5 s监测2 GiB保留空间；�
 仅向自身创建的owner发SIGINT，等待其收尾并记录失败，不清理历史产物。
 预计空间为540 s捕获1.5 GiB或回放0.25 GiB，另加2 GiB保留量；这是
 根据实测的启动预算，不保证其他进程不会消耗空间。
+
+相关NLOS正偏压力回放使用
+`--delivery-profile packages/liuo_tunnel/config/delivery/correlated_nlos.json`。
+它生成明确标记的派生测距输入，并保留原始值和正偏日志；不同模式必须
+使用同一源run及profile并核对实际投递哈希，不能只比较种子。

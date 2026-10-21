@@ -165,3 +165,21 @@ fault and restored TA ingestion from the failed anchor afterward. Restoration
 latency is reported, without imposing an invented per-link latency gate.
 Pressure navigation reports preserve outage and first-10-second recovery errors
 and states separately; a single-anchor loss does not imply all UWB is absent.
+
+`nlos_bias` is an explicit measurement-pressure transform applied after frozen
+transport scheduling, with a declared anchor, interval and independent seed.
+Each link has a stationary lognormal AR(1) series, held over `step_s`; the latent
+Gaussian correlation is exp(-step_s/correlation_s), and subtracting half the
+latent variance preserves the declared ensemble mean at each grid sample.
+Per-link series are capped at 10,000 values and aggregate storage at 65,536.
+Query order, duplicates and delivery delays do not change a physical bias.
+This is a synthetic stress model, not an empirically calibrated NLOS likelihood.
+
+Replay retains base/post-transform range, base/post variance, base/post
+propagation status and injected bias in `delivery.csv`. Only range and the
+NLOS_REPORTED flag change for affected measurements; identity, effective stamp
+and Gaussian variance remain unchanged. Values above 800 m are not clipped.
+The original MCAP remains immutable; profile SHA plus the original source
+identity identifies the derived input, and delivered hashes must agree between
+producer, observer and paired runs. Audits recompute the transform, check
+estimator-observed values and retain navigation errors separately.

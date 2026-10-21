@@ -141,6 +141,13 @@ def main():
                 "a",
                 "b_type",
                 "b",
+                "base_propagation_status",
+                "base_variance_m2",
+                "variance_after_stress_m2",
+                "base_range_m",
+                "range_after_stress_m",
+                "injected_bias_m",
+                "propagation_status",
             ]
         )
         clock_log.write("session,stamp,scheduled_wall_ns,published_wall_ns\n")
@@ -169,6 +176,20 @@ def main():
             if kind == "uwb":
                 identity = [message.producer_id, message.session_id, message.sequence]
                 measurement_stamp = message.header.stamp.sec + message.header.stamp.nanosec * 1e-9
+                base_range = message.range_m
+                base_status, base_variance = message.propagation_status, message.variance_m2
+                endpoints = [
+                    identity
+                    for kind, identity in [
+                        (message.node_a_type, message.node_a_id),
+                        (message.node_b_type, message.node_b_id),
+                    ]
+                    if kind == 1
+                ]
+                bias = scheduler.range_bias((record_ns - first_stamp) * 1e-9, endpoints)
+                if bias:
+                    message.range_m += bias
+                    message.propagation_status = message.NLOS_REPORTED
                 delivery_csv.writerow(
                     identity
                     + [
@@ -180,6 +201,13 @@ def main():
                         message.node_a_id,
                         message.node_b_type,
                         message.node_b_id,
+                        base_status,
+                        base_variance,
+                        message.variance_m2,
+                        base_range,
+                        message.range_m,
+                        bias,
+                        message.propagation_status,
                     ]
                 )
                 if action in ["outage_drop", "anchor_outage_drop"]:

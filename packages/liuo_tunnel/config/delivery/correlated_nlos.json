@@ -1,0 +1,15 @@
+{
+  "schema_version": "liuo_delivery_v1",
+  "begin_s": 8,
+  "end_s": 80,
+  "nlos_bias": {
+    "anchor_id": 4,
+    "begin_s": 40,
+    "end_s": 60,
+    "seed": 38591,
+    "mean_m": 2.0,
+    "log_sigma": 0.25,
+    "correlation_s": 2.0,
+    "step_s": 0.1
+  }
+}

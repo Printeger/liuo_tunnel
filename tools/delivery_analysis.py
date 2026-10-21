@@ -1,6 +1,8 @@
 """Audit declared transport faults separately from navigation accuracy."""
 
 from collections import Counter
+import math
+from delivery_schedule import DeliverySchedule
 
 
 def analyze(profile, delivery, decisions, trajectory, graph, clock, runtime):
@@ -144,6 +146,49 @@ def analyze(profile, delivery, decisions, trajectory, graph, clock, runtime):
                 "fresh_ta_recovery_wall_s": latency,
             }
         )
+    nlos_summary = None
+    if profile.get("nlos_bias"):
+        model = DeliverySchedule(profile)
+        biases = []
+        expected_ranges = {}
+        for row in delivery:
+            endpoints = [int(row[k]) for k in ["a", "b"] if int(row[k + "_type"]) == 1]
+            bias = model.range_bias(float(row["source_elapsed_s"]), endpoints)
+            expected = float(row["base_range_m"]) + bias
+            values = [expected, float(row["injected_bias_m"]), float(row["range_after_stress_m"])]
+            if (
+                not all(math.isfinite(v) for v in values)
+                or abs(values[1] - bias) > 1e-9
+                or abs(values[2] - expected) > 1e-9
+            ):
+                failures.append("NLOS measurement transform differs from declared model")
+            expected_status = 2 if bias else int(row["base_propagation_status"])
+            if int(row["propagation_status"]) != expected_status:
+                failures.append("NLOS propagation flag mismatch")
+            before_variance, after_variance = float(row["base_variance_m2"]), float(
+                row["variance_after_stress_m2"]
+            )
+            if not math.isfinite(after_variance) or after_variance != before_variance:
+                failures.append("NLOS stress changed baseline variance")
+            if row["action"] not in ["duplicate", "outage_drop", "anchor_outage_drop"]:
+                expected_ranges[identity(row)] = expected
+                if bias:
+                    biases.append(bias)
+        for decision in decisions:
+            if identity(decision) in expected_ranges and (
+                not math.isfinite(float(decision["range"]))
+                or abs(float(decision["range"]) - expected_ranges[identity(decision)]) > 1e-9
+            ):
+                failures.append("estimator NLOS measurement differs from delivered value")
+        if not biases:
+            failures.append("no NLOS-stressed measurements delivered")
+        nlos_summary = {
+            "model": "stationary_lognormal_AR1_zero_order_hold_per_link",
+            "stressed_physical_measurements": len(biases),
+            "bias_range_m": [min(biases), max(biases)] if biases else None,
+            "bias_values_in_memory": model.bias_values,
+            "interpretation": "Explicit additive pressure bias; nominal Gaussian measurement variance unchanged. Not an empirically calibrated NLOS model.",
+        }
     return {
         "result": "FAIL" if failures else "PASS",
         "failures": failures,
@@ -153,5 +198,6 @@ def analyze(profile, delivery, decisions, trajectory, graph, clock, runtime):
         "delivery_queue_peak": runtime["delivery_queue_peak"],
         "outages": outages,
         "anchor_outages": anchor_outages,
+        "nlos_bias": nlos_summary,
         "scope": "transport/unique ingestion/LIO continuity only; navigation accuracy and covariance evaluated separately",
     }

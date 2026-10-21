@@ -116,3 +116,71 @@ class DeliveryAnalysisTest(unittest.TestCase):
         self.assertIn(
             "anchor outage missed selected physical measurement", analyze(*data)["failures"]
         )
+
+    def test_nlos_model_and_estimator_value_must_match_with_variance_preserved(self):
+        from delivery_schedule import DeliverySchedule
+
+        profile = dict(
+            schema_version="liuo_delivery_v1",
+            begin_s=0,
+            end_s=4,
+            nlos_bias=dict(
+                anchor_id=4,
+                begin_s=1,
+                end_s=3,
+                seed=7,
+                mean_m=2.0,
+                log_sigma=0.25,
+                correlation_s=2.0,
+                step_s=0.1,
+            ),
+        )
+        bias = DeliverySchedule(profile).range_bias(2.0, [4])
+        row = dict(
+            producer="1",
+            session="10",
+            sequence="1",
+            action="original",
+            source_elapsed_s="2",
+            a_type="0",
+            a="0",
+            b_type="1",
+            b="4",
+            base_range_m="799.9",
+            range_after_stress_m=str(799.9 + bias),
+            injected_bias_m=str(bias),
+            propagation_status="2",
+            base_propagation_status="0",
+            base_variance_m2=".01",
+            variance_after_stress_m2=".01",
+        )
+        decision = dict(
+            producer="1",
+            session="10",
+            sequence="1",
+            reason="ACCEPT_TA",
+            range=str(799.9 + bias),
+            decision_wall_ns="2100000000",
+        )
+        data = [
+            profile,
+            [row],
+            [decision],
+            [],
+            [dict(reset="0", fallback="0")],
+            [dict(session="1", stamp="1", scheduled_wall_ns="0")],
+            dict(delivery_queue_peak=1),
+        ]
+        self.assertEqual(analyze(*data)["result"], "PASS")
+        self.assertGreater(float(row["range_after_stress_m"]), 800)
+        decision["range"] = "nan"
+        self.assertIn(
+            "estimator NLOS measurement differs from delivered value", analyze(*data)["failures"]
+        )
+        decision["range"] = row["range_after_stress_m"]
+        row["variance_after_stress_m2"] = ".1"
+        self.assertIn("NLOS stress changed baseline variance", analyze(*data)["failures"])
+        row["range_after_stress_m"] = "800"
+        self.assertIn(
+            "NLOS measurement transform differs from declared model", analyze(*data)["failures"]
+        )

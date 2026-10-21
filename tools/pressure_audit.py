@@ -124,7 +124,7 @@ def audit(run):
         )
     outages = []
     declared_outages = profile.get("outages", [])
-    if not declared_outages and not profile.get("anchor_outages"):
+    if not declared_outages and not profile.get("anchor_outages") and not profile.get("nlos_bias"):
         failures.append("no declared outage pressure interval")
     for i, (lo, hi) in enumerate(declared_outages):
         begin, end = start + lo, start + hi
@@ -185,6 +185,22 @@ def audit(run):
             "exceedances": [f for f in report["failures"] if f in ACCURACY_FAILURES],
         },
         "outages": outages,
+        "nlos_navigation": (
+            {
+                "during_bias": interval(
+                    annotated,
+                    start + profile["nlos_bias"]["begin_s"],
+                    start + profile["nlos_bias"]["end_s"],
+                ),
+                "first_10s_after_bias": interval(
+                    annotated,
+                    start + profile["nlos_bias"]["end_s"],
+                    start + profile["nlos_bias"]["end_s"] + 10,
+                ),
+            }
+            if profile.get("nlos_bias")
+            else None
+        ),
         "anchor_outage_navigation": [
             {
                 "anchor_id": fault["anchor_id"],
