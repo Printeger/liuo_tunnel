@@ -82,7 +82,7 @@ public:
     auto& logs = RunLogManager::instance();
     logs.write_run_info({{"backend", backend + "_RAW_MULTIFRAME_VGICP"}, {"uwb", fuse ? "FUSED_RAW" : "RECORD_ONLY"}, {"gpu_device", gpu_name}});
     status_log.open(logs.export_path("odometry/status.csv"));
-    status_log << std::setprecision(16) << "session,stamp,state,reason,rejected_total,last_rejection\n";
+    status_log << std::setprecision(16) << "session,stamp,state,reason,rejected_total,last_rejection,uwb_recovery_until\n";
     trajectory.open(logs.export_path("odometry/trajectory.csv"));
     trajectory << std::setprecision(16) << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id,publish_wall_ns,state_reason,wx,wy,wz,twist_interval_s\n";
     bootstrap_log.open(logs.profiling_path("bootstrap.csv"));
@@ -173,6 +173,7 @@ private:
     session++;
     last_uwb = -1;
     last_rejected = -1;
+    uwb_recovery_until = -1;
     rejected_total = 0;
     last_rejection.clear();
     last_status.clear();
@@ -200,10 +201,13 @@ private:
     kv.key = "last_rejection";
     kv.value = last_rejection;
     d.values.push_back(kv);
+    kv.key = "uwb_recovery_until";
+    kv.value = std::to_string(uwb_recovery_until);
+    d.values.push_back(kv);
     a.status.push_back(d);
     diagnostics->publish(a);
     if (state != last_status || reason != last_status_reason) {
-      status_log << session << ',' << t << ',' << state << ',' << reason << ',' << rejected_total << ',' << last_rejection << '\n';
+      status_log << session << ',' << t << ',' << state << ',' << reason << ',' << rejected_total << ',' << last_rejection << ',' << uwb_recovery_until << '\n';
       status_log.flush();
       logger->info("state={} reason={} stamp={} session={}", state, reason, t, session);
       last_status = state;
@@ -325,6 +329,10 @@ private:
         double residual = f->unwhitenedError(predicted)[0];
         factors.add(f);
         new_ta++;
+        // Fresh input after a real measurement-time gap does not instantly
+        // make the dead-reckoning window healthy. Require one full lag of
+        // renewed input before returning to TRACKING; this never alters X/V/B.
+        if (bootstrapped && last_uwb >= 0 && o.stamp > last_uwb + .3) uwb_recovery_until = std::max(uwb_recovery_until, t + cfg.at("odometry").at("lag_s").get<double>());
         last_uwb = std::max(last_uwb, o.stamp);
         log_range(o, "ACCEPT_TA", bracket, anchor ? gtsam::DefaultKeyFormatter(*anchor) : "constant:" + std::to_string(o.b), residual, "PRE_OPT_INNOVATION");
       }
@@ -626,7 +634,7 @@ private:
     std::string mode = lidar.empty() ? "INITIALIZING" : (fraction < .5 || eigen[0] < 1e-6 || eigen[5] / std::max(eigen[0], 1e-12) > 1e6 ? "DEGRADED" : "TRACKING");
     std::string state_reason = "LIDAR_INFORMATION_DIAGNOSTIC_NO_DOWNWEIGHTING";
     if (fuse) {
-      const auto diagnostic = fused_status(t, last_uwb, last_rejected, last_rejection, cov.bottomRightCorner<3, 3>().trace(), cov.trace());
+      const auto diagnostic = fused_status(t, last_uwb, last_rejected, last_rejection, cov.bottomRightCorner<3, 3>().trace(), cov.trace(), uwb_recovery_until);
       mode = diagnostic.state;
       state_reason = diagnostic.reason;
     }
@@ -696,7 +704,7 @@ private:
   KnownMap map;
   gtsam::Point3 tag;
   RangeQueue range_queue;
-  double last_uwb = -1, last_rejected = -1;
+  double last_uwb = -1, last_rejected = -1, uwb_recovery_until = -1;
   uint64_t rejected_total = 0;
   std::string last_rejection, failure_context = "STARTUP_FAILED";
   size_t new_ta = 0, new_aa = 0;

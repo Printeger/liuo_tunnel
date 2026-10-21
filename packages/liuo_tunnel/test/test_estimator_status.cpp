@@ -26,3 +26,11 @@ TEST(EstimatorStatus, CovarianceFailureIsNotMisreportedAsHealthyFusion) {
 TEST(EstimatorStatus, NeverAcceptedMeasurementCannotLookFreshNearClockOrigin) {
   EXPECT_EQ(fused_status(.01, -1, -1, "", .01, .02).state, "DEGRADED");
 }
+TEST(EstimatorStatus, RecoveryRequiresFreshWindowAndDoesNotHideNewOutage) {
+  auto recovering = fused_status(21, 20.99, -1, "", .01, .02, 31);
+  EXPECT_EQ(recovering.state, "DEGRADED");
+  EXPECT_EQ(recovering.reason, "UWB_RECOVERING_WINDOW");
+  EXPECT_EQ(fused_status(30.9, 30.89, -1, "", .01, .02, 31).state, "DEGRADED");
+  EXPECT_EQ(fused_status(31, 30.99, -1, "", .01, .02, 31).state, "TRACKING");
+  EXPECT_EQ(fused_status(25, 21, -1, "", .01, .02, 31).reason, "UWB_ABSENT_LIO_CONTINUES");
+}

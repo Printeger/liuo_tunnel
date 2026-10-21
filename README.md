@@ -120,3 +120,6 @@ seed。GPU任务不并发。任一逐次物理/精度/输入审计失败立即�
 不会自动重试挑选结果。`log/campaign_*/campaign_progress.json`记录命令、owner
 PID、run和逐次审计；仅该脚本正常完成仍不表示第二阶段完成。`--seeds 0`可
 执行单组诊断，但最终campaign审计仍会因其他seeds缺失而失败。
+
+压力回放完成后运行 `python3 tools/pressure_audit.py log/<run>`，核查断流及
+恢复状态并保留原始精度失败；此报告不替代名义种子配对验收。

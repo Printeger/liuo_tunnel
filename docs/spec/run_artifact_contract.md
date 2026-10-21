@@ -131,3 +131,14 @@ initialization, optimization, covariance or output failure. A constructed node
 emits LOST before terminating; a constructor failure has no usable publisher and
 is evidenced by the failure file and process exit. The owner still marks the run
 failed. These files do not replace raw per-measurement decisions or the manifest.
+
+After an accepted-TA measurement gap exceeding 0.3 s, operational recovery
+requires one full lag with renewed input before TRACKING. Status CSV and
+diagnostics expose `uwb_recovery_until`; `UWB_RECOVERING_WINDOW` is DEGRADED.
+Missing/rejected input and invalid posterior still take precedence. No state or
+covariance is changed by this reporting rule.
+
+`export/analysis/pressure_audit.json` preserves the original report failures and
+separates nominal accuracy comparisons from Handbook 8.1 pressure behavior.
+It reports outage/recovery errors and timing, checks delivered-input identity and
+recovery states, and does not claim nominal or complete-stage acceptance.
