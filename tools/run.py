@@ -443,7 +443,9 @@ def main():
                     child.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     pass  # Record failure below; never wait indefinitely on an owned child.
-                failure = f"{name} did not stop after owned SIGINT"
+                failure = (
+                    failure + "; " if failure else ""
+                ) + f"{name} did not stop after owned SIGINT"
                 lifecycle = "failed"
         for f in handles:
             f.close()
