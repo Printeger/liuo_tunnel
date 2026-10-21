@@ -836,3 +836,14 @@ S1 初始化歧义补充：离线乐观诊断仅使用首 8 s 的 462 条原始 
 但不能据此前 8 s 结论宣布整个 540 s 路线信息不足，也不能把有限多起点
 数值优化视为全局可观性证明。诊断原值保存在
 `20261021T160136Z_026/export/analysis/s1_initial_geometry_optimistic.json`。
+
+S1 同输入 OFF：`20261021T161053Z_512` 完成 540 s，原始内容冻结核对通过。
+位置 RMSE 1078.86417 m、姿态 P95 6.14642°，处理 P95 39.2311 ms、墙钟
+端到端 P95 45.06811 ms。OFF report 的 PASS 仅属于消融运行的输入/连续
+输出/时延合同，不是已知地图定位通过；严重漂移必须保留。与 surveyed
+`20261021T160136Z_026` 的严格配对比较已通过原始输入、LIO 设置和二进制
+一致性检查，见源 run 的 `export/analysis/matched_comparison.json`。
+
+后续仅断流回放已从 `log/phase2-sparse-s1-outages-console.txt` 启动，使用
+同一源、surveyed 地图和 `outages_only.json`（20–25 s、40–60 s），未引入
+延迟/重复/NLOS或调权。尚未完成，不提前报告恢复结论。
