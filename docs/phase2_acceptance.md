@@ -1977,3 +1977,28 @@ seed0、现有投影GPU配置、surveyed v5，捕获80s原始输入一次（预�
 TRACKING且位置误差>1m单列为明显状态矛盾，不能以该1m描述替换原
 0.30m名义门槛。压力不要求无观测仍满足名义精度，不因latch保持DEGRADED
 就宣称已经恢复。80s仅为机制诊断，不冒充完整路线/往返或10seed验收。
+
+S44已完成（代表性诊断，导航仍FAIL）：捕获ON 20261021T193009Z_074、
+OFF 20261021T193147Z_459、两次断流20261021T193324Z_955，均80s完整
+收尾。原包177160936字节；16000 IMU/800 cloud/5094 UWB/16000 clock。
+ON/OFF全部SHA、二进制及LIO设置严格核对通过，共同在线位置RMSE
+0.913136/204.057538m。OFF报告PASS仅为入口基线检查，不是阶段验收。
+配对证据在ON run/export/analysis/matched_comparison.json；逐轴位置/速度、
+状态/方差分布分别在各run的s44_on_navigation/s44_off_navigation.json。
+
+压力投递审计PASS：3501条UWB正常投递、1593条按声明主动丢弃，实际
+投递内容校验通过；不是未经改变的原始UWB全量哈希相等（report明确
+frozen_input_verified=false、delivered_input_verified=true）。恢复后新TA
+入图墙钟延迟分别0.114268/0.116284s。所有帧潜在物理可用站3个，断流
+期间实际接收UWB为0，不能把潜在可用站数当作实际收到观测。
+
+5s/20s断流末秒平均vx分别4.821222/3.285285m/s，各10帧均无|vx|<1，
+但20s断流末秒位置RMSE13.641478m，未解决显著漂移。恢复后首10s
+位置RMSE分别0.481489/1.856924m；第二次恢复后[71,81)仍0.870342m，
+却在71.1s恢复TRACKING（postfit未触发latch）。TRACKING子集最大误差
+1.098276m；不能宣布位置恢复。全段xyz RMSE3.171927/0.695599/0.413808m，
+速度xyz RMSE0.460754/0.046704/0.037729m/s。位置NEES31.9431，95%
+覆盖率14.3056%，过度自信仍FAIL。状态TRACKING109/DEGRADED610/LOST1，
+无缺帧/重复；状态可用率99.8611%并不代表精度通过。完整分轴和逐恢复秒
+记录在压力run/export/analysis/{s44_navigation,pressure_audit,report}.json。
+pressure_audit保持FAIL（入口>1m），未改门槛；未扩大为多seed campaign。
