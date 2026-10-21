@@ -1443,3 +1443,14 @@ S21红测试确认：实际GPU基点非线性cost=2546.522461，而线性化cost
 日志 `log/phase2-sparse-s21-{red-build,red-test,build,tests,final-build,final-tests}.txt`。
 下一实际短复现沿用S17配置/地图/单次断流/65秒预算，单独报告行为改变；
 若不改善残余漂移，不回退数学合同修复，也不宣称其解决全部故障。
+
+S21实际GPU复验 `20261021T180641Z_706`（6de9792）保留趋零症状消失，
+但末秒平均vx=3.212805m/s，误差1.787195m/s，未优于修复前S17的
+1.621497m/s；不能声称此合同错误是剩余漂移主因。预测累计增量
+−1.722140m/s、优化校正−0.086445m/s。状态DEGRADED，owner墙钟上限
+按预期收尾failed/not_evaluated。数学合同修复保留，不按精度结果回退。
+配置/地图/delivery完全相同，至61秒2090条物理UWB字段一致；二进制
+从acc7e48d变为f03baa34，比较明确标识，不冒充同二进制模式配对。
+证据在该run `export/analysis/{s21_cost_contract_comparison,velocity_feedback,
+velocity_collapse_reproduction}.json`；脚本`log/sparse_s21_compare.py`。
+原始GPU默认（未投影）及完整名义路线在修复后仍待复验，阶段未完成。
