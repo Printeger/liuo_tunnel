@@ -156,7 +156,8 @@ TEST(VgicpGPU, BinaryFactorMustNotObserveCommonRigidMotion) {
   EXPECT_LT((h.linearTerm(h.begin() + 1) - original.linearTerm(original.begin() + 1)).norm(), 1e-10);
   EXPECT_DOUBLE_EQ(h.constantTerm(), original.constantTerm());
   EXPECT_LT((h.information() - original.information()).norm() / original.information().norm(), 1e-6);
-  EXPECT_NEAR(factor->error(values), native->error(values), 1e-8);
+  // Native error is the full square; GTSAM factors use half-square.
+  EXPECT_NEAR(factor->error(values), .5 * native->error(values), 1e-8);
 }
 
 #include <liuo_tunnel/uwb/range_factors.hpp>
@@ -377,4 +378,52 @@ TEST(VgicpGPU, ProjectedWeakTranslationHasNoTrialCostOrInformationWhileRotationR
   batch.error(shifted);
   EXPECT_NEAR(projected->error(shifted), error, 1e-5);
   EXPECT_GT(std::abs(native->error(shifted) - error), 1e-3);
+}
+
+TEST(VgicpGPU, NonlinearCostMatchesLinearizedCostAndGradient) {
+  using Factor = liuo_tunnel::GaugeConsistentVGICPFactorGPU;
+  std::vector<Eigen::Vector4d> points;
+  for (int i = -10; i <= 10; ++i)
+    for (int j = -10; j <= 10; ++j) {
+      points.emplace_back(i * .13, j * .13, .173, 1);
+      points.emplace_back(.237, i * .13, j * .13, 1);
+      points.emplace_back(i * .13, .321, j * .13, 1);
+    }
+  auto cpu = std::make_shared<gtsam_points::PointCloudCPU>(points);
+  cpu->add_covs(std::vector<Eigen::Matrix4d>(points.size(), Eigen::Matrix4d::Identity() * .01));
+  auto cloud = gtsam_points::PointCloudGPU::clone(*cpu);
+  auto voxel = std::make_shared<gtsam_points::GaussianVoxelMapGPU>(.5);
+  voxel->insert(*cloud);
+  for (bool project : {false, true}) {
+    Eigen::Matrix3d P = Eigen::Matrix3d::Identity();
+    if (project) P(0, 0) = 0;
+    auto factor = gtsam::make_shared<Factor>(0, 1, voxel, cloud, nullptr, nullptr, 1.0, P);
+    gtsam::Values values;
+    values.insert(0, gtsam::Pose3(gtsam::Rot3::RzRyRx(.1, -.2, .3), {2, -3, 1}));
+    values.insert(1, values.at<gtsam::Pose3>(0).compose(gtsam::Pose3(gtsam::Rot3::RzRyRx(.01, -.02, .03), {.01, .02, .03})));
+    gtsam_points::NonlinearFactorSetGPU batch;
+    batch.add(factor);
+    batch.linearize(values);
+    gtsam::HessianFactor h(*factor->linearize(values));
+    batch.error(values);
+    const double cost = factor->error(values);
+    EXPECT_NEAR(cost, .5 * h.constantTerm(), 1e-5 * std::max(1., cost));
+    for (gtsam::Key key : {0, 1}) {
+      gtsam::Vector6 numerical;
+      for (int k = 0; k < 6; ++k) {
+        gtsam::Vector6 d = gtsam::Vector6::Zero();
+        d[k] = 1e-3;
+        auto plus = values, minus = values;
+        plus.update(key, values.at<gtsam::Pose3>(key).retract(d));
+        minus.update(key, values.at<gtsam::Pose3>(key).retract(-d));
+        batch.error(plus);
+        const double ep = factor->error(plus);
+        batch.error(minus);
+        const double em = factor->error(minus);
+        numerical[k] = (ep - em) / 2e-3;
+      }
+      const gtsam::Vector6 analytic = h.gradientAtZero().at(key);
+      EXPECT_LT((numerical - analytic).norm() / std::max(1., analytic.norm()), .01);
+    }
+  }
 }

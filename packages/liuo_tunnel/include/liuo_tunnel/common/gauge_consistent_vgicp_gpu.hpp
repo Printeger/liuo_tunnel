@@ -10,7 +10,7 @@ namespace liuo_tunnel {
 //
 // The original cost depends only on D=T_target^-1*T_source. Its right-local
 // differential is dD = -Ad(D^-1)*dTarget + dSource. In default mode preserve
-// the GPU source block, gradient, cost and correspondences; reconstruct the
+// the GPU source block, gradient, quadratic constant and correspondences; reconstruct the
 // other blocks by this identity in double. No prior, damping, eigenvalue clipping,
 // registration-result observation is introduced. An explicit positive scalar
 // weight, default 1, scales the entire original objective and derivatives
@@ -56,8 +56,10 @@ public:
       IntegratedVGICPFactorGPU::set_evaluation_point(values, input);
   }
   double error(const gtsam::Values& values) const override {
-    if (projecting_) return weight_ * IntegratedVGICPFactorGPU::error(projected_values(values));
-    return weight_ * IntegratedVGICPFactorGPU::error(values);
+    // The CUDA reduction returns r^T M r, while its HessianFactor models
+    // 0.5 * r^T M r. Match GTSAM nonlinear cost to that existing gradient/Hessian.
+    if (projecting_) return 0.5 * weight_ * IntegratedVGICPFactorGPU::error(projected_values(values));
+    return 0.5 * weight_ * IntegratedVGICPFactorGPU::error(values);
   }
   gtsam::GaussianFactor::shared_ptr linearize(const gtsam::Values& values) const override {
     set_reference(values);

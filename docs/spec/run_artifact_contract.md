@@ -257,3 +257,11 @@ Profiling odometry.csv adds `pred_vx,pred_vy,pred_vz` (world m/s) from IMU propa
 before this update. Changes in prediction versus optimization can be decomposed
 algebraically but remain coupled through prior updates; they are not independent
 sensor-error contributions.
+
+GPU VGICP cost convention (S21): the project factor's `error()` and `icp.csv`
+`cost` use GTSAM's **half** squared residual sum, consistent with the existing
+GPU Hessian and gradient. Earlier runs returned the full squared sum in the
+nonlinear evaluation, creating a factor-of-two mismatch in mixed-graph trial
+costs. Historical CSVs are not rewritten. Compare costs only with their bound
+source revision; this correction changes neither the linearized information nor
+sensor noise. CPU cost conventions are not certified by this GPU test.
