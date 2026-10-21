@@ -35,6 +35,9 @@ def main():
     p.add_argument("--config", type=Path, default=ROOT / "packages/liuo_tunnel/config/phase1.json")
     p.add_argument("--map", type=Path, help="external oracle_map or surveyed_map JSON")
     p.add_argument(
+        "--replay", type=Path, help="completed source run with verified original MCAP capture"
+    )
+    p.add_argument(
         "--debug-throw",
         action="store_true",
         help="diagnostic gdb backtrace at first estimator exception",
@@ -46,6 +49,8 @@ def main():
     )
     p.add_argument("--inject-failure", choices=["simulation", "odometry"])
     args = p.parse_args()
+    if args.replay and (args.capture or args.rate != 1.0):
+        p.error("frozen replay requires 1x and cannot recapture")
     if args.debug_throw and args.formal:
         p.error("debugger runs are diagnostic, not formal timing evidence")
     if not 0 < args.rate <= 1:
@@ -72,6 +77,49 @@ def main():
         effective_config["logging"]["raw_bag"] = args.capture
         config.write_text(json.dumps(effective_config, indent=2) + "\n")
         rd.register_config_snapshot(run, config)
+        frozen = None
+        if args.replay:
+            source = args.replay.resolve(strict=True)
+            source_manifest = json.loads((source / "metadata/run_manifest.json").read_text())
+            source_audit = json.loads(
+                (source / "metadata/manifests/observation_audit.json").read_text()
+            )
+            source_runtime = json.loads((source / "export/simulation/runtime.json").read_text())
+            if source_manifest["lifecycle"] != "completed" or source_audit["violations"]:
+                raise RuntimeError("FROZEN_SOURCE_INVALID: incomplete lifecycle or raw violations")
+            if source_audit["counts"] != source_runtime["published_counts"]:
+                raise RuntimeError("FROZEN_SOURCE_INVALID: source lost raw input")
+            hashes = json.loads((source / "metadata/manifests/captured_inputs.json").read_text())
+            raw_hashes = {k: v for k, v in hashes.items() if k.startswith("export/capture/raw/")}
+            if not any(k.endswith(".mcap") for k in raw_hashes):
+                raise RuntimeError("FROZEN_SOURCE_INVALID: missing MCAP")
+            for name, expected in raw_hashes.items():
+                path = (source / name).resolve(strict=True)
+                if not path.is_relative_to(source) or digest(path) != expected:
+                    raise RuntimeError("FROZEN_SOURCE_INVALID: capture checksum/path " + name)
+            source_config = json.loads((source / "metadata/config/phase1.json").read_text())
+            for key in ["sensors", "scan_model"]:
+                if effective_config[key] != source_config[key]:
+                    raise RuntimeError("FROZEN_SENSOR_CONTRACT_MISMATCH: " + key)
+            source_scenario = json.loads((source / "metadata/config/scenario.json").read_text())
+            args.duration = source_runtime["simulation_s"]
+            args.seed = source_scenario["seed"]
+            frozen = {
+                "source_run": str(source),
+                "source_run_id": source.name,
+                "capture_sha256": raw_hashes,
+                "raw_sha256": source_audit["raw_sha256"],
+                "counts": source_audit["counts"],
+                "source_scenario": source_scenario,
+            }
+            rd.write_subordinate_manifest(run, "frozen_input", frozen)
+            manifest_path = run / "metadata/run_manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest.update(retention_class="protected", retained_input_run_ids=[source.name])
+            rd._atomic_write_json(manifest_path, manifest)
+            shutil.copyfile(
+                source / "export/simulation/truth.csv", run / "export/simulation/truth.csv"
+            )
         selected_backend = effective_config["odometry"]["backend"]
         map_path = None
         if effective_config["uwb"]["mode"] == "fuse":
@@ -121,6 +169,8 @@ def main():
                 "world_voxel_m": 0.1,
             },
         )
+        if frozen is not None:
+            rd._atomic_write_json(run / "metadata/config/scenario.json", frozen["source_scenario"])
         rd.register_config_snapshot(run, run / "metadata/config/scenario.json")
         env = os.environ.copy()
         env.update(
@@ -218,6 +268,14 @@ def main():
             "-p",
             f"capture:={str(args.capture).lower()}",
         ]
+        if frozen is not None:
+            commands["simulation"] = [
+                sys.executable,
+                str(ROOT / "tools/replay.py"),
+                "--source-run",
+                frozen["source_run"],
+            ]
+            identity["frozen_input"] = frozen
         if args.debug_throw:
             commands["odometry"] = [
                 "gdb",

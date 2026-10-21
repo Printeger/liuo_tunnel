@@ -39,6 +39,13 @@ def evaluate(run):
         and abs(audit["imu_static_acc_z_mean"] - 9.80665) < 0.05,
         "static specific force",
     )
+    frozen_path = run / "metadata/manifests/frozen_input.json"
+    if frozen_path.exists():
+        frozen = json.loads(frozen_path.read_text())
+        check(audit["counts"] == frozen["counts"], "frozen replay input counts differ")
+        check(
+            audit.get("raw_sha256") == frozen["raw_sha256"], "frozen replay input content differs"
+        )
     config = json.loads((run / "metadata/config/phase1.json").read_text())
     fused = config["uwb"]["mode"] == "fuse"
     trajectory = rows(run / "export/odometry/trajectory.csv")
@@ -130,6 +137,21 @@ def evaluate(run):
         )
     elapsed = [float(r["total_ms"]) for r in timing]
     latency = [float(r["latency_s"]) for r in timing]
+    wall_latency = []
+    wall_clock_path = run / "export/simulation/wall_clock.csv"
+    if wall_clock_path.exists():
+        deadlines = {
+            (int(r["session"]), round(float(r["stamp"]), 9)): int(r["scheduled_wall_ns"])
+            for r in rows(wall_clock_path)
+        }
+        for r in trajectory:
+            key = (int(r["session"]), round(float(r["stamp"]), 9))
+            if key not in deadlines or "publish_wall_ns" not in r:
+                check(False, "missing wall publication/deadline association")
+                continue
+            value = (int(r["publish_wall_ns"]) - deadlines[key]) * 1e-9
+            check(value >= 0, "wall publication before measurement deadline")
+            wall_latency.append(value)
     backend = json.loads((run / "metadata/config/phase1.json").read_text())["odometry"].get(
         "backend", "cpu"
     )
@@ -152,9 +174,13 @@ def evaluate(run):
         check(quantile(elapsed, 0.95) < 100, "processing P95 >=100ms")
         check(quantile(latency, 0.95) < 0.25, "simulation-time latency P95 >=250ms")
         check(runtime["real_time_factor"] >= 0.99, "actual input rate below 1x tolerance")
-        # Until wall-clock and paired-input evidence is implemented, a short live
-        # graph exercise cannot be promoted to phase-two acceptance.
-        check(False, "phase2 wall-latency/frozen-input/long-run acceptance not yet implemented")
+        check(len(wall_latency) == len(trajectory), "wall latency evidence incomplete")
+        check(
+            bool(wall_latency) and quantile(wall_latency, 0.95) < 0.25,
+            "wall end-to-end P95 >=250ms or unavailable",
+        )
+        # Campaign acceptance also requires long-run paired trials, outages and all seeds.
+        check(False, "phase2 long-run/paired-campaign acceptance not yet implemented")
     result = {
         "scope": ("phase2_iteration_snapshot_" if fused else "phase1_snapshot_") + backend,
         "result": "FAIL" if failures else "PASS",
@@ -164,13 +190,22 @@ def evaluate(run):
         "attitude_p95_deg": quantile(attitude, 0.95),
         "processing_p95_ms": quantile(elapsed, 0.95),
         "sim_time_latency_p95_s": quantile(latency, 0.95),
+        "wall_end_to_end_p95_s": quantile(wall_latency, 0.95),
+        "actual_input_hz": {k: v / runtime["wall_s"] for k, v in audit["counts"].items()},
+        "frozen_input_verified": frozen_path.exists()
+        and audit.get("raw_sha256") == frozen["raw_sha256"]
+        and audit["counts"] == frozen["counts"],
         "max_vehicle_states": max((int(r["X"]) for r in graph), default=0),
         "simulation_runtime": runtime,
         "raw_counts": audit["counts"],
         "sessions": len(est_sessions),
         "gpu": ("FAIL" if failures else "PASS") if backend == "gpu" else "NOT_VALIDATED",
         "rolling_deskew": "NOT_VALIDATED",
-        "accuracy_thresholds": "Phase-two/three fused-navigation thresholds not applied to phase-one LIO observation baseline.",
+        "accuracy_thresholds": (
+            "Phase-two known-map thresholds applied without trajectory alignment."
+            if fused
+            else "Fused-navigation thresholds not applied to phase-one LIO observation baseline."
+        ),
     }
     out = run / "export/analysis"
     out.mkdir(exist_ok=True)
@@ -183,9 +218,13 @@ def evaluate(run):
         for section, m in metrics.items():
             writer.writerow({"section": section, **m})
     (out / "report.md").write_text(
-        "# Phase-one runtime report\n\n"
+        "# Online runtime report\n\n"
         + json.dumps(result, indent=2)
-        + "\n\nOnline published trajectory, fixed initial gauge translation z=-1.2 m. No trajectory fitting. LiDAR information is a mixed-unit pose-block diagnostic, not a certified uncertainty bound. Snapshot only.\n"
+        + (
+            "\n\nOnline trajectory in external map frame; no alignment. Snapshot only.\n"
+            if fused
+            else "\n\nOnline trajectory with fixed initial gauge z=-1.2 m; no fitting. Snapshot only.\n"
+        )
     )
     # Offline evaluator does not rewrite owner manifest.
     print(json.dumps(result, indent=2))

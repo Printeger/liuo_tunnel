@@ -27,3 +27,15 @@ Ordinary retention applies only to recognized, direct, nonsymlink development ru
 Phase-one UWB is `RECORD_ONLY`: no associated graph keys, residual, innovation or robust weight is invented. Raw range values above 800 m remain valid when the pre-noise geometric range was within the limit. Publish per-link effective timestamps, session/sequence identities and actual scheduling/visibility counts. Truth may be consumed only by simulation and independent evaluation. Snapshot point times are zero; rolling/deskew remains explicitly unverified.
 
 Build/test tooling uses ignored `log/build`, `log/test` and `log/tooling` directories, which are not runtime runs and are ineligible for retention. Test-created temporary directories are automatically cleaned. Frozen failure evidence remains unchanged; later reports must explicitly supersede an incorrect historical interpretation instead of rewriting it.
+
+Phase-two frozen input: `export/capture/raw` contains the original MCAP messages,
+including measurement identities and clock resets, with a monotonic playback
+schedule. `metadata/manifests/captured_inputs.json` binds file SHA256;
+`frozen_input.json` binds replay source, capture hashes, received raw stream
+hashes and counts. Protected replay manifests retain their source run IDs.
+A failed/incomplete capture cannot be promoted to a source. The owner starts
+either simulation or replay, never both. `export/simulation/wall_clock.csv`
+records session ordinal, effective stamp and scheduled/published monotonic ns;
+online trajectory `publish_wall_ns` measures publication against that deadline.
+Simulation-time latency, wall end-to-end latency and processing duration are
+reported separately. Snapshot scope remains explicit.

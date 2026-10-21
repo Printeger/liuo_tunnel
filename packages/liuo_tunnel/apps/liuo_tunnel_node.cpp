@@ -67,7 +67,7 @@ public:
     auto& logs = RunLogManager::instance();
     logs.write_run_info({{"backend", backend + "_RAW_MULTIFRAME_VGICP"}, {"uwb", fuse ? "FUSED_RAW" : "RECORD_ONLY"}, {"gpu_device", gpu_name}});
     trajectory.open(logs.export_path("odometry/trajectory.csv"));
-    trajectory << std::setprecision(16) << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id\n";
+    trajectory << std::setprecision(16) << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id,publish_wall_ns\n";
     graph.open(logs.export_path("odometry/graph.csv"));
     graph << "session,stamp,X,V,B,A,imu_factors,lidar_factors,total_factors,marginalized,optimization_ms,reset,fallback,uwb_ta,uwb_aa,map_priors,uwb_queue\n";
     icp.open(logs.export_path("odometry/icp.csv"));
@@ -492,9 +492,10 @@ private:
     out.twist.twist.linear.y = body_v.y();
     out.twist.twist.linear.z = body_v.z();
     pub->publish(out);
+    auto publish_wall_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
     status(mode, fuse ? (t - last_uwb > .3 ? "UWB_ABSENT_LIO_CONTINUES" : "JOINT_LIDAR_IMU_UWB") : "LIDAR_INFORMATION_DIAGNOSTIC_NO_DOWNWEIGHTING", t);
     trajectory << session << ',' << t << ',' << now().seconds() << ',' << p.x() << ',' << p.y() << ',' << p.z() << ',' << q.x() << ',' << q.y() << ',' << q.z() << ',' << q.w()
-               << ',' << v.x() << ',' << v.y() << ',' << v.z() << ",1," << mode << "," << (fuse ? map.id : "none") << "\n";
+               << ',' << v.x() << ',' << v.y() << ',' << v.z() << ",1," << mode << "," << (fuse ? map.id : "none") << "," << publish_wall_ns << "\n";
     size_t anchors = fuse && map.surveyed() ? map.ids.size() : 0;
     size_t active = (smoother->timestamps().size() - anchors) / 3;
     graph << session << ',' << t << ',' << active << ',' << active << ',' << active << ',' << anchors << ',' << (count ? 1 : 0) << ',' << lidar.size() << ','

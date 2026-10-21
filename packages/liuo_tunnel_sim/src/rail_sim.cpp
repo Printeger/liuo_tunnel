@@ -46,6 +46,8 @@ public:
       writer = std::make_unique<rosbag2_cpp::Writer>();
       writer->open(options);
     }
+    wall_clock.open(logs.export_path("simulation/wall_clock.csv"));
+    wall_clock << std::setprecision(16) << "session,stamp,scheduled_wall_ns,published_wall_ns\n";
     truth.open(logs.export_path("simulation/truth.csv"));
     truth << std::setprecision(16) << "session,stamp,x,y,z,vx,vy,vz\n";
     uwblog.open(logs.export_path("simulation/uwb.csv"));
@@ -151,6 +153,9 @@ private:
     clock.clock = stamp(ros_t);
     capture(clock, "/clock");
     clock_pub->publish(clock);
+    auto wall_ns = [](auto point) { return std::chrono::duration_cast<std::chrono::nanoseconds>(point.time_since_epoch()).count(); };
+    wall_clock << (reset_done ? 2 : 1) << ',' << ros_t << ',' << wall_ns(simulation_started) + std::llround(elapsed / rate * 1e9) << ','
+               << wall_ns(std::chrono::steady_clock::now()) << '\n';
     sensor_msgs::msg::Imu imu;
     imu.header.stamp = stamp(ros_t);
     imu.header.frame_id = "imu";
@@ -323,7 +328,7 @@ private:
   Eigen::Isometry3d T_BL;
   FirstHitLidarRenderer renderer;
   std::vector<Link> links;
-  std::ofstream truth, uwblog, timing, scheduling;
+  std::ofstream truth, uwblog, timing, scheduling, wall_clock;
   uint64_t published_clouds = 0;
   uint64_t ta_published = 0, aa_published = 0, unreachable = 0, occluded = 0;
   std::shared_ptr<spdlog::logger> logger;
