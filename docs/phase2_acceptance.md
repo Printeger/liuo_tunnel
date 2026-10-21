@@ -1208,3 +1208,26 @@ S3已直接证明恢复后小post-fit残差仍可对应米级错误，现有状�
 S13独立三包构建、69项组件测试、46项Python测试及安装后ROS消息
 CDR检查通过，日志`log/phase2-sparse-s13-{build,tests}.txt`。完整
 同输入GPU回放尚待执行；不以状态单元测试代替运行验证。
+
+S13完整GPU运行 `20261021T172908Z_503` 绑定f2f2fc7完成540秒，owner
+因导航验收FAIL退出1；参与进程均结束，无后续seed批次。完整送达核对
+PASS，与S3输入内容/LIO/融合设置一致，二进制不同并明确登记。
+
+状态保护限定PASS：首次失败26.1秒，此后5149帧没有TRACKING或同会话
+清除失败标记。全程DEGRADED3873/LOST1382/TRACKING65。此结果不等于
+恢复成功；自动验证重定位尚未实现。导航FAIL：位置RMSE23.55475m，
+分轴RMSE16.02286/14.38797/9.54361m；速度分轴RMSE
+0.85939/0.65776/0.34594m/s；姿态P95 21.15574°，处理/墙钟端到端
+P95 34.8992/41.068874ms。位置NEES342008.42、95%椭球覆盖率0%。
+20秒断流末段10帧全部|vx|<1m/s、平均vx−0.000921m/s，实际vx5，
+速度塌陷仍复现。未放大协方差、删除异常帧或降低门槛。
+
+证据在该run的 `export/analysis/{report,pressure_audit,s13_navigation,
+s13_state_guard,s13_input_comparison,velocity_collapse_reproduction}.json`。
+仅症状检查命令：`python3 log/check_sparse_velocity_collapse.py
+log/20261021T172908Z_503` 返回1/FAIL_VELOCITY_COLLAPSE；这是现有实际
+GPU回放的症状断言，不是新压力精度门槛或完整输入驱动器。后续诊断将
+收紧到实际GPU故障路径，不再把理想Between简化图当相同故障的复现。
+
+已询问实际部署是否具备独立起始位置/航向测量；答案未到前仍按完全
+自主初始化，不新增起点/航向先验，不以缺少该答案停止已有授权工作。
