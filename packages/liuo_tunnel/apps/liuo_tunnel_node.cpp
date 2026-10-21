@@ -69,6 +69,8 @@ public:
     logs.write_run_info({{"backend", backend + "_RAW_MULTIFRAME_VGICP"}, {"uwb", fuse ? "FUSED_RAW" : "RECORD_ONLY"}, {"gpu_device", gpu_name}});
     trajectory.open(logs.export_path("odometry/trajectory.csv"));
     trajectory << std::setprecision(16) << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id,publish_wall_ns\n";
+    bootstrap_log.open(logs.profiling_path("bootstrap.csv"));
+    bootstrap_log << std::setprecision(16) << "session,iteration,total_error,cost_change,lambda,solve_success,elapsed_s,ta_error,translation_gradient_norm,x0,y0,z0\n";
     covariance_log.open(logs.export_path("odometry/covariance.csv"));
     covariance_log << std::setprecision(16) << "session,stamp";
     for (int i = 0; i < 9; i++)
@@ -422,7 +424,28 @@ private:
         return;
       }
       gtsam_points::LevenbergMarquardtExtParams params;
-      params.maxIterations = 30;
+      params.maxIterations = cfg.at("uwb").value("bootstrap_max_iterations", 30);
+      params.relativeErrorTol = cfg.at("uwb").value("bootstrap_relative_error_tolerance", 1e-5);
+      params.callback = [this](const auto& progress, const gtsam::Values& values) {
+        double ta_error = 0;
+        gtsam::Vector3 gradient = gtsam::Vector3::Zero();
+        for (const auto& factor : bootstrap_factors) {
+          const auto* range = dynamic_cast<const TagAnchorRangeFactor*>(factor.get());
+          if (!range) continue;
+          std::vector<gtsam::Matrix> jacobians;
+          auto residual = range->unwhitenedError(values, &jacobians);
+          gtsam::Matrix world_H = gtsam::Matrix::Zero(1, 3);
+          for (size_t j = 0; j < range->keys().size(); j++) {
+            auto key = range->keys()[j];
+            if (gtsam::Symbol(key).chr() == 'x') world_H += jacobians[j].rightCols(3) * values.at<gtsam::Pose3>(key).rotation().matrix().transpose();
+          }
+          gradient += range->noiseModel()->Whiten(world_H).transpose() * range->noiseModel()->whiten(residual);
+          ta_error += range->error(values);
+        }
+        auto p = values.at<gtsam::Pose3>(X(0)).translation();
+        bootstrap_log << session << ',' << progress.iterations << ',' << progress.error << ',' << progress.cost_change << ',' << progress.lambda << ',' << progress.solve_success
+                      << ',' << progress.elapsed_time << ',' << ta_error << ',' << gradient.norm() << ',' << p.x() << ',' << p.y() << ',' << p.z() << '\n';
+      };
       auto optimized = gtsam_points::LevenbergMarquardtOptimizerExt(bootstrap_factors, bootstrap_values, params).optimize();
       // Transfer the original factors and their joint optimized values exactly
       // once. No marginal-map + reused-observation double counting.
@@ -548,7 +571,7 @@ private:
   bool initialized = false;
   double first_imu = -1, latest_imu = -1, last_cloud = -1;
   Eigen::Vector3d sum_a, sum_w;
-  std::ofstream trajectory, graph, icp, uwb, timing, covariance_log;
+  std::ofstream trajectory, graph, icp, uwb, timing, covariance_log, bootstrap_log;
   std::shared_ptr<spdlog::logger> logger;
   std::string last_status;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub;
