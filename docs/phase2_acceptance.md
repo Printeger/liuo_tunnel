@@ -17,9 +17,9 @@
 | 原始冻结回放与内容核对 | PASS（已列 runs） | 完整 MCAP 和逐 topic SHA/count；20 s 旧布局 ON/OFF/oracle/surveyed 配对保留 |
 | 位姿、线/区间角速度及完整 twist 协方差 | PASS（组件及30 s线上合同） | `a7e12ae`；48 组件/11 Python 测试；220 条融合与279条 OFF 输出独立核对，无违规 |
 | 可信状态与后验一致性 | FAIL | 已区分初始化、缺测/拒绝、恢复、地图/外参及异常；固定恢复窗口仍不能证明定位恢复。当前名义seed 0位置NEES34.92、95%覆盖率1.47%，保留过度自信问题 |
-| 已知地图定位精度 | PASS（已列单次）/campaign未完成 | 旧1070 s双地图往返达标；当前540 s surveyed seed 0 RMSE0.22633 m、姿态P95 0.33512°；oracle同输入RMSE0.18401 m；OFF及其余seeds未完成 |
+| 已知地图定位精度 | PASS（已列单次）/campaign未完成 | 旧1070 s双地图往返达标；当前540 s surveyed seed 0 RMSE0.22633 m、姿态P95 0.33512°；oracle同输入RMSE0.18401 m；seeds 0、1 三模式已配对；其余 seeds 未完成 |
 | 处理/端到端/1×实时 | PASS（已列单次） | 当前540 s surveyed seed 0：52.94/80.83 ms、0.999999875×、有效输出5320/5320；不能外推所有seeds |
-| 最终配置 ON/OFF、双地图、全程走停、seeds 0–9 | 进行中 | `log/campaign_20261021T134311136289Z`；每次独立判定，失败停止并保留，不择优或用均值替代 |
+| 最终配置 ON/OFF、双地图、全程走停、seeds 0–9 | 进行中 | 当前续跑 `log/campaign_20261021T155027198532Z` 显式复用 seeds 0、1；每次独立判定，失败停止并保留，不择优或用均值替代 |
 | rolling/去畸变、第三阶段 | 未验证/不在本阶段 | snapshot 范围明确；不提前交付自标定或规划 |
 
 当前估计器构建/63组件测试见 `log/phase2-recovery-state-{build,tests}.txt`；
@@ -716,3 +716,24 @@ seed 2 中断捕获仍为失败；旧布局仍为 3.05 m RMSE 失败。seed 1 �
 保留 seed 0 完整包、180 s 压力输入和完整往返输入。未来按 README 的逐组
 释放流程处理其他 seeds；所有失败结论与验收门槛保持不变。已删除的历史包
 不能直接回放，保留哈希不等于仍持有原始字节。第二阶段尚未通过。
+
+### 单基站失效实测与有限存储 campaign 续跑
+
+`20261021T150152Z_190` 使用保留的 180 s 原始输入
+`20261021T112045Z_744`、surveyed 地图和 `single_anchor_loss.json`，
+只屏蔽 anchor 4 在 40–60 s 的链路。独立 pressure_audit 行为 PASS：
+250 条相关观测被明确丢弃，其他链路保留；故障期间实际接受 4,269 条其他
+基站 TA，故障基站首条恢复 TA 入图延迟 0.11418 s。完整输出 1,720/1,720，
+故障期间 200 帧均为 TRACKING（其他基站持续可用）。
+
+全程位置 RMSE 0.20688 m，姿态 P95 0.29544°，处理 P95 53.8315 ms，
+墙钟端到端 P95 60.0105 ms。故障段 RMSE 0.28248 m、最大 0.36750 m；
+恢复后首 10 s RMSE 0.12099 m。名义数值比较也通过，但原始 report 的
+阶段未完成 FAIL 保留。该项仅是 surveyed 单次结果，oracle/OFF 压力配对
+尚未完成，不能据此宣布完整压力矩阵通过。
+证据：该 run 的 `export/analysis/{report,pressure_audit}.json`。
+
+在释放原始包后，提交 `fcccea5` 的有限存储 campaign 已启动：
+`log/campaign_20261021T155027198532Z`。显式复核并复用 seeds 0、1 六个
+既有 run，从 seed 2 重新捕获完整输入；之前中断的 seed 2 不复用。
+每组严格核对后释放 MCAP，保留 CSV 和结果。启动不代表任何新 seed 已通过。
