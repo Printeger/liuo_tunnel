@@ -7,6 +7,7 @@ import json
 import math
 from pathlib import Path
 from collections import Counter
+from long_run_audit import continuity
 
 ACCURACY_FAILURES = {
     "known-map position RMSE >0.30m",
@@ -81,6 +82,19 @@ def recovery_bins(records, decisions, begin, end):
     return result
 
 
+def output_coverage_failures(summary):
+    """Pressure may honestly be LOST; missing/nonfinite output is separate."""
+    failures = []
+    if (
+        not summary["expected_epochs"]
+        or summary["states"]["MISSING"] > 0.01 * summary["expected_epochs"]
+    ):
+        failures.append("pressure odometry publication coverage below 99%")
+    if summary["states"]["INVALID"] or summary["duplicate_epochs"] or summary["unexpected_epochs"]:
+        failures.append("invalid, duplicate or unexpected pressure output epochs")
+    return failures
+
+
 def audit(run):
     load = lambda name: json.loads((run / name).read_text())
 
@@ -101,7 +115,10 @@ def audit(run):
     if not report["delivered_input_verified"]:
         failures.append("delivered bytes not verified")
     trajectory = rows("export/odometry/trajectory.csv")
-    truth = {round(float(r["stamp"]), 7): r for r in rows("export/simulation/truth.csv")}
+    truth_rows = rows("export/simulation/truth.csv")
+    truth = {round(float(r["stamp"]), 7): r for r in truth_rows}
+    coverage = continuity(trajectory, truth_rows, config)
+    failures.extend(output_coverage_failures(coverage))
     transitions = rows("export/odometry/status.csv")
     decisions = rows("export/odometry/uwb.csv")
     start = float(rows("export/simulation/wall_clock.csv")[0]["stamp"])
@@ -185,6 +202,7 @@ def audit(run):
             "exceedances": [f for f in report["failures"] if f in ACCURACY_FAILURES],
         },
         "outages": outages,
+        "output_coverage": coverage,
         "nlos_navigation": (
             {
                 "during_bias": interval(

@@ -672,3 +672,10 @@ seed 1 OFF `20261021T144158Z_577`完成540 s；运行合同/长程检查PASS，
 目前仅seeds0和1完成三模式名义配对，seed 2 surveyed开始采集。
 启动时可用空间3,808,092,160字节，通过1.5 GiB产物预算+2 GiB保留量
 检查；后续继续每5 s监测，不因空间不足删除既有证据。
+
+压力审计增加全段初始化后的10 Hz输出覆盖检查，要求发布覆盖≥99%，
+重复、非有限/无效输出明确失败；LOST与DEGRADED状态另列，不把诚实
+LOST误当成未发布，也不把它算成名义有效定位。已有断流运行
+`20261021T133937Z_402`重新审计输出覆盖PASS，原始精度FAIL仍保留。
+38项Python测试通过（`log/phase2-pressure-coverage-tests.txt`），审计
+输出见`log/phase2-pressure-coverage-recheck.txt`。

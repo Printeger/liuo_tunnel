@@ -1,5 +1,5 @@
 import unittest
-from pressure_audit import interval, sustained_return, recovery_bins
+from pressure_audit import interval, sustained_return, recovery_bins, output_coverage_failures
 
 
 class PressureEvidenceTest(unittest.TestCase):
@@ -50,3 +50,18 @@ class PressureEvidenceTest(unittest.TestCase):
         decisions[0]["whitened"] = "nan"
         with self.assertRaises(ValueError):
             recovery_bins(trajectory, decisions, 10, 12)
+
+    def test_honest_lost_is_distinct_from_missing_or_invalid_publications(self):
+        report = dict(
+            expected_epochs=100,
+            valid_epochs=0,
+            duplicate_epochs=0,
+            unexpected_epochs=0,
+            states=dict(LOST=100, MISSING=0, INVALID=0),
+        )
+        self.assertEqual(output_coverage_failures(report), [])
+        report["states"]["MISSING"] = 2
+        self.assertTrue(output_coverage_failures(report))
+        report["states"]["MISSING"] = 0
+        report["states"]["INVALID"] = 1
+        self.assertTrue(output_coverage_failures(report))
