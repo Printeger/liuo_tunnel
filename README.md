@@ -163,3 +163,9 @@ seed 0 始终保留为代表性完整输入；其余 seed 的已完成复用组�
 `--no-progress-timeout` 默认 30 秒，分别监测仿真时钟日志和估计器处理日志
 的增长。超时记录明确失败，只收尾自身子进程；SIGINT 15 秒后仍未退出则
 仅 kill 该子进程并最多再等 5 秒。评估另限 120 秒，无自动重试。
+
+Sparse S3 status diagnostics additionally check newly inserted TA factors after
+optimization. Excessive measurement-sigma-normalized squared residual reports
+`LOST/UWB_POSTFIT_INCONSISTENT`; the statistic and reference are in trajectory.csv.
+This does not repair drift or calibrate covariance; small residuals do not prove
+correct global position. See docs/phase2_acceptance.md for failed sparse evidence.

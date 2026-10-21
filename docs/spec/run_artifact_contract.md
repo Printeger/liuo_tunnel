@@ -222,3 +222,13 @@ are not rewritten. A density-compliant layout alone does not prove observability
 progress files. Simulation and estimator output growth are monitored separately;
 process liveness alone does not count as progress. Watchdog failure follows owned
 child teardown and retains input_failure. Evaluation has a separate finite limit.
+
+S3 adds `postfit_ta_stamp,postfit_ta_count,postfit_ta_squared_sum,postfit_ta_limit`
+to trajectory CSV and the count/sum/limit to diagnostics. Only newly inserted
+physical TA factors are evaluated at the current joint optimized estimate;
+sum is twice their Gaussian factor error. The reference is chi-square(n) 99.9%.
+Exceedance reports LOST/UWB_POSTFIT_INCONSISTENT; invalid values report LOST.
+This does not alter optimization or covariance. It is a post-fit disagreement
+diagnostic, not predictive NIS or calibrated nonlinear false-alarm probability.
+Small residuals cannot certify global accuracy in weak geometry. No new TA keeps
+the last check; missing input takes precedence; session reset clears the check.

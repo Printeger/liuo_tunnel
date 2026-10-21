@@ -84,7 +84,9 @@ public:
     status_log.open(logs.export_path("odometry/status.csv"));
     status_log << std::setprecision(16) << "session,stamp,state,reason,rejected_total,last_rejection,uwb_recovery_until\n";
     trajectory.open(logs.export_path("odometry/trajectory.csv"));
-    trajectory << std::setprecision(16) << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id,publish_wall_ns,state_reason,wx,wy,wz,twist_interval_s\n";
+    trajectory << std::setprecision(16)
+               << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id,publish_wall_ns,state_reason,wx,wy,wz,twist_interval_s,postfit_ta_stamp,postfit_"
+                  "ta_count,postfit_ta_squared_sum,postfit_ta_limit\n";
     bootstrap_log.open(logs.profiling_path("bootstrap.csv"));
     bootstrap_log << std::setprecision(16) << "session,iteration,total_error,cost_change,lambda,solve_success,elapsed_s,ta_error,translation_gradient_norm,x0,y0,z0\n";
     covariance_log.open(logs.export_path("odometry/covariance.csv"));
@@ -174,6 +176,9 @@ private:
     last_uwb = -1;
     last_rejected = -1;
     uwb_recovery_until = -1;
+    postfit_ta_stamp = -1;
+    postfit_ta_count = 0;
+    postfit_ta_squared_sum = 0;
     rejected_total = 0;
     last_rejection.clear();
     last_status.clear();
@@ -203,6 +208,15 @@ private:
     d.values.push_back(kv);
     kv.key = "uwb_recovery_until";
     kv.value = std::to_string(uwb_recovery_until);
+    d.values.push_back(kv);
+    kv.key = "postfit_ta_count";
+    kv.value = std::to_string(postfit_ta_count);
+    d.values.push_back(kv);
+    kv.key = "postfit_ta_squared_sum";
+    kv.value = std::to_string(postfit_ta_squared_sum);
+    d.values.push_back(kv);
+    kv.key = "postfit_ta_limit";
+    kv.value = std::to_string(postfit_range_limit(postfit_ta_count));
     d.values.push_back(kv);
     a.status.push_back(d);
     diagnostics->publish(a);
@@ -575,6 +589,23 @@ private:
       smoother->update(factors, initial, times, aa_removed);
       bind_aa_factor_indices();
     }
+    // Read-only post-fit consistency of newly incorporated physical TA factors.
+    // Evaluate against the joint optimized states, not published poses or truth.
+    if (fuse && new_ta) {
+      const auto estimate = smoother->calculateEstimate();
+      size_t samples = 0;
+      double squared_sum = 0;
+      for (const auto& factor : factors) {
+        const auto* range = dynamic_cast<const TagAnchorRangeFactor*>(factor.get());
+        if (!range) continue;
+        squared_sum += 2.0 * range->error(estimate);
+        ++samples;
+      }
+      if (samples != new_ta) throw std::runtime_error("POSTFIT_TA_COUNT_MISMATCH");
+      postfit_ta_count = samples;
+      postfit_ta_squared_sum = squared_sum;
+      postfit_ta_stamp = t;
+    }
     state = gtsam::NavState(smoother->calculateEstimate<gtsam::Pose3>(X(count)), smoother->calculateEstimate<gtsam::Vector3>(V(count)));
     bias = smoother->calculateEstimate<gtsam::imuBias::ConstantBias>(B(count));
     if (!state.pose().matrix().allFinite() || !state.velocity().allFinite()) throw std::runtime_error("nonfinite optimized state");
@@ -634,7 +665,8 @@ private:
     std::string mode = lidar.empty() ? "INITIALIZING" : (fraction < .5 || eigen[0] < 1e-6 || eigen[5] / std::max(eigen[0], 1e-12) > 1e6 ? "DEGRADED" : "TRACKING");
     std::string state_reason = "LIDAR_INFORMATION_DIAGNOSTIC_NO_DOWNWEIGHTING";
     if (fuse) {
-      const auto diagnostic = fused_status(t, last_uwb, last_rejected, last_rejection, cov.bottomRightCorner<3, 3>().trace(), cov.trace(), uwb_recovery_until);
+      const auto diagnostic =
+        fused_status(t, last_uwb, last_rejected, last_rejection, cov.bottomRightCorner<3, 3>().trace(), cov.trace(), uwb_recovery_until, postfit_ta_count, postfit_ta_squared_sum);
       mode = diagnostic.state;
       state_reason = diagnostic.reason;
     }
@@ -671,7 +703,8 @@ private:
       status(mode, state_reason, t);
       trajectory << session << ',' << t << ',' << now().seconds() << ',' << p.x() << ',' << p.y() << ',' << p.z() << ',' << q.x() << ',' << q.y() << ',' << q.z() << ',' << q.w()
                  << ',' << v.x() << ',' << v.y() << ',' << v.z() << ",1," << mode << "," << (fuse ? map.id : "none") << "," << publish_wall_ns << "," << state_reason << ","
-                 << twist[3] << "," << twist[4] << "," << twist[5] << "," << t - last_cloud << "\n";
+                 << twist[3] << "," << twist[4] << "," << twist[5] << "," << t - last_cloud << "," << postfit_ta_stamp << "," << postfit_ta_count << "," << postfit_ta_squared_sum
+                 << "," << postfit_range_limit(postfit_ta_count) << "\n";
       covariance_log << session << ',' << t;
       for (int i = 0; i < 9; i++)
         for (int j = 0; j < 9; j++) covariance_log << ',' << xv_cov(i, j);
@@ -705,6 +738,8 @@ private:
   gtsam::Point3 tag;
   RangeQueue range_queue;
   double last_uwb = -1, last_rejected = -1, uwb_recovery_until = -1;
+  double postfit_ta_stamp = -1, postfit_ta_squared_sum = 0;
+  size_t postfit_ta_count = 0;
   uint64_t rejected_total = 0;
   std::string last_rejection, failure_context = "STARTUP_FAILED";
   size_t new_ta = 0, new_aa = 0;
