@@ -112,3 +112,11 @@ covariance do not change when the survey random stream changes.
 不会自动挑选较好结果或用均值掩盖失败。OFF仍须满足相同输入和时延预算，但
 不作为已知地图精度候选。该报告仅覆盖名义campaign，故障、生命周期、完整
 返回和状态/协方差解释仍需对应独立证据，不能单独作为阶段完成证明。
+
+
+`python3 tools/run_campaign.py` 串行执行名义 seeds 0–9：每个seed采集540 s完整
+去程走停，再以冻结输入运行oracle和OFF；模拟测绘seed为67129+1000×sensor
+seed。GPU任务不并发。任一逐次物理/精度/输入审计失败立即停止并保留失败，
+不会自动重试挑选结果。`log/campaign_*/campaign_progress.json`记录命令、owner
+PID、run和逐次审计；仅该脚本正常完成仍不表示第二阶段完成。`--seeds 0`可
+执行单组诊断，但最终campaign审计仍会因其他seeds缺失而失败。
