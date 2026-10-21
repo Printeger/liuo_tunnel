@@ -337,3 +337,10 @@ tools/run.sh --formal --replay log/20261021T120354Z_887 --config packages/liuo_t
 严格OFF对照从同一phase2配置只改 `uwb.mode` 为 `record_only`，保持同一二进制
 和全部LIO设置；不能用原phase1默认连接窗口作模式对照。当前oracle配对run
 `20261021T122540Z_225` 尚在执行，未提前登记结果。
+
+
+`campaign_audit.py` 已加入显式seeds 0–9三模式覆盖、逐次长程审计、同输入/同
+二进制/同估计设置检查；缺失或重复run拒绝，不自动选择最佳重跑。当前只提供
+`20261021T120354Z_887` 时正确报告剩余29个缺失组合，详见
+`log/phase2-incomplete-campaign-audit.json`。21项Python检查通过；这只是验收
+检查器的证据，不代表这些尚未执行的场景通过。

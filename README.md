@@ -104,3 +104,11 @@ causal comparisons. For the seed campaign, generate independent simulated survey
 fixtures with `tools/generate_known_maps.py <directory> --survey-seed <integer>`;
 the unchanged default is 67129. Oracle geometry and the declared correlated survey
 covariance do not change when the survey random stream changes.
+
+
+名义多种子证据使用 `python3 tools/campaign_audit.py RUN... --output log/campaign.json`
+审核显式提供的 runs：seeds 0–9 每个必须有一组 OFF/oracle/surveyed，逐次完整
+路线检查、原始输入内容配对、相同LIO配置和二进制核对；漏项或重复项明确失败，
+不会自动挑选较好结果或用均值掩盖失败。OFF仍须满足相同输入和时延预算，但
+不作为已知地图精度候选。该报告仅覆盖名义campaign，故障、生命周期、完整
+返回和状态/协方差解释仍需对应独立证据，不能单独作为阶段完成证明。
