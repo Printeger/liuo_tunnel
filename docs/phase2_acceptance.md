@@ -1782,3 +1782,15 @@ S34补充逐帧证据：9.2→9.3s，IMU预测速度[1.21513,0.0791242,
 姿态、速度、方差和状态；这不是以1m替换0.30m名义验收，也不代表oracle
 可替代surveyed交付。每次完整20s收尾，受既有总超时/无进度保护，原始消息
 计数和内容哈希必须相同。不改变噪声、初值、窗口或求解器，避免混杂。
+
+S35严格配对 **INVALID**：OFF 20261021T190035Z_208完整540s，二进制未变，
+但compare_runs.py --strict-estimator-settings因UWB内容SHA不同拒绝。
+IMU/cloud/clock SHA相同，UWB CSV除session外全部物理字段逐条一致；
+独立生成的session不同，仍不满足预登记的全部内容SHA条件，不绕过检查。
+OFF全程位置RMSE1274.404m、退化段1306.240m；其report PASS仅为入口
+基线检查，绝不是第二阶段已知地图通过。S33仍FAIL，不能把这两次称为
+严格冻结ON/OFF验收。原始身份和结果均保留。
+
+S36输入机制更正（实施前）：surveyed短程使用--capture实际冻结20s输入，
+oracle用--replay同一捕获，避免S35独立session导致哈希不一致；不修改
+比较器、不忽略身份。仅增加小型短程包，不启动完整多seed采集。
