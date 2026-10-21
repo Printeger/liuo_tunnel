@@ -1,4 +1,5 @@
 #include <rclcpp/rclcpp.hpp>
+#include <rosbag2_cpp/writer.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
@@ -37,6 +38,14 @@ public:
        {"pacing", "absolute_deadline_no_drop"},
        {"seed", std::to_string(seed)},
        {"producer_session", std::to_string(session)}});
+    if (declare_parameter<bool>("capture", false)) {
+      rosbag2_storage::StorageOptions options;
+      options.uri = logs.export_path("capture/raw").string();
+      options.storage_id = "mcap";
+      options.storage_preset_profile = "zstd_fast";
+      writer = std::make_unique<rosbag2_cpp::Writer>();
+      writer->open(options);
+    }
     truth.open(logs.export_path("simulation/truth.csv"));
     truth << std::setprecision(16) << "session,stamp,x,y,z,vx,vy,vz\n";
     uwblog.open(logs.export_path("simulation/uwb.csv"));
@@ -77,6 +86,12 @@ private:
     std::string why;
     if (!renderer.loadWorld(p, &why)) throw std::runtime_error("renderer world: " + why);
   }
+  template <class MessageT>
+  void capture(const MessageT& message, const std::string& topic) {
+    // Monotonic bag playback schedule even if the message's ROS clock resets.
+    // Header effective times and producer identities are stored unchanged.
+    if (writer) writer->write(message, topic, stamp(1 + total_ticks * .005));
+  }
   void service() {
     if (!ready) {
       tick();
@@ -111,6 +126,7 @@ private:
         {{"simulation_s", elapsed}, {"wall_s", wall_seconds}, {"real_time_factor", elapsed / wall_seconds}, {"peak_rss_kib", usage.ru_maxrss}, {"scan_model", "snapshot"}};
       result["published_counts"] = {{"imu", total_ticks}, {"clock", total_ticks}, {"cloud", published_clouds}, {"uwb", ta_published + aa_published}};
       std::ofstream(RunLogManager::instance().export_path("simulation/runtime.json")) << result.dump(2) << std::endl;
+      if (writer) writer->close();
       logger->info("simulation finished ticks={} producer_session={} real_time_factor={}", total_ticks, session, elapsed / wall_seconds);
       rclcpp::shutdown();
       return;
@@ -133,6 +149,7 @@ private:
     auto m = motion(t);
     rosgraph_msgs::msg::Clock clock;
     clock.clock = stamp(ros_t);
+    capture(clock, "/clock");
     clock_pub->publish(clock);
     sensor_msgs::msg::Imu imu;
     imu.header.stamp = stamp(ros_t);
@@ -155,6 +172,7 @@ private:
     imu.angular_velocity.x = w.x();
     imu.angular_velocity.y = w.y();
     imu.angular_velocity.z = w.z();
+    capture(imu, "/sensors/imu");
     imu_pub->publish(imu);
     while (exchange * .004 <= t + 1e-10) {
       double event = exchange++ * .004;
@@ -204,6 +222,7 @@ private:
         ++pi;
         ++pt;
       }
+      capture(cloud, "/sensors/lidar/points");
       cloud_pub->publish(cloud);
       published_clouds++;
       nav_msgs::msg::Odometry odom;
@@ -215,6 +234,7 @@ private:
       odom.pose.pose.position.z = m.p.z();
       odom.pose.pose.orientation.w = 1;
       odom.twist.twist.linear.x = m.v.x();
+      capture(odom, "/sim/truth/odom");
       truth_pub->publish(odom);
       truth << session << ',' << ros_t << ',' << m.p.x() << ',' << m.p.y() << ',' << m.p.z() << ',' << m.v.x() << ',' << m.v.y() << ',' << m.v.z() << '\n';
       timing << ros_t << ',' << scan.stats.render_latency_ms << ',' << scan.stats.dda_voxel_visits << ',' << scan.hits.size() << ',' << world_points << '\n';
@@ -281,6 +301,7 @@ private:
     u.variance_m2 = .01;
     u.propagation_status = 0;
     u.range_m = range(a, b, seed, 1000 + l.type * 10000 + l.a * 100 + l.b, l.samples++);
+    capture(u, "/sensors/uwb/range");
     uwb_pub->publish(u);
     uwblog << session << ',' << u.sequence << ',' << 1 + t << ',' << l.type << ',' << l.a << ',' << l.b << ',' << (a - b).norm() << ',' << u.range_m << ",0.01\n";
     if (l.type)
@@ -289,6 +310,7 @@ private:
       ta_published++;
     l.next = t + (l.type ? 1 : .05);
   }
+  std::unique_ptr<rosbag2_cpp::Writer> writer;
   bool ready = false;
   std::chrono::steady_clock::time_point startup = std::chrono::steady_clock::now(), simulation_started;
   nlohmann::json cfg;

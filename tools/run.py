@@ -17,7 +17,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def digest(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    with Path(path).open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
 def main():
@@ -35,6 +36,9 @@ def main():
     p.add_argument("--map", type=Path, help="external oracle_map or surveyed_map JSON")
     p.add_argument("--formal", action="store_true")
     p.add_argument("--diagnostic-capture", action="store_true")
+    p.add_argument(
+        "--capture", action="store_true", help="freeze all original sensor messages once in MCAP"
+    )
     p.add_argument("--inject-failure", choices=["simulation", "odometry"])
     args = p.parse_args()
     if not 0 < args.rate <= 1:
@@ -201,6 +205,8 @@ def main():
             f"reset_at_s:={args.reset_at}",
             "-p",
             f"rate:={args.rate}",
+            "-p",
+            f"capture:={str(args.capture).lower()}",
         ]
         commands["observer"] = [sys.executable, str(ROOT / "tools/observe.py")]
         for name in ["observer", "odometry", "simulation"]:
@@ -277,7 +283,7 @@ def main():
                 rd.register_subordinate_manifest(run, ref)
         captures = {
             str(f.relative_to(run)): digest(f)
-            for f in (run / "export/capture").glob("*")
+            for f in (run / "export/capture").rglob("*")
             if f.is_file()
         }
         rd.write_subordinate_manifest(run, "captured_inputs", captures)
