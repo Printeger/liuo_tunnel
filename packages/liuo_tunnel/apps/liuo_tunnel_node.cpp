@@ -101,6 +101,7 @@ private:
     p.relinearizeSkip = 1;
     p.relinearizeThreshold = .05;
     p.findUnusedFactorSlots = true;
+    if (cfg.at("odometry").value("use_dogleg", false)) p.setOptimizationParams(gtsam::ISAM2DoglegParams());
     p.setFactorization(cfg.at("odometry").value("factorization", std::string("CHOLESKY")));
     smoother = std::make_unique<gtsam_points::IncrementalFixedLagSmootherExt>(cfg.at("odometry").at("lag_s"), p);
     IMUIntegrationParams ip;
@@ -462,7 +463,7 @@ private:
       if (t - last_uwb > .3)
         mode = "DEGRADED";
       else
-        mode = "TRACKING";
+        mode = cov.bottomRightCorner<3, 3>().trace() > .25 ? "DEGRADED" : "TRACKING";
       if (cov.trace() > 100) mode = "LOST";
     }
     nav_msgs::msg::Odometry out;
