@@ -1,6 +1,6 @@
 # LIUO Tunnel
 
-Independent ROS 2 Jazzy phase-one GPU LiDAR–IMU baseline. UWB is published and recorded, never fused. Development/acceptance is in progress; see `docs/development_handbook.md` for the scope.
+Independent ROS 2 Jazzy phase-one GPU LiDAR–IMU baseline. UWB is published and recorded, never fused. Phase-one acceptance is recorded in [docs/phase1_acceptance.md](docs/phase1_acceptance.md), including failed attempts and limitations. The user-authorized snapshot baseline passes on GPU; full-system wall-clock real time is not achieved (measured simulation factor 0.603). See `docs/development_handbook.md` for later-phase scope.
 
 ```bash
 cd /home/dev/code/ws_tunnel/src/liuo_tunnel
