@@ -4,6 +4,7 @@ import argparse
 import json
 import hashlib
 import csv
+import itertools
 from delivery_schedule import DeliverySchedule
 from raw_identity import hash_message
 import os
@@ -88,8 +89,28 @@ def main():
         while reader.has_next():
             yield reader.read_next()
 
+    # Load each type's first original payload before the delivery clock starts.
+    # ROS Python type-support initialization can otherwise consume the first
+    # deadline. No warm-up messages are published; replay preserves these bytes.
+    prepare_ns = time.monotonic_ns()
+    prefix = []
+    prepared = set()
+    prefix_bytes = 0
+    while prepared != set(types):
+        if not reader.has_next():
+            raise RuntimeError("frozen input missing a required message type")
+        record = reader.read_next()
+        prefix.append(record)
+        prefix_bytes += len(record[1])
+        if len(prefix) > 256 or prefix_bytes > 16 * 1024 * 1024:
+            raise RuntimeError("replay startup preparation bound exceeded")
+        topic, data, _ = record
+        if topic not in prepared:
+            deserialize_message(data, types[topic])
+            prepared.add(topic)
+    input_prepare_s = (time.monotonic_ns() - prepare_ns) * 1e-9
     first_stamp = None
-    start_ns = time.monotonic_ns()
+    start_ns = None
     clock_session = 1
     last_clock = -1
     with (run / "export/simulation/wall_clock.csv").open("w") as clock_log, (
@@ -108,9 +129,12 @@ def main():
             ]
         )
         clock_log.write("session,stamp,scheduled_wall_ns,published_wall_ns\n")
-        for topic, data, record_ns, delivery_ns, action in scheduler.events(records()):
+        for topic, data, record_ns, delivery_ns, action in scheduler.events(
+            itertools.chain(prefix, records())
+        ):
             if first_stamp is None:
                 first_stamp = record_ns
+                start_ns = time.monotonic_ns()
             if delivery_ns - first_stamp >= round(duration * 1e9):
                 raise RuntimeError(
                     "delivery profile extends beyond frozen duration; shorten its window"
@@ -144,6 +168,10 @@ def main():
                 if action == "duplicate":
                     duplicates.append(identity)
             publishers[topic].publish(message)
+            if time.monotonic_ns() - deadline > 250_000_000:
+                raise RuntimeError(
+                    "REPLAY_DEADLINE_MISSED: deserialize/publish exceeded 250ms on " + topic
+                )
             if kind in counts:
                 counts[kind] += 1
                 hash_message(hashes[kind], kind, message)
@@ -159,6 +187,9 @@ def main():
     wall = (time.monotonic_ns() - start_ns) * 1e-9
     result = {
         "simulation_s": duration,
+        "input_prepare_s": input_prepare_s,
+        "startup_buffer_records": len(prefix),
+        "startup_buffer_bytes": prefix_bytes,
         "wall_s": wall,
         "real_time_factor": duration / wall,
         "peak_rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
