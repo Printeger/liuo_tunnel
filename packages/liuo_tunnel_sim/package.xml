@@ -1,0 +1,2 @@
+<?xml version="1.0"?>
+<package format="3"><name>liuo_tunnel_sim</name><version>0.1.0</version><description>Independent LIUO Tunnel phase one</description><maintainer email="maintainers@example.com">LIUO maintainers</maintainer><license>MIT</license><buildtool_depend>ament_cmake</buildtool_depend><depend>rclcpp</depend><depend>sensor_msgs</depend><depend>nav_msgs</depend><depend>rosgraph_msgs</depend><depend>liuo_tunnel_msgs</depend><depend>liuo_tunnel</depend><export><build_type>ament_cmake</build_type></export></package>
