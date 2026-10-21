@@ -28,15 +28,27 @@ def analyze(profile, delivery, decisions, trajectory, graph, clock, runtime):
     start_wall = int(clock[0]["scheduled_wall_ns"])
     start_stamp = float(clock[0]["stamp"])
     original = {identity(r): r for r in delivery if r["action"] not in ["duplicate", "outage_drop"]}
+    rejection_reasons = {
+        r["reason"]
+        for r in decisions
+        if r["reason"]
+        not in ["ACCEPT_TA", "ACCEPT_AA", "ORACLE_AA_CHECK", "CLOCK_RESET", "SHUTDOWN_PENDING"]
+    }
+
+    def reports_no_accepted_uwb(row):
+        reason = row.get("state_reason", "")
+        prefix = "UWB_REJECTED_LIO_CONTINUES:"
+        return reason == "UWB_ABSENT_LIO_CONTINUES" or (
+            reason.startswith(prefix) and reason[len(prefix) :] in rejection_reasons
+        )
+
     outages = []
     for begin, end in profile.get("outages", []):
         interior = [r for r in trajectory if begin + 0.5 <= float(r["stamp"]) - start_stamp < end]
         expected_frames = max(0, round((end - begin - 0.5) * 10))
         if len(interior) < expected_frames * 0.99:
             failures.append(f"LIO publication gap during outage {begin}-{end}")
-        if not interior or any(
-            r.get("state_reason") != "UWB_ABSENT_LIO_CONTINUES" for r in interior
-        ):
+        if not interior or any(not reports_no_accepted_uwb(r) for r in interior):
             failures.append(f"absence reason not reported during outage {begin}-{end}")
         recovery = [
             r

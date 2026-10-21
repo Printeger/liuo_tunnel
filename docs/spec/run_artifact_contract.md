@@ -115,3 +115,19 @@ identity, binary identity and fused-UWB setting identity. Strict comparison reje
 configuration changes; identical random seeds or raw data alone are insufficient
 for a mode-only comparison. Survey fixture seed and map ID identify independent
 survey realizations while preserving the provided joint covariance.
+
+Odometry state transitions are retained in `export/odometry/status.csv`, including
+session, measurement stamp, operational state/reason, cumulative rejected count
+and last rejection. Diagnostics also expose the rejection count/reason when fresh
+accepted TA still permits TRACKING. Missing accepted TA reports
+`UWB_ABSENT_LIO_CONTINUES`; recent rejected input instead reports
+`UWB_REJECTED_LIO_CONTINUES:<reason>`. Neither claims a corrected position or resets
+the graph. Weak/nonfinite/unbounded posterior diagnostics have separate reasons;
+TRACKING denotes active fusion, not calibrated accuracy or guaranteed truth error.
+
+Fatal exceptions additionally retain `runtime/odometry_failure.json` with the
+original detail and a categorized startup/map/extrinsic, preprocessing, IMU,
+initialization, optimization, covariance or output failure. A constructed node
+emits LOST before terminating; a constructor failure has no usable publisher and
+is evidenced by the failure file and process exit. The owner still marks the run
+failed. These files do not replace raw per-measurement decisions or the manifest.

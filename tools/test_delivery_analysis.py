@@ -51,3 +51,10 @@ class DeliveryAnalysisTest(unittest.TestCase):
         data = self.fixture()
         data[3][0]["state_reason"] = "JOINT_LIDAR_IMU_UWB"
         self.assertTrue(any("absence reason" in s for s in analyze(*data)["failures"]))
+
+    def test_delayed_rejected_packet_is_distinguished_from_no_packet(self):
+        data = self.fixture()
+        data[3][0]["state_reason"] = "UWB_REJECTED_LIO_CONTINUES:WINDOW_EXPIRED"
+        self.assertEqual(analyze(*data)["result"], "PASS")
+        data[3][0]["state_reason"] = "UWB_REJECTED_LIO_CONTINUES:INVENTED_REASON"
+        self.assertTrue(any("absence reason" in s for s in analyze(*data)["failures"]))

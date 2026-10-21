@@ -12,6 +12,7 @@
 #include <liuo_tunnel/common/cloud_covariance_estimation.hpp>
 #include <liuo_tunnel/common/sensors.hpp>
 #include <liuo_tunnel/common/state_covariance.hpp>
+#include <liuo_tunnel/common/estimator_status.hpp>
 #include <liuo_tunnel/common/gauge_consistent_vgicp_gpu.hpp>
 #include <liuo_tunnel/uwb/known_map.hpp>
 #include <liuo_tunnel/uwb/measurement_queue.hpp>
@@ -59,15 +60,29 @@ public:
       gpu_name = props.name;
       streams = std::make_unique<gtsam_points::StreamTempBufferRoundRobin>();
     }
-    T_BL = lidar_extrinsic(cfg);
+    try {
+      T_BL = lidar_extrinsic(cfg);
+    } catch (const std::exception& e) {
+      throw std::runtime_error(std::string("EXTRINSIC_INVALID: ") + e.what());
+    }
     fuse = cfg.at("uwb").at("mode") == "fuse";
     if (fuse) {
-      tag = vector3(cfg.at("sensors").at("T_BU_translation"));
-      map = KnownMap::load(declare_parameter<std::string>("map_file", ""), tag);
+      try {
+        tag = vector3(cfg.at("sensors").at("T_BU_translation"));
+      } catch (const std::exception& e) {
+        throw std::runtime_error(std::string("EXTRINSIC_INVALID: ") + e.what());
+      }
+      try {
+        map = KnownMap::load(declare_parameter<std::string>("map_file", ""), tag);
+      } catch (const std::exception& e) {
+        throw std::runtime_error(std::string("MAP_INVALID: ") + e.what());
+      }
     }
     logger = create_module_logger("odometry");
     auto& logs = RunLogManager::instance();
     logs.write_run_info({{"backend", backend + "_RAW_MULTIFRAME_VGICP"}, {"uwb", fuse ? "FUSED_RAW" : "RECORD_ONLY"}, {"gpu_device", gpu_name}});
+    status_log.open(logs.export_path("odometry/status.csv"));
+    status_log << std::setprecision(16) << "session,stamp,state,reason,rejected_total,last_rejection\n";
     trajectory.open(logs.export_path("odometry/trajectory.csv"));
     trajectory << std::setprecision(16) << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id,publish_wall_ns,state_reason,wx,wy,wz,twist_interval_s\n";
     bootstrap_log.open(logs.profiling_path("bootstrap.csv"));
@@ -106,11 +121,23 @@ public:
       rclcpp::SensorDataQoS().keep_last(2048),
       [this](liuo_tunnel_msgs::msg::UwbRange::ConstSharedPtr m) { on_uwb(*m); });
     estimator_timer = create_wall_timer(std::chrono::milliseconds(1), [this] { drain(); });
+    failure_context = "SENSOR_INPUT_FAILED";
     logger->info("{} raw multi-frame VGICP ready; device={}; UWB={}; truth is not subscribed", backend, gpu_name, fuse ? "FUSED_RAW" : "RECORD_ONLY");
   }
 
   ~TunnelNode() override {
     for (const auto& observation : range_queue.reset()) log_range(observation, "SHUTDOWN_PENDING");
+  }
+
+  void report_failure(const std::string& detail) {
+    {
+      std::ofstream out;
+      out.exceptions(std::ios::failbit | std::ios::badbit);
+      out.open(RunLogManager::instance().runtime_path("odometry_failure.json"));
+      out << nlohmann::json({{"state", "LOST"}, {"reason", failure_context}, {"detail", detail}, {"session", session}, {"measurement_stamp", latest_imu}}).dump(2) << '\n';
+    }
+    logger->error("{}: {}", failure_context, detail);
+    status("LOST", failure_context, latest_imu);
   }
 
 private:
@@ -144,6 +171,11 @@ private:
     initial_samples = 0;
     session++;
     last_uwb = -1;
+    last_rejected = -1;
+    rejected_total = 0;
+    last_rejection.clear();
+    last_status.clear();
+    last_status_reason.clear();
     aa_summaries.clear();
     aa_added.clear();
     aa_removed.clear();
@@ -155,15 +187,23 @@ private:
     diagnostic_msgs::msg::DiagnosticStatus d;
     d.name = "liuo/odometry";
     d.hardware_id = backend;
-    d.level = state == "TRACKING" ? 0 : 1;
+    d.level = state == "TRACKING" ? 0 : (state == "LOST" ? 2 : 1);
     d.message = state + ":" + reason;
     diagnostic_msgs::msg::KeyValue kv;
     kv.key = "measurement_stamp";
     kv.value = std::to_string(t);
     d.values.push_back(kv);
+    kv.key = "rejected_total";
+    kv.value = std::to_string(rejected_total);
+    d.values.push_back(kv);
+    kv.key = "last_rejection";
+    kv.value = last_rejection;
+    d.values.push_back(kv);
     a.status.push_back(d);
     diagnostics->publish(a);
     if (state != last_status || reason != last_status_reason) {
+      status_log << session << ',' << t << ',' << state << ',' << reason << ',' << rejected_total << ',' << last_rejection << '\n';
+      status_log.flush();
       logger->info("state={} reason={} stamp={} session={}", state, reason, t, session);
       last_status = state;
       last_status_reason = reason;
@@ -197,6 +237,11 @@ private:
     const std::string& anchor_key = "",
     double residual = NAN,
     const std::string& category = "NONE") {
+    if (fuse && reason != "ACCEPT_TA" && reason != "ACCEPT_AA" && reason != "ORACLE_AA_CHECK" && reason != "CLOCK_RESET" && reason != "SHUTDOWN_PENDING") {
+      ++rejected_total;
+      last_rejected = now().seconds();
+      last_rejection = reason;
+    }
     uwb << o.producer << ',' << o.session << ',' << o.sequence << ',' << o.stamp << ',' << o.received << ',' << int(o.a_type) << ',' << o.a << ',' << int(o.b_type) << ',' << o.b
         << ',' << o.range << ',' << o.variance << ',' << reason << ',';
     if (bracket.reason == "SYNC" || bracket.reason == "INTERPOLATED") uwb << gtsam::DefaultKeyFormatter(bracket.left);
@@ -314,7 +359,9 @@ private:
         status("INITIALIZING", "IMU_STATIC_ALIGNMENT", t);
         continue;
       }
+      failure_context = "PREPROCESS_FAILED";
       process(*cloud, t);
+      failure_context = "SENSOR_INPUT_FAILED";
       // Return to the single executor between graph updates so pending raw
       // sensor callbacks can enqueue. Retain every remaining cloud in order.
       return;
@@ -371,6 +418,7 @@ private:
     gtsam::Values initial;
     gtsam::NonlinearFactorGraph factors, lidar;
     if (!initialized) {
+      failure_context = "INITIALIZATION_FAILED";
       Eigen::Vector3d avg = sum_a / initial_samples;
       if (std::abs(avg.norm() - 9.80665) > .3 || (sum_w / initial_samples).norm() > .1) throw std::runtime_error("initialization requires stationary IMU interval");
       Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(avg, Eigen::Vector3d(0, 0, 9.80665));
@@ -396,6 +444,7 @@ private:
       factors.emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(B(0), bias, gtsam::noiseModel::Diagonal::Sigmas(sig));
       initialized = true;
     } else {
+      failure_context = "IMU_INTEGRATION_FAILED";
       int integrated = 0;
       int erase = imu->integrate_imu(last_cloud, t, bias, &integrated);
       if (integrated < 1) throw std::runtime_error("no IMU samples for frame interval");
@@ -406,6 +455,7 @@ private:
       sig.tail<3>().setConstant(cfg.at("sensors").at("sigma_bg_density").get<double>() * std::sqrt(t - last_cloud));
       factors.emplace_shared<gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>>(B(count - 1), B(count), gtsam::imuBias::ConstantBias(), gtsam::noiseModel::Diagonal::Sigmas(sig));
       imu->erase_imu_data(std::max(0, erase - 1));
+      failure_context = "GRAPH_BUILD_FAILED";
       int window = cfg.at("odometry").at("connection_window");
       for (auto it = frames.rbegin(); it != frames.rend(); ++it) {
         if (int(count - it->id) > window && !it->keyframe) continue;
@@ -422,6 +472,7 @@ private:
         factors.add(f);
       }
     }
+    failure_context = "GRAPH_BUILD_FAILED";
     double pred_x = state.position().x();
     initial.insert(X(count), state.pose());
     initial.insert(V(count), state.velocity());
@@ -452,6 +503,7 @@ private:
     gtsam::FixedLagSmoother::KeyTimestampMap times{{X(count), t}, {V(count), t}, {B(count), t}};
     if (fuse && map.surveyed())
       for (auto id : map.ids) times[A(id)] = t;
+    failure_context = "OPTIMIZATION_FAILED";
     const auto solver_start = std::chrono::steady_clock::now();
     if (!bootstrapped) {
       bootstrap_factors.add(factors);
@@ -512,6 +564,7 @@ private:
     state = gtsam::NavState(smoother->calculateEstimate<gtsam::Pose3>(X(count)), smoother->calculateEstimate<gtsam::Vector3>(V(count)));
     bias = smoother->calculateEstimate<gtsam::imuBias::ConstantBias>(B(count));
     if (!state.pose().matrix().allFinite() || !state.velocity().allFinite()) throw std::runtime_error("nonfinite optimized state");
+    failure_context = "COVARIANCE_FAILED";
     const auto covariance_start = std::chrono::steady_clock::now();
     gtsam::Matrix xv_cov;
     gtsam::Vector6 twist = gtsam::Vector6::Zero();
@@ -565,13 +618,13 @@ private:
     auto finish = std::chrono::steady_clock::now();
     auto ms = [](auto a, auto b) { return std::chrono::duration<double, std::milli>(b - a).count(); };
     std::string mode = lidar.empty() ? "INITIALIZING" : (fraction < .5 || eigen[0] < 1e-6 || eigen[5] / std::max(eigen[0], 1e-12) > 1e6 ? "DEGRADED" : "TRACKING");
+    std::string state_reason = "LIDAR_INFORMATION_DIAGNOSTIC_NO_DOWNWEIGHTING";
     if (fuse) {
-      if (t - last_uwb > .3)
-        mode = "DEGRADED";
-      else
-        mode = cov.bottomRightCorner<3, 3>().trace() > .25 ? "DEGRADED" : "TRACKING";
-      if (cov.trace() > 100) mode = "LOST";
+      const auto diagnostic = fused_status(t, last_uwb, last_rejected, last_rejection, cov.bottomRightCorner<3, 3>().trace(), cov.trace());
+      mode = diagnostic.state;
+      state_reason = diagnostic.reason;
     }
+    failure_context = "STATE_OUTPUT_FAILED";
     if (count > 0) {
       nav_msgs::msg::Odometry out;
       out.header.stamp = m.header.stamp;
@@ -601,7 +654,6 @@ private:
         for (int j = 0; j < 6; j++) out.twist.covariance[i * 6 + j] = twist_cov(i, j);
       pub->publish(out);
       auto publish_wall_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-      const std::string state_reason = fuse ? (t - last_uwb > .3 ? "UWB_ABSENT_LIO_CONTINUES" : "JOINT_LIDAR_IMU_UWB") : "LIDAR_INFORMATION_DIAGNOSTIC_NO_DOWNWEIGHTING";
       status(mode, state_reason, t);
       trajectory << session << ',' << t << ',' << now().seconds() << ',' << p.x() << ',' << p.y() << ',' << p.z() << ',' << q.x() << ',' << q.y() << ',' << q.z() << ',' << q.w()
                  << ',' << v.x() << ',' << v.y() << ',' << v.z() << ",1," << mode << "," << (fuse ? map.id : "none") << "," << publish_wall_ns << "," << state_reason << ","
@@ -637,7 +689,9 @@ private:
   KnownMap map;
   gtsam::Point3 tag;
   RangeQueue range_queue;
-  double last_uwb = -1;
+  double last_uwb = -1, last_rejected = -1;
+  uint64_t rejected_total = 0;
+  std::string last_rejection, failure_context = "STARTUP_FAILED";
   size_t new_ta = 0, new_aa = 0;
   struct AnchorPairSummary {
     GaussianRangeSummary statistics;
@@ -663,7 +717,7 @@ private:
   bool initialized = false;
   double first_imu = -1, latest_imu = -1, last_cloud = -1;
   Eigen::Vector3d sum_a, sum_w;
-  std::ofstream trajectory, graph, icp, uwb, timing, covariance_log, bootstrap_log, resources;
+  std::ofstream trajectory, graph, icp, uwb, timing, covariance_log, bootstrap_log, resources, status_log;
   std::shared_ptr<spdlog::logger> logger;
   std::string last_status, last_status_reason;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub;
@@ -676,12 +730,26 @@ private:
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
   gtsam_points::LinearizationHook::register_hook([] { return std::make_shared<gtsam_points::NonlinearFactorSetGPU>(); });
+  std::shared_ptr<liuo_tunnel::TunnelNode> node;
   try {
     liuo_tunnel::RunLogManager::initialize("odometry");
-    rclcpp::spin(std::make_shared<liuo_tunnel::TunnelNode>());
+    node = std::make_shared<liuo_tunnel::TunnelNode>();
+    rclcpp::spin(node);
     return 0;
   } catch (const std::exception& e) {
     spdlog::error("odometry failed: {}", e.what());
+    try {
+      if (node)
+        node->report_failure(e.what());
+      else if (auto* logs = liuo_tunnel::RunLogManager::get_if_initialized()) {
+        std::ofstream out(logs->runtime_path("odometry_failure.json"));
+        const std::string detail = e.what();
+        const std::string reason = detail.rfind("MAP_INVALID:", 0) == 0 ? "MAP_INVALID" : (detail.rfind("EXTRINSIC_INVALID:", 0) == 0 ? "EXTRINSIC_INVALID" : "STARTUP_FAILED");
+        out << nlohmann::json({{"state", "LOST"}, {"reason", reason}, {"detail", detail}}).dump(2) << '\n';
+      }
+    } catch (const std::exception& reporting) {
+      spdlog::error("failure evidence could not be written: {}", reporting.what());
+    }
     rclcpp::shutdown();
     return 1;
   }
