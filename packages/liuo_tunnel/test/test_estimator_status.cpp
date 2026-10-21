@@ -52,3 +52,28 @@ TEST(EstimatorStatus, PostfitNoDataNonfiniteAndMissingInputAreExplicit) {
   EXPECT_EQ(fused_status(72, 71.99, -1, "", .01, .02, 71, 2, -1).state, "LOST");
   EXPECT_EQ(fused_status(72, 70, -1, "", .01, .02, 71, 2, 1e9).reason, "UWB_ABSENT_LIO_CONTINUES");
 }
+
+TEST(EstimatorStatus, FailedRecoveryCannotClearItselfWithSmallResiduals) {
+  using liuo_tunnel::recovery_failure_stamp;
+  double failure = recovery_failure_stamp(-1, 61.1, 71.1, 4, 3862991.639);
+  EXPECT_DOUBLE_EQ(failure, 61.1);
+  failure = recovery_failure_stamp(failure, 62, 71.1, 4, 1);
+  EXPECT_DOUBLE_EQ(failure, 61.1);
+  auto later = fused_status(92.2, 92.19, -1, "", .01, .02, 71.1, 5, 6.2197, failure);
+  EXPECT_EQ(later.state, "DEGRADED");
+  EXPECT_EQ(later.reason, "UWB_RECOVERY_UNVERIFIED");
+  EXPECT_EQ(fused_status(93, 93, -1, "", .01, .02, 71.1, 4, 1e9, failure).state, "LOST");
+  EXPECT_EQ(fused_status(93, 92, -1, "", .01, .02, 71.1, 4, 1, failure).reason, "UWB_ABSENT_LIO_CONTINUES");
+  EXPECT_EQ(fused_status(93, 93, -1, "", NAN, NAN, 71.1, 4, 1, failure).reason, "POSTERIOR_NONFINITE");
+  // A new session explicitly resets both the failure stamp and recovery deadline.
+  EXPECT_EQ(fused_status(9, 9, -1, "", .01, .02, -1, 4, 1, -1).state, "TRACKING");
+}
+TEST(EstimatorStatus, RecoveryFailureOnlyLatchesAnActualFailedWindow) {
+  using liuo_tunnel::recovery_failure_stamp;
+  EXPECT_EQ(recovery_failure_stamp(-1, 9, -1, 4, 1e9), -1);
+  EXPECT_EQ(recovery_failure_stamp(-1, 92, 71, 4, 1e9), -1);
+  EXPECT_EQ(recovery_failure_stamp(-1, 62, 71, 0, 1e9), -1);
+  EXPECT_EQ(recovery_failure_stamp(-1, 62, 71, 4, 1), -1);
+  EXPECT_EQ(recovery_failure_stamp(-1, 62, 71, 4, NAN), 62);
+  EXPECT_EQ(recovery_failure_stamp(62, 63, 71, 4, 1e9), 62);
+}

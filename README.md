@@ -169,3 +169,11 @@ optimization. Excessive measurement-sigma-normalized squared residual reports
 `LOST/UWB_POSTFIT_INCONSISTENT`; the statistic and reference are in trajectory.csv.
 This does not repair drift or calibrate covariance; small residuals do not prove
 correct global position. See docs/phase2_acceptance.md for failed sparse evidence.
+
+If a UWB recovery window has a post-fit conflict, later small residuals no longer
+restore TRACKING automatically. `DEGRADED/UWB_RECOVERY_UNVERIFIED` and the recorded
+`failed_recovery_stamp` persist until complete new-session initialization; the
+estimator continues publishing its actual trajectory and covariance. This exposes
+an unresolved recovery failure, not successful relocalization. No automatic reset
+or truth correction occurs. Phase two remains incomplete while this recovery and
+the documented sparse-layout accuracy failures are unresolved.

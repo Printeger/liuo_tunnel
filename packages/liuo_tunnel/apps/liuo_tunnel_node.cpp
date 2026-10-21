@@ -86,7 +86,7 @@ public:
     trajectory.open(logs.export_path("odometry/trajectory.csv"));
     trajectory << std::setprecision(16)
                << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id,publish_wall_ns,state_reason,wx,wy,wz,twist_interval_s,postfit_ta_stamp,postfit_"
-                  "ta_count,postfit_ta_squared_sum,postfit_ta_limit\n";
+                  "ta_count,postfit_ta_squared_sum,postfit_ta_limit,failed_recovery_stamp\n";
     bootstrap_log.open(logs.profiling_path("bootstrap.csv"));
     bootstrap_log << std::setprecision(16) << "session,iteration,total_error,cost_change,lambda,solve_success,elapsed_s,ta_error,translation_gradient_norm,x0,y0,z0\n";
     covariance_log.open(logs.export_path("odometry/covariance.csv"));
@@ -177,6 +177,7 @@ private:
     last_rejected = -1;
     uwb_recovery_until = -1;
     postfit_ta_stamp = -1;
+    failed_recovery_stamp = -1;
     postfit_ta_count = 0;
     postfit_ta_squared_sum = 0;
     rejected_total = 0;
@@ -208,6 +209,9 @@ private:
     d.values.push_back(kv);
     kv.key = "uwb_recovery_until";
     kv.value = std::to_string(uwb_recovery_until);
+    d.values.push_back(kv);
+    kv.key = "failed_recovery_stamp";
+    kv.value = std::to_string(failed_recovery_stamp);
     d.values.push_back(kv);
     kv.key = "postfit_ta_count";
     kv.value = std::to_string(postfit_ta_count);
@@ -605,6 +609,7 @@ private:
       postfit_ta_count = samples;
       postfit_ta_squared_sum = squared_sum;
       postfit_ta_stamp = t;
+      failed_recovery_stamp = recovery_failure_stamp(failed_recovery_stamp, t, uwb_recovery_until, samples, squared_sum);
     }
     state = gtsam::NavState(smoother->calculateEstimate<gtsam::Pose3>(X(count)), smoother->calculateEstimate<gtsam::Vector3>(V(count)));
     bias = smoother->calculateEstimate<gtsam::imuBias::ConstantBias>(B(count));
@@ -665,8 +670,17 @@ private:
     std::string mode = lidar.empty() ? "INITIALIZING" : (fraction < .5 || eigen[0] < 1e-6 || eigen[5] / std::max(eigen[0], 1e-12) > 1e6 ? "DEGRADED" : "TRACKING");
     std::string state_reason = "LIDAR_INFORMATION_DIAGNOSTIC_NO_DOWNWEIGHTING";
     if (fuse) {
-      const auto diagnostic =
-        fused_status(t, last_uwb, last_rejected, last_rejection, cov.bottomRightCorner<3, 3>().trace(), cov.trace(), uwb_recovery_until, postfit_ta_count, postfit_ta_squared_sum);
+      const auto diagnostic = fused_status(
+        t,
+        last_uwb,
+        last_rejected,
+        last_rejection,
+        cov.bottomRightCorner<3, 3>().trace(),
+        cov.trace(),
+        uwb_recovery_until,
+        postfit_ta_count,
+        postfit_ta_squared_sum,
+        failed_recovery_stamp);
       mode = diagnostic.state;
       state_reason = diagnostic.reason;
     }
@@ -704,7 +718,7 @@ private:
       trajectory << session << ',' << t << ',' << now().seconds() << ',' << p.x() << ',' << p.y() << ',' << p.z() << ',' << q.x() << ',' << q.y() << ',' << q.z() << ',' << q.w()
                  << ',' << v.x() << ',' << v.y() << ',' << v.z() << ",1," << mode << "," << (fuse ? map.id : "none") << "," << publish_wall_ns << "," << state_reason << ","
                  << twist[3] << "," << twist[4] << "," << twist[5] << "," << t - last_cloud << "," << postfit_ta_stamp << "," << postfit_ta_count << "," << postfit_ta_squared_sum
-                 << "," << postfit_range_limit(postfit_ta_count) << "\n";
+                 << "," << postfit_range_limit(postfit_ta_count) << "," << failed_recovery_stamp << "\n";
       covariance_log << session << ',' << t;
       for (int i = 0; i < 9; i++)
         for (int j = 0; j < 9; j++) covariance_log << ',' << xv_cov(i, j);
@@ -738,7 +752,7 @@ private:
   gtsam::Point3 tag;
   RangeQueue range_queue;
   double last_uwb = -1, last_rejected = -1, uwb_recovery_until = -1;
-  double postfit_ta_stamp = -1, postfit_ta_squared_sum = 0;
+  double postfit_ta_stamp = -1, postfit_ta_squared_sum = 0, failed_recovery_stamp = -1;
   size_t postfit_ta_count = 0;
   uint64_t rejected_total = 0;
   std::string last_rejection, failure_context = "STARTUP_FAILED";

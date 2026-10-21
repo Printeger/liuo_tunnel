@@ -1188,3 +1188,23 @@ S12完成（12.09秒，追加诊断前CSV与S8一致），未支持预登记的�
 `log/sparse_nonlinear_probe/{shape_run.json,input.json.shape.json,
 analyze_shape.py,shape_result.json,shape_gravity_preserving.json}`。
 生产图、权重、布局和门槛未修改，正式GPU验收仍FAIL。
+
+### 预登记 S13：恢复失败不能被小残差自动清除
+
+S3已直接证明恢复后小post-fit残差仍可对应米级错误，现有状态机没有
+验证恢复所需的依据。本轮只修复报告生命周期：若某次断流后的lag恢复
+窗口内，新TA拟合超界/无效，记录首个失败时刻。此后即使残差恢复正常，
+也输出DEGRADED/UWB_RECOVERY_UNVERIFIED，不再自动TRACKING；持续冲突
+仍LOST，缺测/无效后验保留更具体原因。只在完整新会话初始化时清除，
+不自动重置图，不修改X/V/B/A、因子、权重或协方差。此条件是保守故障
+报告，不是已实现自动重定位；正常无断流或恢复窗无冲突不锁存。
+
+验证：测试首个失败锁存、窗口外不触发、健康残差不清除、缺测/非有限
+后验优先级、新会话清除语义；构建后用S1同一冻结输入及outages_only
+完整GPU回放。支持条件：任何已记录恢复失败之后的同会话帧不再TRACKING，
+原始接入核对通过且仍如实报告精度失败。不能以该状态修复宣称速度塌陷、
+后验或名义精度通过；恢复可用性缺口必须保留为未完成能力。
+
+S13独立三包构建、69项组件测试、46项Python测试及安装后ROS消息
+CDR检查通过，日志`log/phase2-sparse-s13-{build,tests}.txt`。完整
+同输入GPU回放尚待执行；不以状态单元测试代替运行验证。

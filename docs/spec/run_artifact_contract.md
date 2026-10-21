@@ -232,3 +232,16 @@ This does not alter optimization or covariance. It is a post-fit disagreement
 diagnostic, not predictive NIS or calibrated nonlinear false-alarm probability.
 Small residuals cannot certify global accuracy in weak geometry. No new TA keeps
 the last check; missing input takes precedence; session reset clears the check.
+
+S13 appends `failed_recovery_stamp` to trajectory CSV and diagnostics (`-1` when
+unset). A new TA post-fit conflict/invalid value within a declared recovery lag
+window records the first failure. Subsequent small residuals cannot clear it:
+otherwise healthy output is DEGRADED/UWB_RECOVERY_UNVERIFIED. Fresh conflicts
+remain LOST; missing input and invalid posterior retain their specific reasons.
+This is a conservative failure report, not an accuracy certificate or an automatic
+relocalization algorithm. The current implementation clears it only when the
+estimator resets all graph/session state and initializes a new session. It never
+resets automatically in response to this flag. Normal uninterrupted fusion and
+recovery windows without a detected conflict do not latch. State, factors and
+covariance are not modified by this reporting rule. Automatic verified recovery
+remains an unmet phase-two capability.
