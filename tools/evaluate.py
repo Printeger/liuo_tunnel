@@ -20,6 +20,24 @@ def quantile(values, p):
     return sorted(values)[min(len(values) - 1, int((len(values) - 1) * p))]
 
 
+def raw_lidar_graph_present(graph, config):
+    # Phase one retains its original >=3 newly added edges check. Phase two
+    # connects the current cloud to recent states plus retained keyframes.
+    # Two distinct targets already connect three poses with raw factors; unlike
+    # a registered-pose prior, the historical pose keys remain in those factors.
+    phase2 = config.get("schema_version") == "liuo_phase2_v1"
+    required_edges = 2 if phase2 else 3
+    multiple = any(
+        int(r["X"]) >= required_edges + 1 and int(r["lidar_factors"]) >= required_edges
+        for r in graph
+    )
+    continuous = all(
+        int(r["X"]) <= 1 or (int(r["lidar_factors"]) >= 1 and int(r["imu_factors"]) >= 1)
+        for r in graph
+    )
+    return multiple and continuous
+
+
 def evaluate(run):
     manifest = json.loads((run / "metadata/run_manifest.json").read_text())
     failures = []
@@ -90,7 +108,7 @@ def evaluate(run):
         check(process["run_directory"] == str(run), "child allocated different run")
     identity = json.loads((run / "metadata/manifests/input_identity.json").read_text())
     check(bool(identity["shared_libraries"]), "shared library hashes missing")
-    check(any(int(r["lidar_factors"]) >= 3 for r in graph), "multi-frame raw lidar graph absent")
+    check(raw_lidar_graph_present(graph, config), "multi-frame raw lidar graph absent")
     check(
         all(int(r["fallback"]) == 0 and (fused or int(r["A"]) == 0) for r in graph),
         "forbidden states/fallback",
