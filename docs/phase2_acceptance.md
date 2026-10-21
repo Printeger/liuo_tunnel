@@ -1589,3 +1589,18 @@ S27未支持：`20261021T182826Z_501`（af9fae3）返回迭代17，lambda=1000�
 65秒墙钟上限收尾failed，失败日志保留。证据在该run
 `export/analysis/s27_stopping_precision.json`。不继续收紧容差或增加次数，
 正式容差保持1e−5；需要转查动态点云对应/阻尼停滞或弱几何，而非沿该方向调参。
+
+### S28：S27停止路径的版本对应源码核查
+
+只读核查：`/root/gtsam_points`当前HEAD为0a3c1b16，与安装库85d0f4c不同；
+因此使用git show精确读取安装身份对应85d0f4c43098b1f071bbb07710692e3829347c6c
+的`src/gtsam_points/optimizers/levenberg_marquardt_ext.cpp`，未修改外部库。
+该版本每次线性化后重算基点非线性代价，故“沿用旧对应下基点代价”并非
+这段源码的机制。内层当|costChange|<relativeErrorTol*error时停止搜索，
+即使步未接受；外层代价变化为零时停止。S27最后试探变化−0.0001134495，
+阈值0.0002651777；代价略增且满足小变化条件，returned位置/梯度/代价
+与试探基点完全相同。支持未接受步后的停滞解释，不是最大lambda或梯度收敛。
+证据在S27 run `export/analysis/s28_stop_reconstruction.json`，含精确源码SHA。
+这是源码与日志重建，不伪称运行器曾输出终止枚举。停止路径已明确，
+不继续加次数/收紧阈值；下一项必须针对有效下降方向和局部曲率验证，
+不能仅凭梯度范数给初始化加新的健康标签。
