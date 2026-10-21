@@ -737,3 +737,10 @@ seed 2 中断捕获仍为失败；旧布局仍为 3.05 m RMSE 失败。seed 1 �
 `log/campaign_20261021T155027198532Z`。显式复核并复用 seeds 0、1 六个
 既有 run，从 seed 2 重新捕获完整输入；之前中断的 seed 2 不复用。
 每组严格核对后释放 MCAP，保留 CSV 和结果。启动不代表任何新 seed 已通过。
+
+当前 seeds 0、1 的独立逐 run 汇总见
+`log/campaign_20261021T155027198532Z/seeds_0_1_partial_audit.json`。
+该审计仍为 FAIL（seeds 2–9 共 24 个模式结果缺失），不会因已有两组均值
+达标而通过。新增汇总按每个 run 等权报告数值、min/max、样本标准差和
+协方差 NEES/覆盖率；不按帧数池化或修改任一次门槛。运行中的 campaign
+已加载旧版离线 auditor，结束后须用当前 auditor 重新生成最终汇总。

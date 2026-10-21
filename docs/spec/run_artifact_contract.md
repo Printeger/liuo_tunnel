@@ -203,3 +203,10 @@ images, configuration, source/binary identities, trajectories and diagnostic CSV
 remain. Replay is unavailable after release; later CSV/identity re-audits do not
 constitute a new verification of deleted MCAP bytes. Do not substitute regenerated
 seed data for the historical frozen input.
+
+Campaign audit additionally reports `independent_run_summary`: equal weight per
+run, explicit seed/run/value lists, unavailable values, mean, min/max and sample
+standard deviation when at least two runs exist. Frame counts do not weight
+these statistics. Covariance NEES/coverage remain descriptive per-run diagnostics,
+not pooled-frame chi-square tests. Summary means never replace per-run gates;
+missing seeds and individual failures retain campaign FAIL.

@@ -3,6 +3,8 @@
 import argparse
 import hashlib
 import json
+import math
+import statistics
 from pathlib import Path
 
 from compare_runs import compare, estimator_settings
@@ -22,6 +24,51 @@ def coverage_failures(entries):
         if entry["seed"] not in range(10) or entry["mode"] not in MODES:
             failures.append(f"out-of-campaign entry: {entry}")
     return failures
+
+
+def independent_run_summary(entries):
+    """Descriptive equal-run statistics, never a replacement for per-run gates."""
+    fields = [
+        ("position_rmse_m",),
+        ("attitude_p95_deg",),
+        ("processing_p95_ms",),
+        ("wall_end_to_end_p95_s",),
+        ("covariance_diagnostics", "position_nees_mean_3d"),
+        ("covariance_diagnostics", "joint_nees_mean_9d"),
+        ("covariance_diagnostics", "position_95pct_ellipsoid_coverage"),
+    ]
+    result = {}
+    for mode in MODES:
+        group = [e for e in entries if e["mode"] == mode]
+        metrics = {}
+        for keys in fields:
+            observations, unavailable = [], []
+            for entry in group:
+                value = entry.get("metrics", {})
+                for key in keys:
+                    value = value.get(key) if isinstance(value, dict) else None
+                if not isinstance(value, (float, int)) or not math.isfinite(value):
+                    unavailable.append(entry["run_id"])
+                else:
+                    observations.append(
+                        {"run_id": entry["run_id"], "seed": entry["seed"], "value": value}
+                    )
+            values = [o["value"] for o in observations]
+            metrics[".".join(keys)] = {
+                "observations": observations,
+                "unavailable_runs": unavailable,
+                "n_runs": len(values),
+                "mean": statistics.mean(values) if values else None,
+                "min": min(values) if values else None,
+                "max": max(values) if values else None,
+                "sample_sd": statistics.stdev(values) if len(values) > 1 else None,
+            }
+        result[mode] = {"seeds": [e["seed"] for e in group], "metrics": metrics}
+    return {
+        "scope": "descriptive_equal_weight_per_run_not_pooled_frames_or_acceptance",
+        "interpretation": "Each run contributes once. Within-run temporal correlation is not treated as independent samples. OFF is an ablation. Missing seeds and every per-run failure remain campaign failures; no mean replaces a gate.",
+        "modes": result,
+    }
 
 
 def campaign(runs):
@@ -77,6 +124,7 @@ def campaign(runs):
         "failures": failures,
         "runs": entries,
         "paired_comparisons": comparisons,
+        "independent_run_summary": independent_run_summary(entries),
         "remaining_scope": "Fault delivery, lifecycle, return coverage, state semantics and covariance interpretation require separate evidence.",
         "selection": "Explicit list only; no best-run selection or averaging away failures. Preserve earlier attempts in acceptance history.",
         "auditor_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
