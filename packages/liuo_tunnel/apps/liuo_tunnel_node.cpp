@@ -111,8 +111,8 @@ class TunnelNode : public rclcpp::Node {
    if(occupied.insert(key).second)points.emplace_back(q.x(),q.y(),q.z(),1);
   }
   if(points.size()<100)throw std::runtime_error("insufficient finite cloud points");
-  gtsam_points::KdTree tree(points.data(),points.size()); std::vector<int> neighbors(points.size()*10);
-  for(size_t i=0;i<points.size();i++){size_t ids[10];double distances[10];if(tree.knn_search(points[i].data(),10,ids,distances)!=10)throw std::runtime_error("covariance neighborhood missing");for(int k=0;k<10;k++)neighbors[i*10+k]=ids[k];}
+  gtsam_points::KdTree tree(points.data(),points.size()); const size_t k=cfg.at("odometry").at("covariance_neighbors"); std::vector<int> neighbors(points.size()*k);
+  for(size_t i=0;i<points.size();i++){std::vector<size_t> ids(k);std::vector<double> distances(k);if(tree.knn_search(points[i].data(),k,ids.data(),distances.data())!=k)throw std::runtime_error("covariance neighborhood missing");for(size_t j=0;j<k;j++)neighbors[i*k+j]=ids[j];}
   auto cloud=std::make_shared<gtsam_points::PointCloudCPU>(points); CloudCovarianceEstimation covariance(2);cloud->add_covs(covariance.estimate(points,neighbors));
   auto voxel=std::make_shared<gtsam_points::GaussianVoxelMapCPU>(cfg.at("odometry").at("voxel_resolution").get<double>());voxel->insert(*cloud);
   auto preprocessed=std::chrono::steady_clock::now();

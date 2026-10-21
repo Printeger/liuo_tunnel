@@ -1,8 +1,46 @@
 {
   "schema_version": "liuo_phase1_v1",
   "scan_model": "snapshot",
-  "sensors": {"T_BL_translation": [0.2, 0.0, 0.1], "T_BL_yaw": 0.05, "T_BU_translation": [0.1, 0.15, 0.25], "imu_rate_hz": 200, "lidar_rate_hz": 10, "sigma_acc_sample": 0.02, "sigma_gyro_sample": 0.001, "sigma_ba_density": 0.001, "sigma_bg_density": 0.0001, "sigma_lidar_range": 0.02},
-  "odometry": {"lag_s": 10.0, "connection_window": 3, "voxel_resolution": 0.5, "downsample_m": 0.25, "threads": 2, "initialization_s": 2.0, "imu_queue_limit": 10000, "cloud_queue_limit": 32},
-  "uwb": {"mode": "record_only", "maximum_range_m": 800.0, "sigma_m": 0.10, "exchange_budget_hz": 250, "ta_round_hz": 20, "aa_link_hz": 1},
-  "logging": {"raw_bag": false}
+  "sensors": {
+    "T_BL_translation": [
+      0.2,
+      0.0,
+      0.1
+    ],
+    "T_BL_yaw": 0.05,
+    "T_BU_translation": [
+      0.1,
+      0.15,
+      0.25
+    ],
+    "imu_rate_hz": 200,
+    "lidar_rate_hz": 10,
+    "sigma_acc_sample": 0.02,
+    "sigma_gyro_sample": 0.001,
+    "sigma_ba_density": 0.001,
+    "sigma_bg_density": 0.0001,
+    "sigma_lidar_range": 0.02
+  },
+  "odometry": {
+    "lag_s": 10.0,
+    "connection_window": 3,
+    "voxel_resolution": 0.5,
+    "downsample_m": 0.25,
+    "threads": 2,
+    "initialization_s": 2.0,
+    "imu_queue_limit": 10000,
+    "cloud_queue_limit": 32,
+    "covariance_neighbors": 20
+  },
+  "uwb": {
+    "mode": "record_only",
+    "maximum_range_m": 800.0,
+    "sigma_m": 0.1,
+    "exchange_budget_hz": 250,
+    "ta_round_hz": 20,
+    "aa_link_hz": 1
+  },
+  "logging": {
+    "raw_bag": false
+  }
 }
