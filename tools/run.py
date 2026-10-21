@@ -22,6 +22,7 @@ def main():
     p.add_argument('--seed',type=int,default=0)
     p.add_argument('--reset-at',type=float,default=-1.0)
     p.add_argument('--config',type=Path,default=ROOT/'packages/liuo_tunnel/config/phase1.json')
+    p.add_argument('--diagnostic-capture',action='store_true')
     p.add_argument('--inject-failure',choices=['simulation','odometry'])
     args=p.parse_args()
     run=rd.resolve_run_directory(entrypoint='rail_sim',scenario='rail_tunnel_straight_v1')
@@ -34,6 +35,7 @@ def main():
         rd._atomic_write_json(run/'metadata/config/scenario.json',{'scene':'rail_tunnel_straight_v1','length_m':2400,'width_m':6,'height_m':5,'gauge_m':1.435,'duration_s':args.duration,'seed':args.seed,'scan_model':'snapshot','reset_at_s':args.reset_at,'clock_start_s':1,'dt_s':.005,'exchange_dt_s':.004,'lidar_samples':[512,40],'lidar_range_m':40,'world_voxel_m':.1})
         rd.register_config_snapshot(run,run/'metadata/config/scenario.json')
         env=os.environ.copy();env.update(LIUO_RUN_DIR=str(run),ROS_LOG_DIR=str(run/'runtime/ros'),ROS_DOMAIN_ID=str(100+os.getpid()%100),ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST')
+        env['LIUO_DIAGNOSTIC_CAPTURE']='1' if args.diagnostic_capture else '0'
         binaries={name:ROOT/f'install/{pkg}/lib/{pkg}/{exe}' for name,pkg,exe in [('odometry','liuo_tunnel','liuo_tunnel_node'),('simulation','liuo_tunnel_sim','liuo_rail_sim')]}
         identity={'source_iap_commit':'fbccae16802402d7300bb817d2627f86e6a495df','config_sha256':digest(config),'seed':args.seed,'scan_model':'snapshot','binaries':{},'environment':{k:env.get(k) for k in ['AMENT_PREFIX_PATH','LD_LIBRARY_PATH','ROS_DOMAIN_ID','ROS_LOG_DIR']},'commands':{}}
         for name,binary in binaries.items():

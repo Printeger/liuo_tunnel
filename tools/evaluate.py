@@ -46,6 +46,8 @@ def evaluate(run):
     metrics={}
     for name,data in sections.items():
         metrics[name]={'samples':len(data),'position_rmse_m':math.sqrt(statistics.mean(e*e for e,_ in data)) if data else None,'axial_p95_m':quantile([x for _,x in data],.95),'axial_max_m':max([x for _,x in data],default=None)}
+    # Basic entrance tracking sanity is additional to process/data contracts.
+    check(metrics['entrance']['position_rmse_m'] is not None and metrics['entrance']['position_rmse_m']<=1.0,'entrance tracking sanity RMSE > 1 m')
     scenario=json.loads((run/'metadata/config/scenario.json').read_text())
     if scenario['duration_s']>=35 and scenario['reset_at_s']<0:check(bool(sections['degenerate']),'no observation beyond entrance LiDAR visibility')
     if scenario['reset_at_s']>0:check(audit['clock_resets']==1 and len(audit['sessions'])==2 and len(est_sessions)==2,'clock reset/session behavior')

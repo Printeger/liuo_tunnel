@@ -38,7 +38,7 @@ class TunnelNode : public rclcpp::Node {
   graph.open(logs.export_path("odometry/graph.csv"));graph<<"session,stamp,X,V,B,A,imu_factors,lidar_factors,total_factors,marginalized,optimization_ms,reset,fallback\n";
   icp.open(logs.export_path("odometry/icp.csv"));icp<<"session,stamp,points,inlier_fraction,cost,eig0,eig1,eig2,eig3,eig4,eig5,weak_rx,weak_ry,weak_rz,weak_tx,weak_ty,weak_tz,weighting\n";
   uwb.open(logs.export_path("odometry/uwb.csv"));uwb<<std::setprecision(16)<<"producer,session,sequence,measurement_stamp,receive_stamp,a_type,a,b_type,b,range,variance,reason\n";
-  timing.open(logs.profiling_path("odometry.csv"));timing<<"session,stamp,preprocess_ms,optimize_ms,total_ms,latency_s,imu_queue,cloud_queue\n";
+  timing.open(logs.profiling_path("odometry.csv"));timing<<"session,stamp,preprocess_ms,optimize_ms,total_ms,latency_s,imu_queue,cloud_queue,pred_x,ba_x,ba_y,ba_z,bg_x,bg_y,bg_z\n";
   reset();
   pub=create_publisher<nav_msgs::msg::Odometry>("/liuo/odom",100);
   diagnostics=create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/liuo/diagnostics",10);
@@ -140,6 +140,7 @@ class TunnelNode : public rclcpp::Node {
     auto f=gtsam::make_shared<gtsam_points::IntegratedVGICPFactor>(X(it->id),X(count),it->voxels,cloud);f->set_num_threads(cfg.at("odometry").at("threads"));lidar.add(f);factors.add(f);
    }
   }
+  double pred_x=state.position().x();
   initial.insert(X(count),state.pose());initial.insert(V(count),state.velocity());initial.insert(B(count),bias);
   gtsam::Values predicted=smoother->calculateEstimate();predicted.insert(initial);
   Eigen::Matrix<double,6,6> H=Eigen::Matrix<double,6,6>::Zero();double fraction=0,cost=0;
@@ -165,7 +166,7 @@ class TunnelNode : public rclcpp::Node {
   size_t active=smoother->timestamps().size()/3;
   graph<<session<<','<<t<<','<<active<<','<<active<<','<<active<<",0,"<<(count?1:0)<<','<<lidar.size()<<','<<smoother->getFactors().nrFactors()<<','<<retired<<','<<ms(preprocessed,finish)<<','<<(session-1)<<",0\n";
   icp<<session<<','<<t<<','<<points.size()<<','<<fraction<<','<<cost;for(int i=0;i<6;i++)icp<<','<<eigen[i];for(int i=0;i<6;i++)icp<<','<<weak[i];icp<<",none\n";
-  timing<<session<<','<<t<<','<<ms(start,preprocessed)<<','<<ms(preprocessed,finish)<<','<<ms(start,finish)<<','<<now().seconds()-t<<','<<imu->imu_data_in_queue().size()<<','<<clouds.size()<<'\n';
+  timing<<session<<','<<t<<','<<ms(start,preprocessed)<<','<<ms(preprocessed,finish)<<','<<ms(start,finish)<<','<<now().seconds()-t<<','<<imu->imu_data_in_queue().size()<<','<<clouds.size()<<','<<pred_x;for(int i=0;i<6;i++)timing<<','<<bias.vector()[i];timing<<'\n';
   last_cloud=t;count++;
  }
  nlohmann::json cfg;Eigen::Isometry3d T_BL;std::unique_ptr<IMUIntegration> imu;std::unique_ptr<gtsam::IncrementalFixedLagSmoother> smoother;
