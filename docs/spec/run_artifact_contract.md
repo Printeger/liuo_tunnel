@@ -274,3 +274,11 @@ because those describe a trial/iteration, not an exit certificate. This row is
 not evidence of stationarity in all directions. Upstream optimizer status text,
 when emitted, is retained in the odometry module log; absence is not an inferred
 termination reason. Historical rows without event remain iteration callbacks.
+
+The opt-in GPU `uwb.bootstrap_translation_probe` writes
+`profiling/bootstrap_translation_probe.csv`: common vehicle-translation GN
+curvature eigenvalues, gradient, bounded trial displacements and original TA /
+other-factor costs. GPU factors are cloned so trial caches do not alter the
+estimator factors. Trial values never replace the returned solution. Missing
+output plus a singular-curvature warning means an invalid probe, not success.
+This diagnostic does not add a range-derived position observation or prior.

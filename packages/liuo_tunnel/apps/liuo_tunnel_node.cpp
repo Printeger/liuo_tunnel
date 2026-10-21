@@ -595,6 +595,63 @@ private:
       auto optimized = optimizer.optimize();
       bootstrap_log << session << ',' << optimizer.iterations() << ',' << optimizer.error() << ",," << optimizer.lambda() << ",,,";
       write_bootstrap_state(optimized, "returned");
+      if (cfg.at("uwb").value("bootstrap_translation_probe", false)) {
+        if (backend != "gpu") throw std::runtime_error("bootstrap translation probe requires GPU");
+        gtsam::Matrix3 H = gtsam::Matrix3::Zero();
+        gtsam::Vector3 g = gtsam::Vector3::Zero();
+        gtsam::NonlinearFactorGraph probe;
+        for (const auto& factor : bootstrap_factors) {
+          if (dynamic_cast<const GaugeConsistentVGICPFactorGPU*>(factor.get()))
+            probe.push_back(factor->clone());
+          else
+            probe.push_back(factor);
+          const auto* range = dynamic_cast<const TagAnchorRangeFactor*>(factor.get());
+          if (!range) continue;
+          std::vector<gtsam::Matrix> J;
+          auto e = range->unwhitenedError(optimized, &J);
+          gtsam::Matrix world = gtsam::Matrix::Zero(1, 3);
+          for (size_t j = 0; j < range->keys().size(); ++j) {
+            const auto key = range->keys()[j];
+            if (gtsam::Symbol(key).chr() == 'x') world += J[j].rightCols(3) * optimized.at<gtsam::Pose3>(key).rotation().matrix().transpose();
+          }
+          const auto A = range->noiseModel()->Whiten(world);
+          H += A.transpose() * A;
+          g += A.transpose() * range->noiseModel()->whiten(e);
+        }
+        Eigen::SelfAdjointEigenSolver<gtsam::Matrix3> eig(H);
+        if (eig.info() != Eigen::Success || eig.eigenvalues()[0] <= 1e-12) {
+          logger->warn("bootstrap translation probe invalid: singular curvature");
+        } else {
+          const gtsam::Vector3 step = -H.ldlt().solve(g);
+          if (!step.allFinite()) throw std::runtime_error("nonfinite bootstrap translation probe step");
+          gtsam_points::LinearizationHook hook(probe);
+          hook.linearize(optimized);
+          for (const auto& factor : probe)
+            if (dynamic_cast<const GaugeConsistentVGICPFactorGPU*>(factor.get())) factor->linearize(optimized);
+          std::ofstream output(RunLogManager::instance().profiling_path("bootstrap_translation_probe.csv"), std::ios::app);
+          output << std::setprecision(16);
+          if (output.tellp() == 0) output << "session,scale,dx,dy,dz,ta_cost,other_cost,eig_min,eig_mid,eig_max,gx,gy,gz\n";
+          for (double scale : {0., 1., .5, .25, .125, .0625, .03125, .015625}) {
+            auto trial = optimized;
+            for (const auto key : optimized.keys()) {
+              if (gtsam::Symbol(key).chr() != 'x') continue;
+              const auto pose = optimized.at<gtsam::Pose3>(key);
+              trial.update(key, gtsam::Pose3(pose.rotation(), pose.translation() + scale * step));
+            }
+            hook.error(trial);
+            double ta = 0, other = 0;
+            for (const auto& factor : probe) {
+              const double cost = factor->error(trial);
+              if (dynamic_cast<const TagAnchorRangeFactor*>(factor.get()))
+                ta += cost;
+              else
+                other += cost;
+            }
+            output << session << ',' << scale << ',' << scale * step.x() << ',' << scale * step.y() << ',' << scale * step.z() << ',' << ta << ',' << other << ','
+                   << eig.eigenvalues()[0] << ',' << eig.eigenvalues()[1] << ',' << eig.eigenvalues()[2] << ',' << g.x() << ',' << g.y() << ',' << g.z() << '\n';
+          }
+        }
+      }
       // Transfer the original factors and their joint optimized values exactly
       // once. No marginal-map + reused-observation double counting.
       smoother->update(bootstrap_factors, optimized, bootstrap_times);
