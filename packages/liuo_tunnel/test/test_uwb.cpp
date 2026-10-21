@@ -243,3 +243,19 @@ TEST(KnownMap, StaticAnchorsSurviveLongWindowWithoutRepeatedPriors) {
     for (auto key : keys) EXPECT_TRUE(smoother.calculateEstimate().exists(key));
   }
 }
+
+TEST(UwbFactors, GravityAlignmentDoesNotObservePositionOrYaw) {
+  gtsam::Pose3 pose(gtsam::Rot3::RzRyRx(.2, -.3, .9), {4, 5, 6});
+  auto measured = pose.rotation().unrotate(gtsam::Vector3::UnitZ());
+  GravityAlignmentFactor f(0, measured, .001);
+  gtsam::Values v;
+  v.insert(0, pose);
+  check_jacobian(f, v, {0});
+  std::vector<gtsam::Matrix> H;
+  f.unwhitenedError(v, &H);
+  EXPECT_NEAR(H[0].rightCols<3>().norm(), 0, 1e-14);
+  EXPECT_NEAR((H[0].leftCols<3>() * measured).norm(), 0, 1e-12);
+  auto rotated = gtsam::Pose3(gtsam::Rot3::Rz(1.2).compose(pose.rotation()), {100, 200, 300});
+  v.update(0, rotated);
+  EXPECT_LT(f.unwhitenedError(v).norm(), 1e-12);
+}

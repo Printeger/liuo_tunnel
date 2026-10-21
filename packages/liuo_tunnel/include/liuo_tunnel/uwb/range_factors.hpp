@@ -33,6 +33,30 @@ inline gtsam::Point3 interpolated_tag(
   return (1 - beta) * left.translation() + beta * right.translation() + rotation.rotate(lever);
 }
 
+// Stationary accelerometer direction supplies two attitude constraints only.
+// No yaw or position prior is smuggled in as a map-frame initialization.
+class GravityAlignmentFactor : public gtsam::NoiseModelFactor {
+public:
+  GravityAlignmentFactor(gtsam::Key pose, const gtsam::Vector3& measured_up, double sigma)
+  : gtsam::NoiseModelFactor(gtsam::noiseModel::Isotropic::Sigma(3, sigma), gtsam::KeyVector{pose}),
+    up_(measured_up.normalized()) {
+    if (!measured_up.allFinite() || measured_up.norm() < 1e-8) throw std::invalid_argument("invalid gravity alignment");
+  }
+  gtsam::Vector unwhitenedError(const gtsam::Values& v, gtsam::OptionalMatrixVecType H = nullptr) const override {
+    gtsam::Matrix33 D;
+    auto predicted = v.at<gtsam::Pose3>(keys()[0]).rotation().unrotate(gtsam::Vector3::UnitZ(), D);
+    if (H) {
+      H->assign(1, gtsam::Matrix::Zero(3, 6));
+      (*H)[0].leftCols<3>() = -D;
+    }
+    return up_ - predicted;
+  }
+  gtsam::NonlinearFactor::shared_ptr clone() const override { return gtsam::make_shared<GravityAlignmentFactor>(*this); }
+
+private:
+  gtsam::Vector3 up_;
+};
+
 // Keys: [X_left, optional X_right, optional A]. No fixed tag position cache.
 class TagAnchorRangeFactor : public gtsam::NoiseModelFactor {
 public:
