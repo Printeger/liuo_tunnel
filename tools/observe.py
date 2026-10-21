@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Independent runtime raw-message/graph audit; no estimator access to truth."""
 import json
+import hashlib
+import time
 import os
 from pathlib import Path
 import math
@@ -29,6 +31,9 @@ class Observer(Node):
         self.sensor_qos = QoSProfile(
             history=HistoryPolicy.KEEP_LAST, depth=2048, reliability=ReliabilityPolicy.BEST_EFFORT
         )
+        self.hashes = {k: hashlib.sha256() for k in self.result["counts"]}
+        self.first_wall_ns = None
+        self.first_clock = None
         self.last_clock = 0
         self.identities = set()
         self.imu_log = open(Path(os.environ["LIUO_RUN_DIR"]) / "export/capture/imu.csv", "w")
@@ -39,11 +44,66 @@ class Observer(Node):
         self.create_subscription(Clock, "/clock", self.clock, self.sensor_qos)
         self.create_timer(1, self.graph)
 
+    def hash_message(self, kind, m):
+        # Canonical semantic bytes avoid CDR alignment padding differences.
+        if kind == "clock":
+            data = [m.clock.sec, m.clock.nanosec]
+        else:
+            data = [m.header.stamp.sec, m.header.stamp.nanosec, m.header.frame_id]
+            if kind == "imu":
+                data += [
+                    m.orientation.x,
+                    m.orientation.y,
+                    m.orientation.z,
+                    m.orientation.w,
+                    m.angular_velocity.x,
+                    m.angular_velocity.y,
+                    m.angular_velocity.z,
+                    m.linear_acceleration.x,
+                    m.linear_acceleration.y,
+                    m.linear_acceleration.z,
+                    list(m.orientation_covariance),
+                    list(m.angular_velocity_covariance),
+                    list(m.linear_acceleration_covariance),
+                ]
+            elif kind == "uwb":
+                data += [
+                    m.producer_id,
+                    m.session_id,
+                    m.sequence,
+                    m.node_a_type,
+                    m.node_a_id,
+                    m.node_b_type,
+                    m.node_b_id,
+                    m.status,
+                    m.range_m,
+                    m.variance_m2,
+                    m.propagation_status,
+                ]
+            else:
+                data += [
+                    m.height,
+                    m.width,
+                    m.is_bigendian,
+                    m.point_step,
+                    m.row_step,
+                    m.is_dense,
+                    [(f.name, f.offset, f.datatype, f.count) for f in m.fields],
+                ]
+        encoded = json.dumps(data, separators=(",", ":"), allow_nan=True).encode()
+        self.hashes[kind].update(struct.pack("<Q", len(encoded)))
+        self.hashes[kind].update(encoded)
+        if kind == "cloud":
+            payload = bytes(m.data)
+            self.hashes[kind].update(struct.pack("<Q", len(payload)))
+            self.hashes[kind].update(payload)
+
     def reject(self, reason):
         if reason not in self.result["violations"]:
             self.result["violations"].append(reason)
 
     def imu(self, m):
+        self.hash_message("imu", m)
         self.result["counts"]["imu"] += 1
         if m.orientation_covariance[0] != -1 or m.header.frame_id != "imu":
             self.reject("IMU frame/orientation")
@@ -55,6 +115,7 @@ class Observer(Node):
             self.result["imu_static_acc_z"].append(m.linear_acceleration.z)
 
     def cloud(self, m):
+        self.hash_message("cloud", m)
         self.result["counts"]["cloud"] += 1
         if os.environ.get("LIUO_DIAGNOSTIC_CAPTURE") == "1" and self.result["counts"]["cloud"] in (
             30,
@@ -85,6 +146,7 @@ class Observer(Node):
             self.reject("snapshot time nonzero")
 
     def uwb(self, m):
+        self.hash_message("uwb", m)
         self.result["counts"]["uwb"] += 1
         identity = (m.producer_id, m.session_id, m.sequence)
         if identity in self.identities:
@@ -102,10 +164,15 @@ class Observer(Node):
             self.reject("UWB fields")
 
     def clock(self, m):
+        self.hash_message("clock", m)
         self.result["counts"]["clock"] += 1
         t = m.clock.sec + m.clock.nanosec * 1e-9
         if t < self.last_clock:
             self.result["clock_resets"] += 1
+        if self.first_wall_ns is None:
+            self.first_wall_ns = time.monotonic_ns()
+            self.first_clock = t
+        self.last_wall_ns = time.monotonic_ns()
         self.last_clock = t
 
     def graph(self):
@@ -129,6 +196,12 @@ def main():
     except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
         pass
     finally:
+        node.result["raw_sha256"] = {k: h.hexdigest() for k, h in node.hashes.items()}
+        node.result["observed_wall_duration_s"] = (
+            (node.last_wall_ns - node.first_wall_ns) * 1e-9
+            if node.first_wall_ns is not None
+            else None
+        )
         values = node.result.pop("imu_static_acc_z")
         node.result["imu_static_acc_z_mean"] = sum(values) / len(values) if values else None
         path = Path(os.environ["LIUO_RUN_DIR"]) / "metadata/manifests/observation_audit.json"

@@ -68,8 +68,10 @@ def main():
             )
         config = run / "metadata/config/phase1.json"
         shutil.copyfile(args.config, config)
-        rd.register_config_snapshot(run, config)
         effective_config = json.loads(config.read_text())
+        effective_config["logging"]["raw_bag"] = args.capture
+        config.write_text(json.dumps(effective_config, indent=2) + "\n")
+        rd.register_config_snapshot(run, config)
         selected_backend = effective_config["odometry"]["backend"]
         map_path = None
         if effective_config["uwb"]["mode"] == "fuse":
@@ -221,7 +223,7 @@ def main():
                 "gdb",
                 "--batch",
                 "-ex",
-                "catch throw",
+                "catch throw std::invalid_argument",
                 "-ex",
                 "run",
                 "-ex",
