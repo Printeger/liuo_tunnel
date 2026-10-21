@@ -151,3 +151,11 @@ measurement payloads, effective stamps and identities remain unchanged.
 auditor checks all original events, including outside the declared interval,
 for missed selections and unintended drops. This is a physical link-loss
 pressure condition, not a changed nominal range/noise model.
+
+Campaign progress writes are atomic. Explicitly reused completed triplets retain
+the original run IDs; they must pass independent audits and match the current
+estimator binary/settings and declared independent survey draw. Failed or
+partial triplets are rejected. Disk preflight and 5 s reserve monitoring preserve
+`INSUFFICIENT_EVIDENCE_SPACE` / `DISK_RESERVE_BELOW_2_GIB` reasons; the campaign
+signals only its own Popen owner and waits for owner finalization. No run cleanup
+is implied. The original failed campaign remains separate evidence.

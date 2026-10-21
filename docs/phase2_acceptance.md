@@ -593,3 +593,9 @@ OFF回放正在进行，当前只完成seed 0的双地图数值验证，不是�
 位置/姿态/时延/可用率门槛均未改变。30项Python测试通过，覆盖仅两帧、
 缺LiDAR、缺IMU、空图必须失败（`log/phase2-raw-graph-audit-tests.txt`）。
 旧报告不重写为PASS；采用新审计进行新的正式OFF回放后再报告结论。
+
+续跑入口与空间保护已实现，34项Python测试通过
+（`log/phase2-campaign-resume-tests.txt`）。实测使用旧失败OFF尝试复用
+三模式组，被明确拒绝且未启动任何新owner：
+`log/campaign_20261021T141618205118Z`。复用不是选择误差较小的运行；
+当前OFF重复运行只验证图审计口径修正，旧运行的全部失败和大漂移保留。

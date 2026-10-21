@@ -127,3 +127,14 @@ PID、run和逐次审计；仅该脚本正常完成仍不表示第二阶段完�
 单基站失效压力回放使用
 `--delivery-profile packages/liuo_tunnel/config/delivery/single_anchor_loss.json`；
 仅停止声明基站的链路，不改变测距数值。其实际验收进度见第二阶段报告。
+
+名义campaign可通过 `python3 tools/run_campaign.py --completed-runs <surveyed-run>
+<oracle-run> <off-run>` 显式复用已完成的种子三模式组，再运行其余seeds。
+每个复用run必须重新通过长程审计、输入/配置/当前二进制核对，surveyed
+测绘随机流也须匹配；不完整组、重复模式及失败run拒绝。原campaign失败
+记录保留，新campaign单独记录复用来源。
+
+Campaign在启动前检查预计产物空间，每5 s监测2 GiB保留空间；不足时
+仅向自身创建的owner发SIGINT，等待其收尾并记录失败，不清理历史产物。
+预计空间为540 s捕获1.5 GiB或回放0.25 GiB，另加2 GiB保留量；这是
+根据实测的启动预算，不保证其他进程不会消耗空间。
