@@ -86,3 +86,21 @@ full live return acceptance must be recorded separately.
 `profiling/resources.csv` samples estimator RSS, retained cloud frames/keyframes
 and queues at 1 Hz. CUDA device memory is labeled as device-wide usage, not
 process-attributed memory. Sampling overhead is included in processing timing.
+
+Full-route numerical/continuity/resource audit (not complete stage acceptance):
+`python3 tools/long_run_audit.py log/<full_run_id> --require-return`.
+Its denominator uses declared initialization plus every subsequent 10 Hz epoch;
+late output cannot shorten the denominator. Finite DEGRADED output is counted as
+available and reported separately; accuracy is checked independently. It requires
+all outbound stops and, when requested, actual reverse motion back to the entrance.
+RSS trends are reported without claiming a probability guarantee or a bound on
+other processes' device memory. Short runs explicitly fail full-route coverage.
+
+Use `tools/compare_runs.py --strict-estimator-settings ...` for controlled ON/OFF
+comparisons: besides identical raw bytes/counts it requires matching LIO settings
+and estimator binary, and equal UWB settings between fused runs. Historical runs
+with different matching settings remain useful input comparisons, not mode-only
+causal comparisons. For the seed campaign, generate independent simulated survey
+fixtures with `tools/generate_known_maps.py <directory> --survey-seed <integer>`;
+the unchanged default is 67129. Oracle geometry and the declared correlated survey
+covariance do not change when the survey random stream changes.

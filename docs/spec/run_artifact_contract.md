@@ -101,3 +101,17 @@ Each update replaces affected pair factors using returned smoother factor indice
 the number of AA factors is bounded by the map's unordered pair count. Clock reset
 clears both summaries and indices. Evaluation checks pair bounds, total factor
 bounds, and (without a clock reset) accumulated count against accepted raw IDs.
+
+### Independent long-route and paired audits
+
+`export/analysis/long_run_audit.json` is generated independently after a run. It
+checks declared-initialization availability, route/stops/return coverage, raw and
+wire contracts, numerical per-run failures, structural bounds and continuous
+1 Hz resource sampling. Its scope explicitly excludes complete stage acceptance.
+The known pending-campaign marker is recorded separately, not confused with a
+physical per-run failure or removed from the primary report.
+`matched_comparison.json` separately records raw-input equality, LIO setting
+identity, binary identity and fused-UWB setting identity. Strict comparison rejects
+configuration changes; identical random seeds or raw data alone are insufficient
+for a mode-only comparison. Survey fixture seed and map ID identify independent
+survey realizations while preserving the provided joint covariance.

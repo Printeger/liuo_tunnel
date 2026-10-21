@@ -2,6 +2,7 @@
 """Audit identical raw inputs and compare only common ONLINE publication stamps."""
 import argparse
 import csv
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -22,7 +23,19 @@ def keyed(records):
     return {(sessions.index(r["session"]), round(float(r["stamp"]), 8)): r for r in records}
 
 
-def compare(runs):
+def estimator_settings(config):
+    odometry = dict(config["odometry"])
+    for key, default in [
+        ("max_keyframes", 15),
+        ("relinearize_threshold", 0.05),
+        ("use_dogleg", False),
+        ("factorization", "CHOLESKY"),
+    ]:
+        odometry.setdefault(key, default)
+    return {"scan_model": config["scan_model"], "sensors": config["sensors"], "odometry": odometry}
+
+
+def compare(runs, strict_estimator_settings=False):
     audits = [load(r / "metadata/manifests/observation_audit.json") for r in runs]
     expected = audits[0]
     for run, audit in zip(runs, audits):
@@ -32,6 +45,20 @@ def compare(runs):
             raise ValueError(f"input count/contract mismatch: {run}")
         if not audit.get("raw_sha256") or audit["raw_sha256"] != expected["raw_sha256"]:
             raise ValueError(f"input content mismatch: {run}")
+    configs = [load(r / "metadata/config/phase1.json") for r in runs]
+    settings = [estimator_settings(c) for c in configs]
+    binaries = [
+        load(r / "metadata/manifests/input_identity.json")["binaries"]["odometry"]["sha256"]
+        for r in runs
+    ]
+    settings_equal = all(s == settings[0] for s in settings)
+    binaries_equal = all(b == binaries[0] for b in binaries)
+    fused_settings = [dict(c["uwb"]) for c in configs if c["uwb"]["mode"] == "fuse"]
+    fused_equal = not fused_settings or all(c == fused_settings[0] for c in fused_settings)
+    if strict_estimator_settings and not (settings_equal and binaries_equal and fused_equal):
+        raise ValueError(
+            "strict paired comparison requires identical LIO settings, binary and fused UWB settings"
+        )
     trajectories = [keyed(rows(r / "export/odometry/trajectory.csv")) for r in runs]
     common = set.intersection(*(set(t) for t in trajectories))
     if not common:
@@ -69,7 +96,13 @@ def compare(runs):
         )
     return {
         "scope": "matched_online_stamps_snapshot_only",
+        "auditor_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "input_content_verified": True,
+        "lio_settings_matched": settings_equal,
+        "odometry_binary_matched": binaries_equal,
+        "fused_uwb_settings_matched": fused_equal,
+        "controlled_estimator_comparison": settings_equal and binaries_equal and fused_equal,
+        "settings_scope": "Raw input equality alone does not establish a mode-only comparison; estimator settings and binary are audited separately.",
         "raw_sha256": expected["raw_sha256"],
         "counts": expected["counts"],
         "common_samples": len(common),
@@ -83,11 +116,12 @@ def compare(runs):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("runs", type=Path, nargs="+")
+    parser.add_argument("--strict-estimator-settings", action="store_true")
     args = parser.parse_args()
     if len(args.runs) < 2:
         parser.error("at least two runs required")
     runs = [p.resolve() for p in args.runs]
-    report = compare(runs)
+    report = compare(runs, args.strict_estimator_settings)
     output = runs[0] / "export/analysis/matched_comparison.json"
     output.write_text(json.dumps(report, indent=2) + "\n")
     print(output)
