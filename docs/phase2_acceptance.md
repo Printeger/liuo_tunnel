@@ -1339,3 +1339,22 @@ velocity_feedback}.json`。默认lag保持10，不继续增加lag。
 误差改善的结论，也不表示速度、位置精度或阶段验收通过。
 运行配置 `log/sparse_s17_projected.json`；对照S15 `20261021T174545Z_871`。
 不修改正式默认，不启动全种子，不增加基站。
+
+S17结果支持上述有限症状假设：`20261021T175620Z_173`（f49cfcd），
+末十帧平均vx=3.378503m/s，10/10帧vx>1；平均速度绝对误差仍1.621497m/s。
+断流200帧平移投影秩均为2。与S15同二进制，配置仅增加此开关（缺省false），
+地图/delivery相同，至61秒2090条物理UWB字段完全一致；不是完整输入配对验收。
+65秒墙钟到期，owner退出1并保留failed/not_evaluated；症状检查返回0仅表示
+NO_COLLAPSE_SYMPTOM。没有启动后续seed或改变正式默认。
+
+速度记账：[41.1,61]惯性预测累计−1.662811m/s，优化校正+0.029755m/s；
+S15分别为−2.489939/−3.174277m/s。投影后平均世界gx=0.445148，
+末段速度下降仍存在。此结果与点云弱方向参与趋零反馈一致，但不证明唯一根因，
+也不能把耦合记账量解释为可相加的独立因果效应。后续重点为剩余惯性预测漂移
+及其初值/姿态/偏置来源，不继续调投影阈值。S2的80%改善失败结论原样保留。
+
+证据：该run `export/analysis/projection_comparison.json`、
+`velocity_collapse_reproduction.json`、`velocity_feedback.json`；核对脚本
+`log/sparse_s17_compare.py`。后者反馈报告中的`hypothesis_supported=false`
+仍指S15“持续正gx”条件，S17独立条件保存在projection_comparison中。
+第二阶段继续未完成：名义精度、协方差一致性、经验证的自动恢复仍未通过。
