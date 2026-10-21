@@ -11,7 +11,7 @@
 - 25/50 ms 关联、右端等待、窗口内乱序、重复、过期和 session；有界序列水位不允许已消费观测重新入图。尚需 live 异常测试。
 - 13 个 A 在 50 s 单元场景中每次更新时间戳，10 s 滑窗下无 UWB 也全部保留；联合地图先验始终仅一份。生产图仍需长时实测。
 - 重力方向因子仅约束两个旋转自由度，测试证明不约束全局 yaw 或平移。地图模式计划通过原始多传感器联合启动窗口建立规范，不以真值起点/航向强先验初始化。
-- 最新组件测试见 log/phase2-joint-tests.txt；完整构建见 log/phase2-joint-config-build.txt。
+- 最新组件测试见 log/phase2-wall-replay-tests.txt（40 项及 3 项 Python）；完整构建见 log/phase2-wall-replay-build.txt。
 
 ## 实时瓶颈与回归
 
@@ -42,3 +42,47 @@
 - 最小复现：非零初始误差、Dogleg 小信赖域、relinearizeSkip=1，旧图 updateDelta 在新变量插入后计算，梯度仅含旧 keys，Newton 向量却包含新 keys。修复前 `log/phase2-dogleg-repro.txt` FAIL；将旧图 delta 更新移到 addVariables 前后，`log/phase2-dogleg-fixed.txt` PASS。项目内独立命名空间副本及许可证/版本见 THIRD_PARTY_NOTICES；不覆盖系统库。
 - 修复后的完整回归 `log/phase2-dogleg-tests.txt`：40 个 C++/组件测试及 3 个 Python 测试通过。实际融合精度和时延仍待重跑。
 - 原基站高度与左右侧严格同奇偶造成全体共面，违反场景要求。现使用明确记录的安装高度错列，地图 ID 更新为 v2_noncoplanar；所有连续四基站非共面测试通过。旧 runs 保持原布局，不混用新版地图解释旧输入。
+
+## 第一组严格冻结输入对照（20 s，seed 0，未通过定位验收）
+
+源捕获 `20261021T103425Z_159`，提交 `861d581`，完整 MCAP 位于
+`log/20261021T103425Z_159/export/capture/raw`。采集时 oracle 融合精度 FAIL，
+但生命周期 completed、原始输入完整；这两种结论明确分开。
+回放绑定 `c028f8e`。四个 topic 的 SHA256 与数量逐一相同：4000 IMU、
+200 cloud、2492 UWB、4000 clock，保留原 producer/session/sequence。
+
+| 回放 | 模式 | 共同时间位置 RMSE (m) | 轴向 P95/max (m) | 姿态 P95 (°) | 处理 P95 (ms) | 墙钟端到端 P95 (ms) |
+|---|---|---:|---|---:|---:|---:|
+| 20261021T103833Z_726 | OFF | 0.2211 | 0.2576/0.2673 | 0.3211 | 35.86 | 41.34 |
+| 20261021T103908Z_692 | oracle | 0.7067 | 0.1375/0.1424 | 0.7323 | 86.97 | 96.97 |
+| 20261021T103941Z_152 | simulated surveyed | 2.8534 | 0.2073/0.2954 | 2.1049 | 90.67 | 98.19 |
+
+共同比较为在线 stamp 9.0–20.9 s 的 120 帧，无事后拟合。OFF 使用明确的阶段一
+odom 固定高度规范，因此其误差不能当作外部地图定位精度。三次实际倍率分别为
+0.999947/0.999949/0.999946，输入约 200 Hz IMU、10 Hz cloud。墙钟延迟由原始
+测量的单调时钟调度期限到在线发布时间计算，含等待/处理，不是模拟时钟差。
+该短跑中的延迟达标不代表长程/seeds 0–9 达标。
+
+复现对照：
+
+```bash
+./tools/run.sh --formal --replay log/20261021T103425Z_159
+./tools/run.sh --formal --replay log/20261021T103425Z_159 --config packages/liuo_tunnel/config/phase2.json --map packages/liuo_tunnel/config/maps/oracle_map.json
+./tools/run.sh --formal --replay log/20261021T103425Z_159 --config packages/liuo_tunnel/config/phase2.json --map packages/liuo_tunnel/config/maps/surveyed_map.json
+python3 tools/compare_runs.py log/20261021T103833Z_726 log/20261021T103908Z_692 log/20261021T103941Z_152
+```
+
+共同时间报告：`log/20261021T103833Z_726/export/analysis/matched_comparison.json`；
+各自完整指标/失败见每个 run 的 `export/analysis/report.json`。比较工具只审核输入和
+生成对照，不把子运行精度失败转成通过。
+
+失败的首轮回放 `20261021T103705Z_103` 同样保留：截止时间附近两次读时钟使
+executor 超时偶发变为负数（ROS 表示无限等待）。本任务向其已确认 owner PID
+发送 SIGINT 停止；历史 manifest 的通用理由为 user interrupt。修复为一次读取
+剩余时间并只传正超时，后续三个完整回放验证不再出现。
+
+当前结论：同图增量崩溃修复 PASS；本组冻结输入核对 PASS；本组短跑处理/墙钟
+时延 PASS；oracle 定位精度 FAIL；surveyed 定位精度及姿态 FAIL。协方差、状态
+可信度、长程和故障恢复仍未完成，不能把阶段标为 complete。初步离线理想轨迹
+测距信息分析提示竖直平移弱可观；尚需系统记录分支/可观测性及真实后验诊断，
+不得用真值高度或轨道约束替代观测来修复误差。
