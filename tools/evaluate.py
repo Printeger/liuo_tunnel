@@ -52,6 +52,11 @@ def evaluate(run):
             "online output did not drain to final sensor frame",
         )
     runtime = json.loads((run / "export/simulation/runtime.json").read_text())
+    if "published_counts" in runtime:
+        check(
+            audit["counts"] == runtime["published_counts"],
+            "raw observer lost published input: counts differ",
+        )
     for name in ["odometry", "simulation"]:
         process = json.loads((run / f"metadata/processes/{name}.json").read_text())
         check(process["run_directory"] == str(run), "child allocated different run")

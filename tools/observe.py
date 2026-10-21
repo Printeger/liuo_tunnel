@@ -7,7 +7,7 @@ import math
 import struct
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import qos_profile_sensor_data, QoSProfile, ReliabilityPolicy, HistoryPolicy
 from sensor_msgs.msg import Imu, PointCloud2
 from liuo_tunnel_msgs.msg import UwbRange
 from rosgraph_msgs.msg import Clock
@@ -26,16 +26,17 @@ class Observer(Node):
             "estimator_subscriptions": [],
             "clock_publishers": 0,
         }
+        self.sensor_qos = QoSProfile(
+            history=HistoryPolicy.KEEP_LAST, depth=2048, reliability=ReliabilityPolicy.BEST_EFFORT
+        )
         self.last_clock = 0
         self.identities = set()
         self.imu_log = open(Path(os.environ["LIUO_RUN_DIR"]) / "export/capture/imu.csv", "w")
         self.imu_log.write("stamp,ax,ay,az,wx,wy,wz\n")
-        self.create_subscription(Imu, "/sensors/imu", self.imu, qos_profile_sensor_data)
-        self.create_subscription(
-            PointCloud2, "/sensors/lidar/points", self.cloud, qos_profile_sensor_data
-        )
-        self.create_subscription(UwbRange, "/sensors/uwb/range", self.uwb, qos_profile_sensor_data)
-        self.create_subscription(Clock, "/clock", self.clock, qos_profile_sensor_data)
+        self.create_subscription(Imu, "/sensors/imu", self.imu, self.sensor_qos)
+        self.create_subscription(PointCloud2, "/sensors/lidar/points", self.cloud, self.sensor_qos)
+        self.create_subscription(UwbRange, "/sensors/uwb/range", self.uwb, self.sensor_qos)
+        self.create_subscription(Clock, "/clock", self.clock, self.sensor_qos)
         self.create_timer(1, self.graph)
 
     def reject(self, reason):

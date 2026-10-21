@@ -45,7 +45,7 @@ public:
     scheduling << "session,stamp,ta_published,aa_published,unreachable,occluded,slots,overdue_links,max_lateness_s\n";
     timing.open(logs.profiling_path("simulation.csv"));
     timing << "stamp,render_ms,dda_visits,points,world_points\n";
-    clock_pub = create_publisher<rosgraph_msgs::msg::Clock>("/clock", 10);
+    clock_pub = create_publisher<rosgraph_msgs::msg::Clock>("/clock", 2048);
     imu_pub = create_publisher<sensor_msgs::msg::Imu>("/sensors/imu", rclcpp::SensorDataQoS().keep_last(2048));
     cloud_pub = create_publisher<sensor_msgs::msg::PointCloud2>("/sensors/lidar/points", rclcpp::SensorDataQoS().keep_last(32));
     truth_pub = create_publisher<nav_msgs::msg::Odometry>("/sim/truth/odom", 100);
@@ -109,6 +109,7 @@ private:
       getrusage(RUSAGE_SELF, &usage);
       nlohmann::json result =
         {{"simulation_s", elapsed}, {"wall_s", wall_seconds}, {"real_time_factor", elapsed / wall_seconds}, {"peak_rss_kib", usage.ru_maxrss}, {"scan_model", "snapshot"}};
+      result["published_counts"] = {{"imu", total_ticks}, {"clock", total_ticks}, {"cloud", published_clouds}, {"uwb", ta_published + aa_published}};
       std::ofstream(RunLogManager::instance().export_path("simulation/runtime.json")) << result.dump(2) << std::endl;
       logger->info("simulation finished ticks={} producer_session={} real_time_factor={}", total_ticks, session, elapsed / wall_seconds);
       rclcpp::shutdown();
@@ -204,6 +205,7 @@ private:
         ++pt;
       }
       cloud_pub->publish(cloud);
+      published_clouds++;
       nav_msgs::msg::Odometry odom;
       odom.header.stamp = stamp(ros_t);
       odom.header.frame_id = "world";
@@ -300,6 +302,7 @@ private:
   FirstHitLidarRenderer renderer;
   std::vector<Link> links;
   std::ofstream truth, uwblog, timing, scheduling;
+  uint64_t published_clouds = 0;
   uint64_t ta_published = 0, aa_published = 0, unreachable = 0, occluded = 0;
   std::shared_ptr<spdlog::logger> logger;
   rclcpp::Publisher<rosgraph_msgs::msg::Clock>::SharedPtr clock_pub;
