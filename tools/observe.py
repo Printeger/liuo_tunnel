@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Independent runtime raw-message/graph audit; no estimator access to truth."""
 import json
+import csv
+import numpy as np
 import hashlib
 from raw_identity import hash_message
 import time
@@ -14,6 +16,7 @@ from rclpy.qos import qos_profile_sensor_data, QoSProfile, ReliabilityPolicy, Hi
 from sensor_msgs.msg import Imu, PointCloud2
 from liuo_tunnel_msgs.msg import UwbRange
 from rosgraph_msgs.msg import Clock
+from nav_msgs.msg import Odometry
 
 
 class Observer(Node):
@@ -44,6 +47,13 @@ class Observer(Node):
         self.create_subscription(PointCloud2, "/sensors/lidar/points", self.cloud, self.sensor_qos)
         self.create_subscription(UwbRange, "/sensors/uwb/range", self.uwb, self.sensor_qos)
         self.create_subscription(Clock, "/clock", self.clock, self.sensor_qos)
+        self.result["odometry_count"] = 0
+        self.odom_log = open(Path(os.environ["LIUO_RUN_DIR"]) / "export/capture/odometry.csv", "w")
+        self.odom_csv = csv.writer(self.odom_log)
+        self.odom_csv.writerow(
+            ["stamp", "wx", "wy", "wz"] + [f"twist_{i}_{j}" for i in range(6) for j in range(6)]
+        )
+        self.create_subscription(Odometry, "/liuo/odom", self.odometry, 100)
         self.create_timer(1, self.graph)
 
     def hash_message(self, kind, m):
@@ -52,6 +62,26 @@ class Observer(Node):
     def reject(self, reason):
         if reason not in self.result["violations"]:
             self.result["violations"].append(reason)
+
+    def odometry(self, m):
+        self.result["odometry_count"] += 1
+        if m.header.frame_id not in ["map", "odom"] or m.child_frame_id != "imu":
+            self.reject("odometry frame contract")
+        angular = [m.twist.twist.angular.x, m.twist.twist.angular.y, m.twist.twist.angular.z]
+        linear = [m.twist.twist.linear.x, m.twist.twist.linear.y, m.twist.twist.linear.z]
+        if not all(math.isfinite(x) for x in angular + linear):
+            self.reject("nonfinite odometry twist")
+        for label, values in [("pose", m.pose.covariance), ("twist", m.twist.covariance)]:
+            covariance = np.asarray(values).reshape(6, 6)
+            if not np.isfinite(covariance).all():
+                self.reject("nonfinite " + label + " covariance")
+            elif (
+                not np.allclose(covariance, covariance.T, atol=1e-10, rtol=1e-8)
+                or np.linalg.eigvalsh(covariance).min() <= 0
+            ):
+                self.reject("nonpositive or asymmetric " + label + " covariance")
+        stamp = m.header.stamp.sec + m.header.stamp.nanosec * 1e-9
+        self.odom_csv.writerow([stamp] + angular + list(m.twist.covariance))
 
     def imu(self, m):
         self.hash_message("imu", m)
@@ -158,6 +188,7 @@ def main():
         path = Path(os.environ["LIUO_RUN_DIR"]) / "metadata/manifests/observation_audit.json"
         path.write_text(json.dumps(node.result, indent=2) + "\n")
         node.imu_log.close()
+        node.odom_log.close()
         node.destroy_node()
 
 

@@ -68,13 +68,15 @@ public:
     auto& logs = RunLogManager::instance();
     logs.write_run_info({{"backend", backend + "_RAW_MULTIFRAME_VGICP"}, {"uwb", fuse ? "FUSED_RAW" : "RECORD_ONLY"}, {"gpu_device", gpu_name}});
     trajectory.open(logs.export_path("odometry/trajectory.csv"));
-    trajectory << std::setprecision(16) << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id,publish_wall_ns,state_reason\n";
+    trajectory << std::setprecision(16) << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id,publish_wall_ns,state_reason,wx,wy,wz,twist_interval_s\n";
     bootstrap_log.open(logs.profiling_path("bootstrap.csv"));
     bootstrap_log << std::setprecision(16) << "session,iteration,total_error,cost_change,lambda,solve_success,elapsed_s,ta_error,translation_gradient_norm,x0,y0,z0\n";
     covariance_log.open(logs.export_path("odometry/covariance.csv"));
     covariance_log << std::setprecision(16) << "session,stamp";
     for (int i = 0; i < 9; i++)
       for (int j = 0; j < 9; j++) covariance_log << ",xv_" << i << "_" << j;
+    for (int i = 0; i < 6; i++)
+      for (int j = 0; j < 6; j++) covariance_log << ",twist_" << i << "_" << j;
     covariance_log << '\n';
     graph.open(logs.export_path("odometry/graph.csv"));
     graph << "session,stamp,X,V,B,A,imu_factors,lidar_factors,total_factors,marginalized,optimization_ms,reset,fallback,uwb_ta,uwb_aa,map_priors,uwb_queue\n";
@@ -471,10 +473,20 @@ private:
     bias = smoother->calculateEstimate<gtsam::imuBias::ConstantBias>(B(count));
     if (!state.pose().matrix().allFinite() || !state.velocity().allFinite()) throw std::runtime_error("nonfinite optimized state");
     const auto covariance_start = std::chrono::steady_clock::now();
-    auto xv_cov = joint_covariance(smoother->getISAM2(), X(count), V(count));
+    gtsam::Matrix xv_cov;
+    gtsam::Vector6 twist = gtsam::Vector6::Zero();
+    gtsam::Matrix66 twist_cov = gtsam::Matrix66::Zero();
+    if (count > 0) {
+      const auto joint = selected_covariance(smoother->getISAM2(), {X(count - 1), X(count), V(count)});
+      xv_cov = joint.bottomRightCorner(9, 9);
+      Eigen::Matrix<double, 6, 15> H;
+      twist = interval_body_twist(smoother->calculateEstimate<gtsam::Pose3>(X(count - 1)), state.pose(), state.velocity(), t - last_cloud, &H);
+      twist_cov = H * joint * H.transpose();
+      if (!twist.allFinite() || !twist_cov.allFinite() || twist_cov.diagonal().minCoeff() <= 0) throw std::runtime_error("invalid joint body twist covariance");
+    } else {
+      xv_cov = joint_covariance(smoother->getISAM2(), X(count), V(count));
+    }
     gtsam::Matrix66 cov = xv_cov.topLeftCorner<6, 6>();
-    auto velocity_H = body_velocity_jacobian(state.pose(), state.velocity());
-    gtsam::Matrix33 body_velocity_cov = velocity_H * xv_cov * velocity_H.transpose();
     if (!cov.allFinite() || cov.diagonal().minCoeff() < 0) throw std::runtime_error("invalid pose covariance");
     const auto covariance_end = std::chrono::steady_clock::now();
     double lag = cfg.at("odometry").at("lag_s");
@@ -511,40 +523,49 @@ private:
         mode = cov.bottomRightCorner<3, 3>().trace() > .25 ? "DEGRADED" : "TRACKING";
       if (cov.trace() > 100) mode = "LOST";
     }
-    nav_msgs::msg::Odometry out;
-    out.header.stamp = m.header.stamp;
-    out.header.frame_id = fuse ? "map" : "odom";
-    out.child_frame_id = "imu";
-    auto p = state.position();
-    auto q = state.pose().rotation().toQuaternion();
-    auto v = state.velocity();
-    out.pose.pose.position.x = p.x();
-    out.pose.pose.position.y = p.y();
-    out.pose.pose.position.z = p.z();
-    out.pose.pose.orientation.x = q.x();
-    out.pose.pose.orientation.y = q.y();
-    out.pose.pose.orientation.z = q.z();
-    out.pose.pose.orientation.w = q.w();
-    // ROS pose covariance uses [translation, rotation], GTSAM right perturbation [rotation, translation]. Rotate both blocks into parent frame.
-    auto ros_cov = parent_pose_covariance(state.pose(), cov);
-    for (int i = 0; i < 6; i++)
-      for (int j = 0; j < 6; j++) out.pose.covariance[i * 6 + j] = ros_cov(i, j);
-    auto body_v = state.pose().rotation().unrotate(v);
-    out.twist.twist.linear.x = body_v.x();
-    out.twist.twist.linear.y = body_v.y();
-    out.twist.twist.linear.z = body_v.z();
-    for (int i = 0; i < 3; i++)
-      for (int j = 0; j < 3; j++) out.twist.covariance[i * 6 + j] = body_velocity_cov(i, j);
-    pub->publish(out);
-    auto publish_wall_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-    const std::string state_reason = fuse ? (t - last_uwb > .3 ? "UWB_ABSENT_LIO_CONTINUES" : "JOINT_LIDAR_IMU_UWB") : "LIDAR_INFORMATION_DIAGNOSTIC_NO_DOWNWEIGHTING";
-    status(mode, state_reason, t);
-    trajectory << session << ',' << t << ',' << now().seconds() << ',' << p.x() << ',' << p.y() << ',' << p.z() << ',' << q.x() << ',' << q.y() << ',' << q.z() << ',' << q.w()
-               << ',' << v.x() << ',' << v.y() << ',' << v.z() << ",1," << mode << "," << (fuse ? map.id : "none") << "," << publish_wall_ns << "," << state_reason << "\n";
-    covariance_log << session << ',' << t;
-    for (int i = 0; i < 9; i++)
-      for (int j = 0; j < 9; j++) covariance_log << ',' << xv_cov(i, j);
-    covariance_log << '\n';
+    if (count > 0) {
+      nav_msgs::msg::Odometry out;
+      out.header.stamp = m.header.stamp;
+      out.header.frame_id = fuse ? "map" : "odom";
+      out.child_frame_id = "imu";
+      auto p = state.position();
+      auto q = state.pose().rotation().toQuaternion();
+      auto v = state.velocity();
+      out.pose.pose.position.x = p.x();
+      out.pose.pose.position.y = p.y();
+      out.pose.pose.position.z = p.z();
+      out.pose.pose.orientation.x = q.x();
+      out.pose.pose.orientation.y = q.y();
+      out.pose.pose.orientation.z = q.z();
+      out.pose.pose.orientation.w = q.w();
+      // ROS pose covariance uses [translation, rotation], GTSAM right perturbation [rotation, translation]. Rotate both blocks into parent frame.
+      auto ros_cov = parent_pose_covariance(state.pose(), cov);
+      for (int i = 0; i < 6; i++)
+        for (int j = 0; j < 6; j++) out.pose.covariance[i * 6 + j] = ros_cov(i, j);
+      out.twist.twist.linear.x = twist[0];
+      out.twist.twist.linear.y = twist[1];
+      out.twist.twist.linear.z = twist[2];
+      out.twist.twist.angular.x = twist[3];
+      out.twist.twist.angular.y = twist[4];
+      out.twist.twist.angular.z = twist[5];
+      for (int i = 0; i < 6; i++)
+        for (int j = 0; j < 6; j++) out.twist.covariance[i * 6 + j] = twist_cov(i, j);
+      pub->publish(out);
+      auto publish_wall_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+      const std::string state_reason = fuse ? (t - last_uwb > .3 ? "UWB_ABSENT_LIO_CONTINUES" : "JOINT_LIDAR_IMU_UWB") : "LIDAR_INFORMATION_DIAGNOSTIC_NO_DOWNWEIGHTING";
+      status(mode, state_reason, t);
+      trajectory << session << ',' << t << ',' << now().seconds() << ',' << p.x() << ',' << p.y() << ',' << p.z() << ',' << q.x() << ',' << q.y() << ',' << q.z() << ',' << q.w()
+                 << ',' << v.x() << ',' << v.y() << ',' << v.z() << ",1," << mode << "," << (fuse ? map.id : "none") << "," << publish_wall_ns << "," << state_reason << ","
+                 << twist[3] << "," << twist[4] << "," << twist[5] << "," << t - last_cloud << "\n";
+      covariance_log << session << ',' << t;
+      for (int i = 0; i < 9; i++)
+        for (int j = 0; j < 9; j++) covariance_log << ',' << xv_cov(i, j);
+      for (int i = 0; i < 6; i++)
+        for (int j = 0; j < 6; j++) covariance_log << ',' << twist_cov(i, j);
+      covariance_log << '\n';
+    } else {
+      status("INITIALIZING", "WAIT_SECOND_POSE_FOR_TWIST", t);
+    }
     size_t anchors = fuse && map.surveyed() ? map.ids.size() : 0;
     size_t active = (smoother->timestamps().size() - anchors) / 3;
     graph << session << ',' << t << ',' << active << ',' << active << ',' << active << ',' << anchors << ',' << (count ? 1 : 0) << ',' << lidar.size() << ','

@@ -216,6 +216,37 @@ def evaluate(run):
         for reason in delivery_summary["failures"]:
             check(False, "delivery audit: " + reason)
     covariance_summary = None
+    if trajectory and "wx" in trajectory[0]:
+        wire_path = run / "export/capture/odometry.csv"
+        check(wire_path.exists(), "missing independent odometry wire audit")
+        if wire_path.exists():
+            wire = rows(wire_path)
+            covariance_rows = rows(run / "export/odometry/covariance.csv")
+            check(
+                len(wire) == len(trajectory) == len(covariance_rows),
+                "published/observed odometry counts differ",
+            )
+            for published, observed, covariance in zip(trajectory, wire, covariance_rows):
+                check(
+                    abs(float(published["stamp"]) - float(observed["stamp"])) < 1e-8,
+                    "wire odometry stamp mismatch",
+                )
+                check(
+                    0 < float(published["twist_interval_s"]) <= 0.15,
+                    "invalid angular velocity interval",
+                )
+                for field in ["wx", "wy", "wz"]:
+                    check(
+                        abs(float(published[field]) - float(observed[field])) < 1e-10,
+                        "wire angular velocity mismatch",
+                    )
+                for i in range(6):
+                    for j in range(6):
+                        field = f"twist_{i}_{j}"
+                        check(
+                            abs(float(covariance[field]) - float(observed[field])) < 1e-10,
+                            "wire twist covariance mismatch",
+                        )
     covariance_path = run / "export/odometry/covariance.csv"
     if covariance_path.exists():
         from covariance_analysis import summarize

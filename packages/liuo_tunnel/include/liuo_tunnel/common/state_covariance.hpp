@@ -16,6 +16,27 @@ inline Eigen::Matrix<double, 3, 9> body_velocity_jacobian(const gtsam::Pose3& po
   H.rightCols<3>() = pose.rotation().matrix().transpose();
   return H;
 }
+// Discrete body twist: current body linear velocity and SO(3) log increment
+// over [previous,current], expressed in the current body frame. This angular
+// estimate is an interval quantity, not an instantaneous raw gyroscope sample.
+// Columns: previous right-local Pose3, current right-local Pose3, world velocity.
+inline gtsam::Vector6
+interval_body_twist(const gtsam::Pose3& previous, const gtsam::Pose3& current, const gtsam::Vector3& velocity, double dt, Eigen::Matrix<double, 6, 15>* H = nullptr) {
+  if (!std::isfinite(dt) || dt <= 0) throw std::invalid_argument("INVALID_TWIST_INTERVAL");
+  gtsam::Matrix33 Dprevious, Dcurrent, Dlog;
+  auto relative = previous.rotation().between(current.rotation(), Dprevious, Dcurrent);
+  auto rotation_vector = gtsam::Rot3::Logmap(relative, Dlog);
+  gtsam::Vector6 twist;
+  twist.head<3>() = current.rotation().unrotate(velocity);
+  twist.tail<3>() = rotation_vector / dt;
+  if (H) {
+    H->setZero();
+    H->block<3, 9>(0, 6) = body_velocity_jacobian(current, velocity);
+    H->block<3, 3>(3, 0) = Dlog * Dprevious / dt;
+    H->block<3, 3>(3, 6) = Dlog * Dcurrent / dt;
+  }
+  return twist;
+}
 inline gtsam::Matrix66 parent_pose_covariance(const gtsam::Pose3& pose, const gtsam::Matrix66& covariance) {
   gtsam::Matrix66 H = gtsam::Matrix66::Zero();
   H.block<3, 3>(0, 3) = pose.rotation().matrix();

@@ -60,3 +60,35 @@ TEST(StateCovariance, BodyVelocityRightRetractAndCrossTerms) {
   auto parent = liuo_tunnel::parent_pose_covariance(pose, local);
   EXPECT_LT((parent.topLeftCorner<3, 3>() - pose.rotation().matrix() * local.bottomRightCorner<3, 3>() * pose.rotation().matrix().transpose()).norm(), 1e-12);
 }
+
+TEST(StateCovariance, IntervalTwistUsesBothPosesAndFullCrossCovariance) {
+  const gtsam::Pose3 previous(gtsam::Rot3::RzRyRx(.4, -.3, 1.2), {3, 2, 1});
+  const gtsam::Vector3 omega(.2, -.4, .7), velocity(2, -3, 4);
+  const double dt = .1;
+  const gtsam::Pose3 current(previous.rotation() * gtsam::Rot3::Expmap(omega * dt), {3.2, 1.7, 1.4});
+  Eigen::Matrix<double, 6, 15> H, numerical;
+  auto twist = liuo_tunnel::interval_body_twist(previous, current, velocity, dt, &H);
+  EXPECT_LT((twist.tail<3>() - omega).norm(), 1e-12);
+  for (int i = 0; i < 15; ++i) {
+    gtsam::Vector6 dp = gtsam::Vector6::Zero(), dc = dp;
+    gtsam::Vector3 dv = gtsam::Vector3::Zero();
+    if (i < 6)
+      dp[i] = 1e-6;
+    else if (i < 12)
+      dc[i - 6] = 1e-6;
+    else
+      dv[i - 12] = 1e-6;
+    numerical.col(i) = (liuo_tunnel::interval_body_twist(previous.retract(dp), current.retract(dc), velocity + dv, dt) -
+                        liuo_tunnel::interval_body_twist(previous.retract(-dp), current.retract(-dc), velocity - dv, dt)) /
+                       2e-6;
+  }
+  EXPECT_LT((H - numerical).norm(), 1e-7);
+  Eigen::Matrix<double, 15, 15> root = Eigen::Matrix<double, 15, 15>::Identity();
+  root.block<3, 3>(12, 0) = .5 * gtsam::Matrix33::Identity();
+  auto covariance = (root * root.transpose()).eval();
+  auto expected = (numerical * covariance * numerical.transpose()).eval();
+  auto actual = (H * covariance * H.transpose()).eval();
+  EXPECT_LT((actual - expected).norm(), 1e-5);
+  EXPECT_GT((actual.topRightCorner<3, 3>().norm()), .1);
+  EXPECT_THROW(liuo_tunnel::interval_body_twist(previous, current, velocity, 0), std::invalid_argument);
+}

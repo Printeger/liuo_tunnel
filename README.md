@@ -37,7 +37,12 @@ Replay verifies complete source input counts and capture file hashes, uses the o
 Joint X/V covariance is exported to `export/odometry/covariance.csv`; body linear
 velocity covariance includes pose/velocity cross terms. Offline NEES and coverage
 appear in the analysis report and currently reveal substantial overconfidence.
-Angular velocity and its full covariance remain unfinished phase-two work.
+Angular velocity uses the SO(3) log increment between adjacent optimized poses,
+divided by their interval, expressed in the current body frame. It is an interval
+estimate, not an instantaneous gyroscope reading. Full 6×6 body twist covariance
+retains previous/current pose and velocity correlations. Publication starts only
+when two poses exist; before that the state is INITIALIZING. Runtime wire checks
+are required alongside the component derivative tests.
 The 180 s seed-0 captured run reaches 1× but fails 3D accuracy and truthful status;
 see the acceptance record before treating this development path as deployable.
 

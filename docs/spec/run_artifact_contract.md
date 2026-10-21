@@ -61,3 +61,17 @@ Simulation map fixtures may declare `simulation_anchor_layout`. The owner reject
 fixtures whose layout differs from the selected live scene or frozen capture.
 This metadata check does not derive estimator coordinates from IDs or require
 external field-survey maps to reveal simulation ground truth.
+
+### Body twist output
+
+`trajectory.csv` appends `wx,wy,wz,twist_interval_s`. Linear velocity is the current
+optimized velocity expressed in the child frame. Angular velocity is the SO(3)
+log increment over the two adjacent optimized poses divided by their time interval,
+expressed in the current child frame; it is explicitly an interval estimate.
+`covariance.csv` appends all `twist_i_j` entries in ROS [linear,angular] order,
+propagated from the joint previous-pose/current-pose/world-velocity covariance.
+No independence approximation removes cross terms. Before a second pose exists,
+INITIALIZING/WAIT_SECOND_POSE_FOR_TWIST is published and Odometry is withheld.
+An independent `/liuo/odom` subscriber checks finite, symmetric positive covariance
+and records wire twist/covariance in `export/capture/odometry.csv`. Evaluation
+compares these with the estimator exports and requires equal publication counts.
