@@ -1833,3 +1833,15 @@ S37 **NOT_SUPPORTED**：20261021T191251Z_047完整20s，全部输入SHA和
 全部满足则否定此限定假设，不能推广为所有旋转/非线性处理正确。
 仅回放S36同一20s捕获，保留surveyed/Dogleg原配置；日志为诊断，不纳入
 实时性能验收。无额外GPU线性化、不回写值、不增加先验，也不改sigma。
+
+S38 **NOT_SUPPORTED**：20261021T191652Z_685（2b3f9ac），同S36输入全部
+内容SHA/计数核对一致，≤13s确实未边缘化。41时刻×3方向123行无超限。
+TA→缓存最大梯度/曲率差1.257083e−6/5.677066e−8；缓存→Bayes树
+最大梯度/曲率差3.725290e−7/9.337609e−6，满足预登记容差。共同平移
+信息没有在此窗口被缓存/消元破坏，不继续沿该限定假设调参。该结果不涵盖
+航向/平移耦合或大步非线性，也不验证后验可信度；导航仍FAIL。
+证据run内profiling/translation_information_probe.csv和
+export/analysis/s38_translation_information.json。诊断默认关闭，不修改图；
+独立三包构建通过phase2-sparse-s38-build-corrected.txt，首次VectorValues
+接口编译错误保留在phase2-sparse-s38-build-implemented.txt。未把诊断时延
+作为部署实时验收。此轮无算法修复，不宣称定位问题已解决。
