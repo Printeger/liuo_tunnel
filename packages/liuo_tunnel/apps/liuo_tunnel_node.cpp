@@ -100,8 +100,9 @@ public:
     graph << "session,stamp,X,V,B,A,imu_factors,lidar_factors,total_factors,marginalized,optimization_ms,reset,fallback,uwb_ta,uwb_aa,map_priors,uwb_queue,aa_summary_factors,aa_"
              "accumulated_measurements\n";
     icp.open(logs.export_path("odometry/icp.csv"));
-    icp << "session,stamp,points,inlier_fraction,cost,eig0,eig1,eig2,eig3,eig4,eig5,weak_rx,weak_ry,weak_rz,weak_tx,weak_ty,weak_tz,weighting,nonplanar_covariances,surface_eig0,"
-           "surface_eig1,surface_eig2,translation_rank\n";
+    icp
+      << "session,stamp,points,inlier_fraction,cost,eig0,eig1,eig2,eig3,eig4,eig5,weak_rx,weak_ry,weak_rz,weak_tx,weak_ty,weak_tz,weighting,nonplanar_covariances,surface_eig0,"
+         "surface_eig1,surface_eig2,translation_rank,gradient_rx,gradient_ry,gradient_rz,gradient_tx,gradient_ty,gradient_tz,gradient_world_x,gradient_world_y,gradient_world_z\n";
     uwb.open(logs.export_path("odometry/uwb.csv"));
     uwb << std::setprecision(16)
         << "producer,session,sequence,measurement_stamp,receive_stamp,a_type,a,b_type,b,range,variance,reason,key_left,key_right,key_anchor,residual_class,residual,whitened,"
@@ -109,7 +110,8 @@ public:
     resources.open(logs.profiling_path("resources.csv"));
     resources << "session,stamp,rss_kib,device_used_bytes,retained_cloud_frames,keyframes,imu_queue,cloud_queue,uwb_queue\n";
     timing.open(logs.profiling_path("odometry.csv"));
-    timing << "session,stamp,preprocess_ms,optimize_ms,total_ms,latency_s,imu_queue,cloud_queue,pred_x,ba_x,ba_y,ba_z,bg_x,bg_y,bg_z,gpu_diagnostic_ms,smoother_ms,covariance_ms\n";
+    timing << "session,stamp,preprocess_ms,optimize_ms,total_ms,latency_s,imu_queue,cloud_queue,pred_x,ba_x,ba_y,ba_z,bg_x,bg_y,bg_z,gpu_diagnostic_ms,smoother_ms,covariance_ms,"
+              "pred_vx,pred_vy,pred_vz\n";
     reset();
     pub = create_publisher<nav_msgs::msg::Odometry>("/liuo/odom", 100);
     diagnostics = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/liuo/diagnostics", 10);
@@ -506,6 +508,8 @@ private:
     }
     failure_context = "GRAPH_BUILD_FAILED";
     double pred_x = state.position().x();
+    const gtsam::Vector3 predicted_velocity = state.velocity();
+    const auto predicted_rotation = state.pose().rotation();
     initial.insert(X(count), state.pose());
     initial.insert(V(count), state.velocity());
     initial.insert(B(count), bias);
@@ -513,6 +517,7 @@ private:
     predicted.insert(initial);
     if (fuse) append_ranges(t, factors, predicted);
     Eigen::Matrix<double, 6, 6> H = Eigen::Matrix<double, 6, 6>::Zero();
+    gtsam::Vector6 lidar_gradient = gtsam::Vector6::Zero();
     double fraction = 0, cost = 0;
     const auto diagnostics_start = std::chrono::steady_clock::now();
     gtsam_points::NonlinearFactorSetGPU gpu_factors;
@@ -524,6 +529,7 @@ private:
     for (const auto& f : lidar) {
       gtsam::HessianFactor h(*f->linearize(predicted));
       H += h.hessianBlockDiagonal().at(X(count));
+      lidar_gradient += h.gradientAtZero().at(X(count));
       cost += f->error(predicted);
       fraction += backend == "gpu" ? dynamic_cast<gtsam_points::IntegratedVGICPFactorGPU*>(f.get())->inlier_fraction()
                                    : dynamic_cast<gtsam_points::IntegratedVGICPFactor*>(f.get())->inlier_fraction();
@@ -737,11 +743,17 @@ private:
     for (int i = 0; i < 6; i++) icp << ',' << eigen[i];
     for (int i = 0; i < 6; i++) icp << ',' << weak[i];
     icp << ",covariance_planarity_guard_tangent_variance=" << tangent_variance << "_native_cost_weight=" << lidar_weight << "," << nonplanar << ',' << surface_spectrum[0] << ','
-        << surface_spectrum[1] << ',' << surface_spectrum[2] << ',' << translation_projector.trace() << '\n';
+        << surface_spectrum[1] << ',' << surface_spectrum[2] << ',' << translation_projector.trace();
+    for (int i = 0; i < 6; ++i) icp << ',' << lidar_gradient[i];
+    const gtsam::Vector3 world_gradient = predicted_rotation.rotate(lidar_gradient.tail<3>());
+    for (int i = 0; i < 3; ++i) icp << ',' << world_gradient[i];
+    icp << '\n';
     timing << session << ',' << t << ',' << ms(start, preprocessed) << ',' << ms(preprocessed, finish) << ',' << ms(start, finish) << ',' << now().seconds() - t << ','
            << imu->imu_data_in_queue().size() << ',' << clouds.size() << ',' << pred_x;
     for (int i = 0; i < 6; i++) timing << ',' << bias.vector()[i];
-    timing << ',' << ms(diagnostics_start, solver_start) << ',' << ms(solver_start, covariance_start) << ',' << ms(covariance_start, covariance_end) << '\n';
+    timing << ',' << ms(diagnostics_start, solver_start) << ',' << ms(solver_start, covariance_start) << ',' << ms(covariance_start, covariance_end);
+    for (int i = 0; i < 3; ++i) timing << ',' << predicted_velocity[i];
+    timing << '\n';
     last_cloud = t;
     count++;
   }

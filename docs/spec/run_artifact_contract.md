@@ -245,3 +245,15 @@ resets automatically in response to this flag. Normal uninterrupted fusion and
 recovery windows without a detected conflict do not latch. State, factors and
 covariance are not modified by this reporting rule. Automatic verified recovery
 remains an unmet phase-two capability.
+
+S15 adds `gradient_rx,gradient_ry,gradient_rz,gradient_tx,gradient_ty,gradient_tz`
+and `gradient_world_x,gradient_world_y,gradient_world_z` to icp.csv. These are
+summed current-X cost gradients from the already computed raw ICP linearization
+at the pre-update prediction. Pose3 components use right-local rotation/translation;
+world translation gradient is rotated using the predicted body attitude. Positive
+world-x gradient means negative x is a local descent direction, not a physical
+force or proof of causation. No extra factor evaluation/linearization is performed.
+Profiling odometry.csv adds `pred_vx,pred_vy,pred_vz` (world m/s) from IMU propagation
+before this update. Changes in prediction versus optimization can be decomposed
+algebraically but remain coupled through prior updates; they are not independent
+sensor-error contributions.
