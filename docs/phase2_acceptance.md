@@ -769,3 +769,21 @@ campaign；不扩充非必要审计工具。
 当前 `20261021T155027Z_951` 是中断的 seed 2 诊断输入，不能复用为完整
 来源。三个子进程退出码均为 0，run 保留 failed/user interrupt 及补充
 `metadata/manifests/campaign_stop.json`，所有已有产物保留。
+
+S1 准备验证：提交 `ef8f827` 固定稀疏场景并加入密度/运行超时检查，
+`82eb705` 保留 watchdog 原始原因与强制收尾原因。独立三包构建通过；
+`log/phase2-sparse-s1-tests.txt` 为 64 组件、45 Python 及真实 ROS CDR
+检查通过。只改变物理布局、地图和运行边界，未调整估计器权重。
+
+实际超时测试：`20261021T160017Z_022` 用 3 s 总预算触发 WALL_TIMEOUT，
+三子进程均退出 0，owner 退出 1、run failed。`20261021T160044Z_931`
+仅对其仿真 PID2893854 注入 SIGSTOP；10 s 无进度检测触发，仿真在自身
+SIGINT 15 s 后被 kill（-9），observer/odometry 正常退出 0。最终记录同时
+保留 NO_PROGRESS_TIMEOUT 与强制收尾原因。均为故意注入的负向测试，
+不能解释为稀疏估计器精度或稳定性结果。
+
+S1 固定 seed 0、540 s surveyed 融合原始捕获已启动，入口日志为
+`log/phase2-sparse-s1-surveyed-console.txt`。实际可用 TA 的数量和 ID 在每个
+点云时刻的 truth.csv 附加字段中记录，仅供观测生成/评估，不输入估计器。
+后续断流用 `outages_only.json` 单独注入 5/20 s 中断，避免同时改变延迟、
+重复和过期条件干扰核心机制定位。当前尚无稀疏完整路线验收结论。
