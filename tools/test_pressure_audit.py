@@ -1,5 +1,11 @@
 import unittest
-from pressure_audit import interval, sustained_return, recovery_bins, output_coverage_failures
+from pressure_audit import (
+    interval,
+    sustained_return,
+    recovery_bins,
+    output_coverage_failures,
+    recovery_window_check,
+)
 
 
 class PressureEvidenceTest(unittest.TestCase):
@@ -65,3 +71,24 @@ class PressureEvidenceTest(unittest.TestCase):
         report["states"]["MISSING"] = 0
         report["states"]["INVALID"] = 1
         self.assertTrue(output_coverage_failures(report))
+
+    def test_stronger_reason_does_not_shorten_actual_recovery_deadline(self):
+        transitions = [
+            dict(stamp="61.1", uwb_recovery_until="71.1", reason="POSITION_POSTERIOR_WEAK"),
+            dict(stamp="61.2", uwb_recovery_until="71.1", reason="UWB_RECOVERING_WINDOW"),
+        ]
+        trajectory = [dict(stamp=61.1, state="DEGRADED"), dict(stamp=71.1, state="TRACKING")]
+        self.assertEqual(recovery_window_check(transitions, trajectory, 61, 10), (71.1, []))
+        transitions[0]["reason"] = "UWB_POSTFIT_INCONSISTENT"
+        trajectory[0]["state"] = "LOST"
+        self.assertEqual(recovery_window_check(transitions, trajectory, 61, 10), (71.1, []))
+        transitions[0]["uwb_recovery_until"] = "70"
+        self.assertIn(
+            "recovery shorter than lag", recovery_window_check(transitions, trajectory, 61, 10)[1]
+        )
+        transitions[0]["uwb_recovery_until"] = "71.1"
+        trajectory[1]["stamp"] = 71
+        self.assertIn(
+            "premature TRACKING", recovery_window_check(transitions, trajectory, 61, 10)[1]
+        )
+        self.assertTrue(recovery_window_check([], trajectory, 61, 10)[1])

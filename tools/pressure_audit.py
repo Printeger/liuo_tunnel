@@ -95,6 +95,26 @@ def output_coverage_failures(summary):
     return failures
 
 
+def recovery_window_check(transitions, trajectory, end, lag):
+    # The first renewed-input transition carries the deadline even if a stronger
+    # covariance or residual diagnostic masks UWB_RECOVERING_WINDOW.
+    candidates = [
+        r
+        for r in transitions
+        if end <= float(r["stamp"]) <= end + 0.5 and float(r["uwb_recovery_until"]) > end
+    ]
+    if not candidates:
+        return None, ["missing recovery deadline transition"]
+    entry = candidates[0]
+    begin, deadline = float(entry["stamp"]), float(entry["uwb_recovery_until"])
+    failures = []
+    if deadline < begin + lag - 1e-6:
+        failures.append("recovery shorter than lag")
+    if any(r["state"] == "TRACKING" for r in trajectory if begin <= r["stamp"] < deadline - 1e-6):
+        failures.append("premature TRACKING")
+    return deadline, failures
+
+
 def audit(run):
     load = lambda name: json.loads((run / name).read_text())
 
@@ -153,25 +173,10 @@ def audit(run):
         interior = [r for r in annotated if begin + 0.5 <= r["stamp"] < end]
         if not interior or any(r["state"] not in ["DEGRADED", "LOST"] for r in interior):
             failures.append(f"outage {lo}-{hi}: not reported degraded/lost")
-        recoveries = [
-            r
-            for r in transitions
-            if end <= float(r["stamp"]) <= end + 0.5 and r["reason"] == "UWB_RECOVERING_WINDOW"
-        ]
-        deadline = None
-        if not recoveries:
-            failures.append(f"outage {lo}-{hi}: missing recovery-window transition")
-        else:
-            entry = recoveries[0]
-            deadline = float(entry["uwb_recovery_until"])
-            if deadline < float(entry["stamp"]) + config["odometry"]["lag_s"] - 1e-6:
-                failures.append(f"outage {lo}-{hi}: recovery shorter than lag")
-            if any(
-                r["state"] == "TRACKING"
-                for r in annotated
-                if float(entry["stamp"]) <= r["stamp"] < deadline - 1e-6
-            ):
-                failures.append(f"outage {lo}-{hi}: premature TRACKING")
+        deadline, recovery_failures = recovery_window_check(
+            transitions, annotated, end, config["odometry"]["lag_s"]
+        )
+        failures.extend(f"outage {lo}-{hi}: {failure}" for failure in recovery_failures)
         tracking = [
             r for r in annotated if end <= r["stamp"] < next_begin and r["state"] == "TRACKING"
         ]

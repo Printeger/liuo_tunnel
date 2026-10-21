@@ -968,3 +968,18 @@ UWB_POSTFIT_INCONSISTENT；数值非有限也输出LOST。它是优化后拟合�
 优化后残差证实gross不一致的帧不再TRACKING，且测量接入/图内优化未被
 检查修改。若优化后残差并不高，则否定它解释该错误TRACKING的能力，不
 降低阈值追求触发。仍须报告无法由残差检测的弱几何/多解及精度失败。
+
+S3 independent build and tests: 3 packages, 66 component tests, 45 Python tests
+and installed ROS CDR check passed (`log/phase2-sparse-s3-tests.txt`). Live run
+`20261021T165758Z_036` binds commit05cb7a4 and the same S1 frozen input, default
+configuration and outages_only profile. No full-seed campaign launched.
+
+附属审计修正假设：恢复窗口审计错误依赖理由文本，POSITION_POSTERIOR_WEAK
+或LOST会遮盖UWB_RECOVERING_WINDOW；原S1在61.1已设71.1截止，61.2才切换
+理由，旧审计误报窗口不足。按恢复时首次有效截止记录检查，不要求特定理由。
+验证：合成弱后验/LOST遮盖应通过计时检查，真实短窗口/提前TRACKING仍失败；
+旧报告保留，新复核另存文件。此修正不取消入口/精度或实际错误TRACKING证据。
+
+恢复审计针对性5项测试通过。历史S1/S2的新
+`pressure_audit_deadline_recheck.json` 均仍FAIL（入口RMSE>1m），原
+`pressure_audit.json` 未覆盖；复核仅去掉已证伪的窗口计时误报。
