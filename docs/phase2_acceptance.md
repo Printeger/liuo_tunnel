@@ -2017,3 +2017,17 @@ DEGRADED/UWB_RECOVERY_UNVERIFIED。复用现有deadline，不增加状态变量�
 TRACKING，断流仍明确报告缺测，异常原因不被隐藏，输入投递合同通过。
 这只修复无证据的恢复声明，不是精度修复，也不是自动恢复能力完成；
 不会把长期DEGRADED当作阶段通过或抹掉原始误差/协方差。
+
+S45 **PASS（仅状态修复范围）**：旧逻辑回归用例明确失败于返回TRACKING，
+日志phase2-sparse-s45-red-test.txt。修改后独立三包构建及71项组件、46项
+Python、安装后ROS CDR检查全部通过（phase2-sparse-s45-{build,tests}.txt）。
+实际同源压力回放20261021T193801Z_619（fe8f05c）完整80s，首次恢复后
+550帧TRACKING=0，缺测/恢复窗口/弱后验/恢复未验证原因保留，投递
+合同PASS；3501原测量投递、1593声明丢弃，实际投递哈希核对通过。
+证据run内export/analysis/s45_status_regression.json及pressure_audit.json。
+
+定位仍FAIL：位置RMSE3.281184m，位置NEES31.7089，95%覆盖率12.9167%。
+本修复不改变图或协方差，不以保持DEGRADED作为精度通过，也不宣称已
+完成自动恢复。名义无断流初始化多解/虚假健康状态仍未解决；自动恢复
+需要独立验证机制，目前只由完整新session初始化清除历史，未自动reset。
+状态合同和README已同步，不再声称等待一个lag窗口就能认证恢复。
