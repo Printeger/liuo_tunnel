@@ -1760,3 +1760,7 @@ export/analysis/s34_divergence_timing.json，含输入/脚本SHA和逐帧上下�
 既有声明的odom高度基准，不拟合真值对齐。无新参数调整，不增加seed；
 运行受870s总预算/30s无进度保护。S33仍是名义FAIL；此对照不替代5s/20s
 断流复验，也不解决已证实的早期大跳变/虚假TRACKING。
+
+S35启动配置失败保留：20261021T190018Z_599拒绝未定义的uwb.mode=off，
+日志明确要求record_only或fuse。OFF在本项目的实际枚举是record_only；
+修正诊断配置后手动重启本项一次，不修改算法、门槛或自动重试策略。
