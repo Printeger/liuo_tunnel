@@ -97,7 +97,7 @@ class TunnelNode : public rclcpp::Node {
    process(*cloud,t);
   }
  }
- struct Frame {size_t id;double t;std::shared_ptr<gtsam_points::GaussianVoxelMapCPU> voxels;};
+ struct Frame {size_t id;double t;std::shared_ptr<gtsam_points::GaussianVoxelMapCPU> voxels;bool keyframe;};
  void process(const sensor_msgs::msg::PointCloud2& m,double t) {
   auto start=std::chrono::steady_clock::now();
   if(m.header.frame_id!="lidar"||m.is_bigendian)throw std::runtime_error("pointcloud frame/endian contract");
@@ -139,7 +139,8 @@ class TunnelNode : public rclcpp::Node {
    factors.emplace_shared<gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>>(B(count-1),B(count),gtsam::imuBias::ConstantBias(),gtsam::noiseModel::Diagonal::Sigmas(sig));
    imu->erase_imu_data(std::max(0,erase-1));
    int window=cfg.at("odometry").at("connection_window");
-   for(auto it=frames.rbegin();it!=frames.rend()&&int(count-it->id)<=window;++it) {
+   for(auto it=frames.rbegin();it!=frames.rend();++it) {
+    if(int(count-it->id)>window && !it->keyframe)continue;
     auto f=gtsam::make_shared<gtsam_points::IntegratedVGICPFactor>(X(it->id),X(count),it->voxels,cloud);f->set_num_threads(cfg.at("odometry").at("threads"));lidar.add(f);factors.add(f);
    }
   }
@@ -155,7 +156,12 @@ class TunnelNode : public rclcpp::Node {
   state=gtsam::NavState(smoother->calculateEstimate<gtsam::Pose3>(X(count)),smoother->calculateEstimate<gtsam::Vector3>(V(count)));bias=smoother->calculateEstimate<gtsam::imuBias::ConstantBias>(B(count));
   if(!state.pose().matrix().allFinite()||!state.velocity().allFinite())throw std::runtime_error("nonfinite optimized state");
   auto cov=smoother->marginalCovariance(X(count));if(!cov.allFinite()||cov.diagonal().minCoeff()<0)throw std::runtime_error("invalid pose covariance");
-  double lag=cfg.at("odometry").at("lag_s");size_t retired=0;while(!frames.empty()&&frames.front().t<t-lag){frames.pop_front();retired++;} frames.push_back({count,t,voxel});
+  double lag=cfg.at("odometry").at("lag_s");size_t retired=0;while(!frames.empty()&&frames.front().t<t-lag){frames.pop_front();retired++;} bool keyframe=frames.empty();
+  auto last_key=std::find_if(frames.rbegin(),frames.rend(),[](const Frame& f){return f.keyframe;});
+  if(last_key==frames.rend())keyframe=true;
+  else {auto key_pose=smoother->calculateEstimate<gtsam::Pose3>(X(last_key->id));
+   auto delta=key_pose.between(state.pose());keyframe=delta.translation().norm()>2.0||gtsam::Rot3::Logmap(delta.rotation()).norm()>.5;}
+  frames.push_back({count,t,voxel,keyframe});
   auto finish=std::chrono::steady_clock::now();auto ms=[](auto a,auto b){return std::chrono::duration<double,std::milli>(b-a).count();};
   std::string mode=lidar.empty()?"INITIALIZING":(fraction<.5||eigen[0]<1e-6||eigen[5]/std::max(eigen[0],1e-12)>1e6?"DEGRADED":"TRACKING");
   nav_msgs::msg::Odometry out;out.header.stamp=m.header.stamp;out.header.frame_id="odom";out.child_frame_id="imu";auto p=state.position();auto q=state.pose().rotation().toQuaternion();auto v=state.velocity();
