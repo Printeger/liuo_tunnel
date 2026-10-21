@@ -85,3 +85,23 @@ TEST(Uwb, OracleFixtureMatchesPhysicalLayout) {
     for (int k = 0; k < 3; ++k) EXPECT_DOUBLE_EQ(entry.at("mean_m").at(k).get<double>(), anchor(i)[k]);
   }
 }
+
+TEST(Physics, RoundTripReturnsWithContinuousBoundedMotion) {
+  EXPECT_DOUBLE_EQ(rail_motion(530, true).p.x(), 2350);
+  EXPECT_DOUBLE_EQ(rail_motion(535, true).p.x(), 2350);
+  EXPECT_LT(rail_motion(540, true).v.x(), 0);
+  EXPECT_NEAR(rail_motion(1060, true).p.x(), 0, 1e-10);
+  EXPECT_NEAR(rail_motion(1070, true).v.norm(), 0, 1e-10);
+  EXPECT_DOUBLE_EQ(rail_motion(1070, false).p.x(), 2350);
+  for (double t = .01; t < 1070; t += .01) {
+    auto m = rail_motion(t, true);
+    auto before = rail_motion(t - 1e-5, true), after = rail_motion(t + 1e-5, true);
+    EXPECT_LT((m.v - (after.p - before.p) / 2e-5).norm(), 1e-5);
+    EXPECT_LT((m.a - (after.v - before.v) / 2e-5).norm(), 1e-5);
+    EXPECT_LE(m.a.norm(), 1.0);
+    EXPECT_LE(m.v.norm(), 5.00001);
+    EXPECT_GE(m.p.x(), -1e-8);
+    EXPECT_LE(m.p.x(), 2350.00001);
+    EXPECT_LT((m.R - Eigen::Matrix3d::Identity()).norm(), 1e-12);
+  }
+}

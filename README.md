@@ -75,3 +75,14 @@ Optional offline geometry analysis (NumPy/SciPy):
 `python3 tools/range_geometry_analysis.py log/<oracle_capture_run_id>`.
 This explicitly assumes exact relative truth motion to probe range ambiguity;
 it is isolated from the estimator and is not an online accuracy result.
+
+For the required full outbound/backward-return resource test, use the explicit
+simulation option `--return-trip --duration 1070` (with the phase-two config, map
+and `--capture`). The train reaches 2350 m at 530 s, stops five seconds, reverses
+without turning its body, and reaches the entrance at 1060 s. Default runs retain
+the original outbound-only motion. This option has component continuity checks;
+full live return acceptance must be recorded separately.
+
+`profiling/resources.csv` samples estimator RSS, retained cloud frames/keyframes
+and queues at 1 Hz. CUDA device memory is labeled as device-wide usage, not
+process-attributed memory. Sampling overhead is included in processing timing.

@@ -35,6 +35,11 @@ def main():
     )
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--reset-at", type=float, default=-1.0)
+    p.add_argument(
+        "--return-trip",
+        action="store_true",
+        help="explicit straight-rail outbound and backward return; use duration >=1070s",
+    )
     p.add_argument("--config", type=Path, default=ROOT / "packages/liuo_tunnel/config/phase1.json")
     p.add_argument("--map", type=Path, help="external oracle_map or surveyed_map JSON")
     p.add_argument(
@@ -56,6 +61,8 @@ def main():
         p.error("delivery profile requires --replay")
     if args.replay and (args.capture or args.rate != 1.0):
         p.error("frozen replay requires 1x and cannot recapture")
+    if args.return_trip and args.replay:
+        p.error("--return-trip changes live simulation only; replay preserves its source motion")
     if args.debug_throw and args.formal:
         p.error("debugger runs are diagnostic, not formal timing evidence")
     if not 0 < args.rate <= 1:
@@ -178,6 +185,8 @@ def main():
                 "seed": args.seed,
                 "scan_model": "snapshot",
                 "reset_at_s": args.reset_at,
+                "return_trip": args.return_trip,
+                "motion": "outbound_and_reverse_return" if args.return_trip else "outbound",
                 "clock_start_s": 1,
                 "dt_s": 0.005,
                 "exchange_dt_s": 0.004,
@@ -280,6 +289,8 @@ def main():
             f"seed:={args.seed}",
             "-p",
             f"reset_at_s:={args.reset_at}",
+            "-p",
+            f"return_trip:={str(args.return_trip).lower()}",
             "-p",
             f"rate:={args.rate}",
             "-p",

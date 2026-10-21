@@ -75,3 +75,12 @@ INITIALIZING/WAIT_SECOND_POSE_FOR_TWIST is published and Odometry is withheld.
 An independent `/liuo/odom` subscriber checks finite, symmetric positive covariance
 and records wire twist/covariance in `export/capture/odometry.csv`. Evaluation
 compares these with the estimator exports and requires equal publication counts.
+
+### Full-route resource evidence
+
+Live `--return-trip` is snapshotted as `scenario.return_trip` and
+`motion=outbound_and_reverse_return`; frozen replay preserves its source scenario.
+`profiling/resources.csv` samples at 1 Hz: session/stamp, estimator-process RSS
+in KiB, whole CUDA device used bytes, retained cloud frames/keyframes and current
+IMU/cloud/UWB queues. Device usage is explicitly not process-attributed. Resource
+sampling time is included in the processing latency measurement.

@@ -38,6 +38,7 @@
 #include <set>
 #include <fstream>
 #include <iomanip>
+#include <unistd.h>
 using gtsam::symbol_shorthand::A;
 using gtsam::symbol_shorthand::B;
 using gtsam::symbol_shorthand::V;
@@ -86,6 +87,8 @@ public:
     uwb << std::setprecision(16)
         << "producer,session,sequence,measurement_stamp,receive_stamp,a_type,a,b_type,b,range,variance,reason,key_left,key_right,key_anchor,residual_class,residual,whitened,"
            "weight,decision_wall_ns\n";
+    resources.open(logs.profiling_path("resources.csv"));
+    resources << "session,stamp,rss_kib,device_used_bytes,retained_cloud_frames,keyframes,imu_queue,cloud_queue,uwb_queue\n";
     timing.open(logs.profiling_path("odometry.csv"));
     timing << "session,stamp,preprocess_ms,optimize_ms,total_ms,latency_s,imu_queue,cloud_queue,pred_x,ba_x,ba_y,ba_z,bg_x,bg_y,bg_z,gpu_diagnostic_ms,smoother_ms,covariance_ms\n";
     reset();
@@ -513,6 +516,15 @@ private:
         num_keys--;
       }
     }
+    if (count % 10 == 0) {
+      std::ifstream statm("/proc/self/statm");
+      size_t virtual_pages = 0, resident_pages = 0;
+      if (!(statm >> virtual_pages >> resident_pages)) throw std::runtime_error("RESOURCE_RSS_UNAVAILABLE");
+      size_t device_free = 0, device_total = 0;
+      if (backend == "gpu" && cudaMemGetInfo(&device_free, &device_total) != cudaSuccess) throw std::runtime_error("RESOURCE_DEVICE_MEMORY_UNAVAILABLE");
+      resources << session << ',' << t << ',' << resident_pages * sysconf(_SC_PAGESIZE) / 1024 << ',' << device_total - device_free << ',' << frames.size() << ',' << num_keys
+                << ',' << imu->imu_data_in_queue().size() << ',' << clouds.size() << ',' << range_queue.size() << '\n';
+    }
     auto finish = std::chrono::steady_clock::now();
     auto ms = [](auto a, auto b) { return std::chrono::duration<double, std::milli>(b - a).count(); };
     std::string mode = lidar.empty() ? "INITIALIZING" : (fraction < .5 || eigen[0] < 1e-6 || eigen[5] / std::max(eigen[0], 1e-12) > 1e6 ? "DEGRADED" : "TRACKING");
@@ -606,7 +618,7 @@ private:
   bool initialized = false;
   double first_imu = -1, latest_imu = -1, last_cloud = -1;
   Eigen::Vector3d sum_a, sum_w;
-  std::ofstream trajectory, graph, icp, uwb, timing, covariance_log, bootstrap_log;
+  std::ofstream trajectory, graph, icp, uwb, timing, covariance_log, bootstrap_log, resources;
   std::shared_ptr<spdlog::logger> logger;
   std::string last_status, last_status_reason;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub;

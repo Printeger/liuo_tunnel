@@ -66,6 +66,17 @@ inline Motion motion(double seconds, double radius = 0) {
   }
   return m;
 }
+// Straight rail round trip: finish outbound at 530 s, stand for 5 s, then
+// reverse along the track with unchanged body heading. Return ends at 1060 s.
+// Backward motion is generated physically; no rail constraint enters estimation.
+inline Motion rail_motion(double seconds, bool return_trip = false) {
+  if (!return_trip || seconds <= 530) return motion(seconds);
+  auto m = motion(seconds - 530);
+  m.p.x() = 2350 - m.p.x();
+  m.v.x() = -m.v.x();
+  m.a.x() = -m.a.x();
+  return m;
+}
 // Adapted physical definition from quadToIapImuMsg, IAP quadrotor_simulator_so3.cpp @ fbccae168.
 inline Eigen::Vector3d specific_force(const Motion& m) {
   return m.R.transpose() * (m.a - Eigen::Vector3d(0, 0, -9.80665));

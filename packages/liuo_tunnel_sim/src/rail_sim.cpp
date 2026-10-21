@@ -27,6 +27,7 @@ public:
     rate = declare_parameter<double>("rate", 1.0);
     if (!std::isfinite(rate) || rate <= 0 || rate > 1) throw std::runtime_error("rate must be in (0,1]; explicit reference playback only");
     reset_at = declare_parameter<double>("reset_at_s", -1);
+    return_trip = declare_parameter<bool>("return_trip", false);
     T_BL = liuo_tunnel::lidar_extrinsic(cfg);
     tag = liuo_tunnel::vector3(cfg.at("sensors").at("T_BU_translation"));
     session = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -37,6 +38,7 @@ public:
        {"renderer_threads", "4"},
        {"pacing", "absolute_deadline_no_drop"},
        {"seed", std::to_string(seed)},
+       {"motion", return_trip ? "outbound_and_reverse_return" : "outbound"},
        {"producer_session", std::to_string(session)}});
     if (declare_parameter<bool>("capture", false)) {
       rosbag2_storage::StorageOptions options;
@@ -148,7 +150,7 @@ private:
       logger->warn("explicit simulation clock reset session={}", session);
     }
     double t = ticks * .005, ros_t = 1 + t;
-    auto m = motion(t);
+    auto m = rail_motion(t, return_trip);
     rosgraph_msgs::msg::Clock clock;
     clock.clock = stamp(ros_t);
     capture(clock, "/clock");
@@ -264,7 +266,7 @@ private:
     uint64_t samples;
   };
   void schedule(double t) {
-    auto m = motion(t);
+    auto m = rail_motion(t, return_trip);
     Eigen::Vector3d tag_w = liuo_tunnel::tag_in_world(m.p, m.R, tag);
     // 9 TA-priority slots, then 1 AA-priority slot; oldest deadline within class.
     // The other class can use an otherwise idle slot. Never exceed 250 exchanges/s.
@@ -322,7 +324,7 @@ private:
   nlohmann::json cfg;
   int seed = 0, loaded = -100;
   double duration = 45, reset_at = -1, rate = 1;
-  bool reset_done = false;
+  bool reset_done = false, return_trip = false;
   uint64_t ticks = 0, total_ticks = 0, exchange = 0, session = 1, sequence = 0;
   size_t world_points = 0;
   Eigen::Vector3d ba = Eigen::Vector3d::Zero(), bg = Eigen::Vector3d::Zero(), tag;
