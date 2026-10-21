@@ -1402,3 +1402,23 @@ S19不支持在线积分错误：200帧独立预测与在线预测速度各分�
 否则不支持地图不确定度是该残余的主要来源，不继续缩小surveyed先验方差。
 记录位置/姿态/状态和速度，短诊断不能替代完整oracle/surveyed验收。
 投影仍为诊断开关；本轮无代码或阈值修改。
+
+S20不支持：oracle短跑 `20261021T180138Z_054`（8877ec2）末十帧平均
+vx=3.373143m/s，平均速度误差1.626857m/s；相对S17改善−0.3305%，远未
+达到80%。配置/二进制/delivery一致，至61秒2090条物理UWB字段一致；
+仅地图模式不同，oracle的AA按合同仅诊断。65秒owner超时收尾，observer/
+odometry退出0、simulation退出−2；整体failed/not_evaluated，不作完整配对验收。
+
+61秒在线位置误差xyz：surveyed=[−13.8721,−0.4878,0.0912]m，
+oracle=[−13.9677,−1.2975,1.3545]m；速度xyz分别
+[3.31182,−0.01504,0.05962]及[3.29174,−0.02912,0.06102]m/s。
+俯仰分别−0.017040/−0.017678rad，两者均DEGRADED/UWB_ABSENT_LIO_CONTINUES。
+此时物理可见基站2个但delivery断流，不能把可见数当已收到的观测数。
+oracle图的预测累计vx增量−1.662552m/s、优化校正+0.006637m/s，仍与
+残余惯性漂移相符。不要据此宣称完整路线oracle已验收或地图误差毫无影响。
+
+证据在该run `export/analysis/{s20_map_comparison,velocity_feedback,
+velocity_collapse_reproduction}.json`，比较脚本`log/sparse_s20_compare.py`。
+本轮未增加基站、未收紧地图先验、未改噪声、未启动多seed。
+下一实验应针对实际GPU点云姿态约束与IMU偏置的耦合，而非继续改变地图
+不确定度来解决速度塌陷；初始化多解及后验一致性依然独立未解决。
