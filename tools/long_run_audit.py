@@ -7,6 +7,7 @@ import json
 import math
 from pathlib import Path
 import statistics
+from generate_known_maps import LAYOUT, validate_deployment
 
 
 def read_rows(path):
@@ -172,6 +173,15 @@ def audit(run, require_return=False):
     observation = load("metadata/manifests/observation_audit.json")
     runtime = load("export/simulation/runtime.json")
     report = load("export/analysis/report.json")
+    check(
+        scenario.get("anchor_layout") == LAYOUT,
+        "deployment layout invalid: historical dense runs are diagnostic only",
+    )
+    if config["uwb"]["mode"] == "fuse":
+        try:
+            validate_deployment(load("metadata/config/map.json")["anchors"])
+        except (ValueError, KeyError, OSError) as error:
+            check(False, "deployment density invalid: " + str(error))
     check(manifest["lifecycle"] == "completed", "run not completed")
     check(manifest["source"]["git_worktree_clean"], "dirty source")
     check(config["odometry"]["backend"] == "gpu", "not GPU")

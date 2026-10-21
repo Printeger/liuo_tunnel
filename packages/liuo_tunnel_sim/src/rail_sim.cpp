@@ -51,7 +51,7 @@ public:
     wall_clock.open(logs.export_path("simulation/wall_clock.csv"));
     wall_clock << std::setprecision(16) << "session,stamp,scheduled_wall_ns,published_wall_ns\n";
     truth.open(logs.export_path("simulation/truth.csv"));
-    truth << std::setprecision(16) << "session,stamp,x,y,z,vx,vy,vz\n";
+    truth << std::setprecision(16) << "session,stamp,x,y,z,vx,vy,vz,available_ta_count,available_ta_ids\n";
     uwblog.open(logs.export_path("simulation/uwb.csv"));
     uwblog << std::setprecision(16) << "session,sequence,stamp,a_type,a,b,true_range,range,variance\n";
     scheduling.open(logs.export_path("simulation/scheduling.csv"));
@@ -243,7 +243,18 @@ private:
       odom.twist.twist.linear.x = m.v.x();
       capture(odom, "/sim/truth/odom");
       truth_pub->publish(odom);
-      truth << session << ',' << ros_t << ',' << m.p.x() << ',' << m.p.y() << ',' << m.p.z() << ',' << m.v.x() << ',' << m.v.y() << ',' << m.v.z() << '\n';
+      // Evaluation-only visibility: true 3-D range and the same physical LOS gate.
+      // Never published to or consumed by the estimator.
+      const Eigen::Vector3d tag_w = liuo_tunnel::tag_in_world(m.p, m.R, tag);
+      int available_ta = 0;
+      std::string available_ids;
+      for (int i = 0; i < anchor_count; ++i) {
+        if (!reachable(tag_w, anchor(i)) || !line_of_sight(tag_w, anchor(i))) continue;
+        if (available_ta++) available_ids += ";";
+        available_ids += std::to_string(i);
+      }
+      truth << session << ',' << ros_t << ',' << m.p.x() << ',' << m.p.y() << ',' << m.p.z() << ',' << m.v.x() << ',' << m.v.y() << ',' << m.v.z() << ',' << available_ta << ','
+            << available_ids << '\n';
       timing << ros_t << ',' << scan.stats.render_latency_ms << ',' << scan.stats.dda_voxel_visits << ',' << scan.hits.size() << ',' << world_points << '\n';
     }
     if (ticks % 200 == 0) {

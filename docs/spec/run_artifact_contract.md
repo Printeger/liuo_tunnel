@@ -210,3 +210,15 @@ standard deviation when at least two runs exist. Frame counts do not weight
 these statistics. Covariance NEES/coverage remain descriptive per-run diagnostics,
 not pooled-frame chi-square tests. Summary means never replace per-run gates;
 missing seeds and individual failures retain campaign FAIL.
+
+
+Deployment v4 supersedes dense-layout acceptance: seven anchors at longitudinal
+0/400/800/1200/1600/2000/2400 m, at most three in any closed 1000 m interval.
+Map generation, owner preflight and deployment audit reject density violations;
+formal replay rejects historical dense input identities. Historical files/results
+are not rewritten. A density-compliant layout alone does not prove observability.
+
+`metadata/manifests/watchdog.json` binds wall and no-progress limits and the two
+progress files. Simulation and estimator output growth are monitored separately;
+process liveness alone does not count as progress. Watchdog failure follows owned
+child teardown and retains input_failure. Evaluation has a separate finite limit.

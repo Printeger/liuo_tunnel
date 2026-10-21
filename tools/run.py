@@ -4,6 +4,7 @@ import argparse
 import ctypes
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -12,6 +13,7 @@ import subprocess
 import sys
 import time
 import run_directory as rd
+from generate_known_maps import LAYOUT, validate_deployment
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -21,12 +23,32 @@ def digest(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def watchdog_failure(elapsed, wall_budget, idle_seconds, idle_budget):
+    if elapsed > wall_budget:
+        return "WALL_TIMEOUT: total run wall budget exceeded"
+    for module, idle in idle_seconds.items():
+        if idle > idle_budget:
+            return f"NO_PROGRESS_TIMEOUT: {module} output unchanged for {idle:.1f}s"
+    return None
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument(
         "--delivery-profile", type=Path, help="explicit frozen-replay UWB transport fault profile"
     )
     p.add_argument("--duration", type=float, default=45)
+    p.add_argument(
+        "--wall-timeout",
+        type=float,
+        help="owned runtime wall seconds; default max(120, duration/rate*1.5+60)",
+    )
+    p.add_argument(
+        "--no-progress-timeout",
+        type=float,
+        default=30,
+        help="maximum wall seconds without simulation or odometry output growth",
+    )
     p.add_argument(
         "--rate",
         type=float,
@@ -57,6 +79,12 @@ def main():
     )
     p.add_argument("--inject-failure", choices=["simulation", "odometry"])
     args = p.parse_args()
+    if not math.isfinite(args.no_progress_timeout) or args.no_progress_timeout <= 0:
+        p.error("no-progress timeout must be finite and positive")
+    if args.wall_timeout is not None and (
+        not math.isfinite(args.wall_timeout) or args.wall_timeout <= 0
+    ):
+        p.error("wall timeout must be finite and positive")
     if args.delivery_profile and not args.replay:
         p.error("delivery profile requires --replay")
     if args.replay and (args.capture or args.rate != 1.0):
@@ -118,6 +146,10 @@ def main():
                 if effective_config[key] != source_config[key]:
                     raise RuntimeError("FROZEN_SENSOR_CONTRACT_MISMATCH: " + key)
             source_scenario = json.loads((source / "metadata/config/scenario.json").read_text())
+            if args.formal and source_scenario.get("anchor_layout") != LAYOUT:
+                raise RuntimeError(
+                    "DEPLOYMENT_LAYOUT_INVALID: dense historical inputs are diagnostic only"
+                )
             args.duration = source_runtime["simulation_s"]
             args.seed = source_scenario["seed"]
             frozen = {
@@ -144,10 +176,10 @@ def main():
             map_path = run / "metadata/config/map.json"
             shutil.copyfile(args.map, map_path)
             rd.register_config_snapshot(run, map_path)
-            declared_layout = json.loads(map_path.read_text()).get("simulation_anchor_layout")
-            physical_layout = (
-                source_scenario["anchor_layout"] if args.replay else "four_corner_50m_49_anchors_v3"
-            )
+            map_data = json.loads(map_path.read_text())
+            validate_deployment(map_data["anchors"])
+            declared_layout = map_data.get("simulation_anchor_layout")
+            physical_layout = source_scenario["anchor_layout"] if args.replay else LAYOUT
             if declared_layout is not None and declared_layout != physical_layout:
                 raise RuntimeError(
                     "MAP_SCENE_LAYOUT_MISMATCH: simulation fixture belongs to another layout"
@@ -179,7 +211,7 @@ def main():
                 "width_m": 6,
                 "height_m": 5,
                 "gauge_m": 1.435,
-                "anchor_layout": "four_corner_50m_49_anchors_v3",
+                "anchor_layout": LAYOUT,
                 "duration_s": args.duration,
                 "requested_rate": args.rate,
                 "seed": args.seed,
@@ -334,6 +366,20 @@ def main():
                 time.sleep(1)
         rd.write_subordinate_manifest(run, "input_identity", identity)
         start = time.monotonic()
+        wall_budget = args.wall_timeout or max(120, args.duration / args.rate * 1.5 + 60)
+        progress = {
+            "simulation": [run / "export/simulation/wall_clock.csv", -1, start],
+            "odometry": [run / "profiling/odometry.csv", -1, start],
+        }
+        rd.write_subordinate_manifest(
+            run,
+            "watchdog",
+            {
+                "wall_timeout_s": wall_budget,
+                "no_progress_timeout_s": args.no_progress_timeout,
+                "progress_files": {k: str(v[0].relative_to(run)) for k, v in progress.items()},
+            },
+        )
         injected = False
         runtime_saved = False
         while True:
@@ -357,8 +403,19 @@ def main():
             if args.inject_failure and not injected and time.monotonic() - start > 5:
                 children[args.inject_failure].kill()
                 injected = True
-            if time.monotonic() - start > max(120, args.duration / args.rate * 3):
-                raise RuntimeError("wall time budget exceeded; see timing evidence")
+            now = time.monotonic()
+            for state in progress.values():
+                size = state[0].stat().st_size if state[0].exists() else 0
+                if size != state[1]:
+                    state[1], state[2] = size, now
+            reason = watchdog_failure(
+                now - start,
+                wall_budget,
+                {k: now - v[2] for k, v in progress.items()},
+                args.no_progress_timeout,
+            )
+            if reason:
+                raise RuntimeError(reason)
             time.sleep(0.1)
         time.sleep(2)
         for name in ["odometry", "observer"]:
@@ -382,7 +439,10 @@ def main():
                 child.wait(timeout=15)
             except subprocess.TimeoutExpired:
                 child.kill()
-                child.wait()
+                try:
+                    child.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    pass  # Record failure below; never wait indefinitely on an owned child.
                 failure = f"{name} did not stop after owned SIGINT"
                 lifecycle = "failed"
         for f in handles:
@@ -409,7 +469,15 @@ def main():
             )
         rd.finalize_run(run, lifecycle=lifecycle)
     if lifecycle == "completed":
-        result = subprocess.run([sys.executable, str(ROOT / "tools/evaluate.py"), str(run)])
+        try:
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "tools/evaluate.py"), str(run)], timeout=120
+            )
+        except subprocess.TimeoutExpired:
+            rd.write_subordinate_manifest(
+                run, "evaluation_failure", {"reason": "EVALUATION_WALL_TIMEOUT", "timeout_s": 120}
+            )
+            result = subprocess.CompletedProcess([], 1)
         manifest_path = run / "metadata/run_manifest.json"
         manifest = json.loads(manifest_path.read_text())
         manifest["acceptance"] = "pass" if result.returncode == 0 else "fail"

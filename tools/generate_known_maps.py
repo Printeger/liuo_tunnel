@@ -4,6 +4,21 @@ import argparse
 import json
 from pathlib import Path
 import random
+import math
+
+
+LAYOUT = "four_corner_400m_7_anchors_v4"
+
+
+def validate_deployment(anchors):
+    longitudinal = sorted(float(a["mean_m"][0]) for a in anchors)
+    if not all(math.isfinite(x) for x in longitudinal):
+        raise ValueError("DEPLOYMENT_INVALID_LONGITUDINAL_POSITION")
+    # Closed intervals: four anchors exactly 1000 m apart violate the limit.
+    if any(longitudinal[i + 3] - longitudinal[i] <= 1000 for i in range(len(longitudinal) - 3)):
+        raise ValueError(
+            "DEPLOYMENT_DENSITY_EXCEEDED: at most 3 anchors in any closed 1000 m interval"
+        )
 
 
 def generate(directory, survey_seed=67129):
@@ -14,23 +29,24 @@ def generate(directory, survey_seed=67129):
         "axis_convention": "ENU",
         "valid": True,
         "frame": "map",
-        "simulation_anchor_layout": "four_corner_50m_49_anchors_v3",
+        "simulation_anchor_layout": LAYOUT,
         "tag_lever_m": [0.1, 0.15, 0.25],
         "coordinate_reference": "simulation world survey datum; no vehicle start pose constraint",
         "anchors": [
             {
                 "id": i,
                 "mean_m": [
-                    50.0 * i,
+                    400.0 * i,
                     2.8 if i % 4 < 2 else -2.8,
                     0.4 if i % 4 in (0, 3) else 4.6,
                 ],
             }
-            for i in range(49)
+            for i in range(7)
         ],
     }
+    validate_deployment(base["anchors"])
     base.update(
-        map_id="rail_oracle_v3_four_corner_50m",
+        map_id="rail_oracle_v4_four_corner_400m",
         mode="oracle_map",
         provenance="SIMULATION_TRUTH_ORACLE",
     )
@@ -44,7 +60,7 @@ def generate(directory, survey_seed=67129):
             v + common[k] + rng.gauss(0, 0.02) for k, v in enumerate(anchor["mean_m"])
         ]
     base.update(
-        map_id="rail_synthetic_survey_v3_four_corner_50m",
+        map_id="rail_synthetic_survey_v4_four_corner_400m",
         mode="surveyed_map",
         provenance="SIMULATED_SURVEY_NOT_REAL_MEASUREMENTS",
         survey_seed=survey_seed,

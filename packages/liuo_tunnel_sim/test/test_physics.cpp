@@ -30,8 +30,9 @@ TEST(Uwb, GaussianAndIndependentStreams) {
     double sum = 0, sq = 0;
     const int n = 20000;
     for (int i = 0; i < n; i++) {
-      const Eigen::Vector3d a = anchor(2), b = anchor(4);
+      const Eigen::Vector3d a = anchor(2), b = anchor(3);
       ASSERT_TRUE(line_of_sight(a, b));
+      ASSERT_TRUE(reachable(a, b));
       double e = range(a, b, 0, stream, i) - (a - b).norm();
       sum += e;
       sq += e * e;
@@ -103,5 +104,16 @@ TEST(Physics, RoundTripReturnsWithContinuousBoundedMotion) {
     EXPECT_GE(m.p.x(), -1e-8);
     EXPECT_LE(m.p.x(), 2350.00001);
     EXPECT_LT((m.R - Eigen::Matrix3d::Identity()).norm(), 1e-12);
+  }
+}
+
+TEST(Uwb, DeploymentAtMostThreeAnchorsInEveryClosedKilometre) {
+  ASSERT_EQ(anchor_count, 7);
+  for (int i = 0; i < anchor_count; ++i) {
+    EXPECT_DOUBLE_EQ(anchor(i).x(), 400.0 * i);
+    int count = 0;
+    for (int j = 0; j < anchor_count; ++j)
+      if (anchor(j).x() >= anchor(i).x() && anchor(j).x() <= anchor(i).x() + 1000) ++count;
+    EXPECT_LE(count, 3);
   }
 }

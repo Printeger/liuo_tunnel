@@ -1,0 +1,6 @@
+{
+  "schema_version": "liuo_delivery_v1",
+  "begin_s": 8,
+  "end_s": 80,
+  "outages": [[20, 25], [40, 60]]
+}

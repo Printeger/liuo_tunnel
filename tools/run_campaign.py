@@ -113,7 +113,7 @@ def release_raw_capture(run, reason):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--seeds", nargs="+", type=int, default=list(range(10)))
+    parser.add_argument("--seeds", nargs="+", type=int, default=[0])
     parser.add_argument(
         "--completed-runs",
         nargs="+",
@@ -122,6 +122,10 @@ def main():
         help="explicit completed triplets; re-audit before reuse, never choose best attempts",
     )
     args = parser.parse_args()
+    if len(args.seeds) != 1:
+        parser.error(
+            "SPARSE_INVESTIGATION_REQUIRED: no multi-seed campaign until representative failures are understood"
+        )
     if len(set(args.seeds)) != len(args.seeds) or any(s not in range(10) for s in args.seeds):
         parser.error("provide unique seeds in 0–9")
     directory = (
