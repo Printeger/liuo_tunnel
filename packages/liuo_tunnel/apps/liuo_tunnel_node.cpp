@@ -126,7 +126,9 @@ class TunnelNode : public rclcpp::Node {
    bias=gtsam::imuBias::ConstantBias(gtsam::Vector3::Zero(),sum_w/initial_samples);
    factors.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(0),state.pose(),gtsam::noiseModel::Isotropic::Sigma(6,1e-3));
    factors.emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(V(0),state.velocity(),gtsam::noiseModel::Isotropic::Sigma(3,.01));
-   gtsam::Vector6 sig;sig<<.1,.1,.1,.01,.01,.01;
+   gtsam::Vector6 sig;
+   sig.head<3>().setConstant(cfg.at("sensors").at("initial_acc_bias_sigma"));
+   sig.tail<3>().setConstant(cfg.at("sensors").at("initial_gyro_bias_sigma"));
    factors.emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(B(0),bias,gtsam::noiseModel::Diagonal::Sigmas(sig));
    initialized=true;
   } else {

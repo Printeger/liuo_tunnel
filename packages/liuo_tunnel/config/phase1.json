@@ -19,7 +19,9 @@
     "sigma_gyro_sample": 0.001,
     "sigma_ba_density": 0.001,
     "sigma_bg_density": 0.0001,
-    "sigma_lidar_range": 0.02
+    "sigma_lidar_range": 0.02,
+    "initial_acc_bias_sigma": 0.005,
+    "initial_gyro_bias_sigma": 0.001
   },
   "odometry": {
     "lag_s": 10.0,
