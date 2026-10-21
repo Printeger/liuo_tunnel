@@ -9,6 +9,7 @@
 #include <liuo_tunnel/util/run_log_manager.hpp>
 #include <liuo_tunnel/util/logging.hpp>
 #include <liuo_tunnel_sim/rail_model.hpp>
+#include <liuo_tunnel_sim/rail_world.hpp>
 #include <liuo_tunnel_sim/first_hit_lidar_renderer.hpp>
 #include <fstream>
 #include <iomanip>
@@ -43,20 +44,7 @@ class RailSim : public rclcpp::Node {
  void world(double x) {
   int block=static_cast<int>(std::floor(x/20)); if(block==loaded) return; loaded=block;
   // Bounded local block window. UWB uses the complete analytic convex world, never this LiDAR cache.
-  pcl::PointCloud<pcl::PointXYZ> p;
-  const int lo=std::max(-1,block-3)*200, hi=std::min(121,block+4)*200;
-  for(int ix=lo;ix<hi;ix++) {
-   float xx=ix*.1f;
-   for(int iz=0;iz<=50;iz++) { p.emplace_back(xx,-3.f,iz*.1f); p.emplace_back(xx,3.f,iz*.1f); }
-   for(int iy=-30;iy<=30;iy++) {p.emplace_back(xx,iy*.1f,0.f); p.emplace_back(xx,iy*.1f,5.f);}
-   for(float yy : {-.7175f,.7175f}) p.emplace_back(xx,yy,.15f);
-   if(ix%6==0) for(int iy=-12;iy<=12;iy++) p.emplace_back(xx,iy*.1f,.08f);
-   // Nonperiodic cabinets only at the entrance; adapted corridor surface generation from IAP demo11.
-   if(xx>=0 && xx<50) for(int k=0;k<8;k++) {
-    float center=3.1f+k*5.7f+std::sin(k*1.7f);
-    if(std::abs(xx-center)<.4) for(int iz=3;iz<23;iz++) for(int iy=22;iy<30;iy++) p.emplace_back(xx,(k%2?1:-1)*iy*.1f,iz*.1f);
-   }
-  }
+  auto p=rail_world(block);
   world_points=p.size(); std::string why; if(!renderer.loadWorld(p,&why)) throw std::runtime_error("renderer world: "+why);
  }
  void tick() {

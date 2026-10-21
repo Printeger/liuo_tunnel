@@ -207,3 +207,17 @@ TEST(FirstHitLidarRenderer, ForestSizedWorldMeetsTenHertzRenderBudget)
 }
 
 }  // namespace
+
+#include <liuo_tunnel_sim/rail_world.hpp>
+TEST(RailWorld, SolidWallsHaveNoVoxelSamplingHoles) {
+ auto config=oneForwardRay(); config.max_range_m=40;
+ liuo_tunnel_sim::FirstHitLidarRenderer renderer(config);
+ ASSERT_TRUE(renderer.loadWorld(liuo_tunnel_sim::rail_world(5)));
+ for(int ix=950;ix<1050;ix++) {
+  Eigen::Isometry3d pose=Eigen::Isometry3d::Identity();pose.translation()=Eigen::Vector3d(ix*.1+.05,0,1.25);
+  pose.linear()=Eigen::AngleAxisd(M_PI/2,Eigen::Vector3d::UnitZ()).toRotationMatrix();
+  auto scan=renderer.render(pose);
+  ASSERT_EQ(scan.hits.size(),1u)<<"x="<<pose.translation().x();
+  EXPECT_NEAR(scan.beams[0].range_m,3.0,.11);
+ }
+}
