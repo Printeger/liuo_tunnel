@@ -356,3 +356,57 @@ TEST(StateCovariance, SelectedAncestorsMatchDenseCorrelatedMarginal) {
     for (int j = 0; j < 3; ++j) EXPECT_LT((actual.block<3, 3>(3 * i, 3 * j) - reference.block<3, 3>(3 * selected[i], 3 * selected[j])).norm(), 1e-10);
   EXPECT_THROW(selected_covariance(*tree, {7, 7}), std::invalid_argument);
 }
+
+#include <gtsam/linear/HessianFactor.h>
+TEST(UwbFactors, StaticPairSummaryPreservesRawCostGradientAndInformation) {
+  gtsam::Values values;
+  values.insert(1, gtsam::Point3(1, -.2, .3));
+  values.insert(2, gtsam::Point3(6, 1, 2));
+  gtsam::NonlinearFactorGraph raw;
+  GaussianRangeSummary summary;
+  std::mt19937 rng(42);
+  std::normal_distribution<double> noise(0, .1);
+  for (int i = 0; i < 1000; ++i) {
+    double measurement = 5.5 + noise(rng), variance = .01 + .001 * (i % 7);
+    raw.emplace_shared<AnchorAnchorRangeFactor>(1, 2, measurement, std::sqrt(variance));
+    summary.add(measurement, variance);
+  }
+  AnchorAnchorRangeFactor aggregated(1, 2, summary.mean, summary.sigma(), summary.scatter);
+  EXPECT_EQ(summary.count, 1000);
+  EXPECT_NEAR(raw.error(values), aggregated.error(values), 1e-8);
+  gtsam::HessianFactor raw_hessian(*raw.linearize(values));
+  gtsam::HessianFactor aggregate_hessian(*aggregated.linearize(values));
+  EXPECT_LT((raw_hessian.augmentedInformation() - aggregate_hessian.augmentedInformation()).norm() / raw_hessian.augmentedInformation().norm(), 1e-12);
+  check_jacobian(aggregated, values, {});
+  EXPECT_NEAR(aggregated.clone()->error(values), raw.error(values), 1e-8);
+  EXPECT_THROW(summary.add(5, 0), std::invalid_argument);
+}
+
+TEST(KnownMap, ReplacingStaticPairSummaryBoundsHistoryWithoutRepeatingMapPrior) {
+  using gtsam::symbol_shorthand::A;
+  liuo_tunnel::solver::IncrementalFixedLagSmootherExt smoother(10);
+  GaussianRangeSummary summary;
+  std::optional<gtsam::FactorIndex> previous;
+  const std::vector<gtsam::Point3> means{{0, 0, 0}, {5, 1, 2}};
+  for (int i = 0; i < 501; ++i) {
+    summary.add((means[0] - means[1]).norm() + .1 * std::sin(i), .01);
+    gtsam::NonlinearFactorGraph factors;
+    gtsam::Values initial;
+    if (i == 0) {
+      initial.insert(A(0), means[0]);
+      initial.insert(A(1), means[1]);
+      factors.emplace_shared<SurveyedMapPrior>(gtsam::KeyVector{A(0), A(1)}, means, gtsam::Matrix::Identity(6, 6) * .01);
+    }
+    auto local_index = factors.size();
+    factors.emplace_shared<AnchorAnchorRangeFactor>(A(0), A(1), summary.mean, summary.sigma(), summary.scatter);
+    gtsam::FactorIndices remove;
+    if (previous) remove.push_back(*previous);
+    smoother.update(factors, initial, {{A(0), i * .1}, {A(1), i * .1}}, remove);
+    previous = smoother.getISAM2Result().newFactorsIndices.at(local_index);
+    EXPECT_EQ(smoother.getFactors().nrFactors(), 2);
+    EXPECT_LE(smoother.getFactors().size(), 3);
+    EXPECT_EQ(smoother.timestamps().size(), 2);
+    EXPECT_TRUE(smoother.calculateEstimate<gtsam::Point3>(A(1)).allFinite());
+  }
+  EXPECT_EQ(summary.count, 501);
+}

@@ -80,7 +80,8 @@ public:
       for (int j = 0; j < 6; j++) covariance_log << ",twist_" << i << "_" << j;
     covariance_log << '\n';
     graph.open(logs.export_path("odometry/graph.csv"));
-    graph << "session,stamp,X,V,B,A,imu_factors,lidar_factors,total_factors,marginalized,optimization_ms,reset,fallback,uwb_ta,uwb_aa,map_priors,uwb_queue\n";
+    graph << "session,stamp,X,V,B,A,imu_factors,lidar_factors,total_factors,marginalized,optimization_ms,reset,fallback,uwb_ta,uwb_aa,map_priors,uwb_queue,aa_summary_factors,aa_"
+             "accumulated_measurements\n";
     icp.open(logs.export_path("odometry/icp.csv"));
     icp << "session,stamp,points,inlier_fraction,cost,eig0,eig1,eig2,eig3,eig4,eig5,weak_rx,weak_ry,weak_rz,weak_tx,weak_ty,weak_tz,weighting,nonplanar_covariances\n";
     uwb.open(logs.export_path("odometry/uwb.csv"));
@@ -143,6 +144,10 @@ private:
     initial_samples = 0;
     session++;
     last_uwb = -1;
+    aa_summaries.clear();
+    aa_added.clear();
+    aa_removed.clear();
+    aa_measurements = 0;
   }
   void status(const std::string& state, const std::string& reason, double t) {
     diagnostic_msgs::msg::DiagnosticArray a;
@@ -242,6 +247,9 @@ private:
   void append_ranges(double t, gtsam::NonlinearFactorGraph& factors, const gtsam::Values& predicted) {
     new_ta = 0;
     new_aa = 0;
+    aa_added.clear();
+    aa_removed.clear();
+    std::set<std::pair<uint32_t, uint32_t>> touched_aa;
     std::map<double, gtsam::Key> poses;
     for (const auto& frame : frames) poses[frame.t] = X(frame.id);
     poses[t] = X(count);
@@ -259,7 +267,10 @@ private:
           continue;
         }
         auto f = gtsam::make_shared<AnchorAnchorRangeFactor>(A(o.a), A(o.b), o.range, std::sqrt(o.variance));
-        factors.add(f);
+        auto pair = std::make_pair(std::min(o.a, o.b), std::max(o.a, o.b));
+        aa_summaries[pair].statistics.add(o.range, o.variance);
+        touched_aa.insert(pair);
+        ++aa_measurements;
         new_aa++;
         log_range(o, "ACCEPT_AA", {}, gtsam::DefaultKeyFormatter(A(o.a)) + ";" + gtsam::DefaultKeyFormatter(A(o.b)), f->unwhitenedError(predicted)[0], "PRE_OPT_INNOVATION");
       } else {
@@ -272,6 +283,21 @@ private:
         log_range(o, "ACCEPT_TA", bracket, anchor ? gtsam::DefaultKeyFormatter(*anchor) : "constant:" + std::to_string(o.b), residual, "PRE_OPT_INNOVATION");
       }
     }
+    if (bootstrapped) {
+      for (const auto& pair : touched_aa) {
+        auto& summary = aa_summaries.at(pair);
+        if (summary.factor_index) aa_removed.push_back(*summary.factor_index);
+        aa_added.emplace_back(pair, factors.size());
+        const auto& stats = summary.statistics;
+        factors.emplace_shared<AnchorAnchorRangeFactor>(A(pair.first), A(pair.second), stats.mean, stats.sigma(), stats.scatter);
+      }
+    }
+  }
+  void bind_aa_factor_indices() {
+    const auto& indices = smoother->getISAM2Result().newFactorsIndices;
+    for (const auto& entry : aa_added) aa_summaries.at(entry.first).factor_index = indices.at(entry.second);
+    aa_added.clear();
+    aa_removed.clear();
   }
   void drain() {
     while (!clouds.empty()) {
@@ -439,6 +465,14 @@ private:
         status("INITIALIZING", "MAP_FRAME_JOINT_BOOTSTRAP", t);
         return;
       }
+      // Before the first solve, each static pair enters once with the exact
+      // accumulated raw likelihood, including its state-independent cost.
+      aa_added.clear();
+      for (const auto& entry : aa_summaries) {
+        aa_added.emplace_back(entry.first, bootstrap_factors.size());
+        const auto& stats = entry.second.statistics;
+        bootstrap_factors.emplace_shared<AnchorAnchorRangeFactor>(A(entry.first.first), A(entry.first.second), stats.mean, stats.sigma(), stats.scatter);
+      }
       gtsam_points::LevenbergMarquardtExtParams params;
       params.maxIterations = cfg.at("uwb").value("bootstrap_max_iterations", 30);
       params.relativeErrorTol = cfg.at("uwb").value("bootstrap_relative_error_tolerance", 1e-5);
@@ -466,12 +500,15 @@ private:
       // Transfer the original factors and their joint optimized values exactly
       // once. No marginal-map + reused-observation double counting.
       smoother->update(bootstrap_factors, optimized, bootstrap_times);
+      bind_aa_factor_indices();
       bootstrap_factors.resize(0);
       bootstrap_values.clear();
       bootstrap_times.clear();
       bootstrapped = true;
-    } else
-      smoother->update(factors, initial, times);
+    } else {
+      smoother->update(factors, initial, times, aa_removed);
+      bind_aa_factor_indices();
+    }
     state = gtsam::NavState(smoother->calculateEstimate<gtsam::Pose3>(X(count)), smoother->calculateEstimate<gtsam::Vector3>(V(count)));
     bias = smoother->calculateEstimate<gtsam::imuBias::ConstantBias>(B(count));
     if (!state.pose().matrix().allFinite() || !state.velocity().allFinite()) throw std::runtime_error("nonfinite optimized state");
@@ -582,7 +619,7 @@ private:
     size_t active = (smoother->timestamps().size() - anchors) / 3;
     graph << session << ',' << t << ',' << active << ',' << active << ',' << active << ',' << anchors << ',' << (count ? 1 : 0) << ',' << lidar.size() << ','
           << smoother->getFactors().nrFactors() << ',' << retired << ',' << ms(preprocessed, finish) << ',' << (session - 1) << ",0," << new_ta << ',' << new_aa << ','
-          << (anchors ? 1 : 0) << ',' << range_queue.size() << "\n";
+          << (anchors ? 1 : 0) << ',' << range_queue.size() << ',' << aa_summaries.size() << ',' << aa_measurements << "\n";
     icp << session << ',' << t << ',' << points.size() << ',' << fraction << ',' << cost;
     for (int i = 0; i < 6; i++) icp << ',' << eigen[i];
     for (int i = 0; i < 6; i++) icp << ',' << weak[i];
@@ -602,6 +639,14 @@ private:
   RangeQueue range_queue;
   double last_uwb = -1;
   size_t new_ta = 0, new_aa = 0;
+  struct AnchorPairSummary {
+    GaussianRangeSummary statistics;
+    std::optional<gtsam::FactorIndex> factor_index;
+  };
+  std::map<std::pair<uint32_t, uint32_t>, AnchorPairSummary> aa_summaries;
+  std::vector<std::pair<std::pair<uint32_t, uint32_t>, size_t>> aa_added;
+  gtsam::FactorIndices aa_removed;
+  uint64_t aa_measurements = 0;
   gtsam::NonlinearFactorGraph bootstrap_factors;
   gtsam::Values bootstrap_values;
   gtsam::FixedLagSmoother::KeyTimestampMap bootstrap_times;

@@ -84,3 +84,20 @@ Live `--return-trip` is snapshotted as `scenario.return_trip` and
 in KiB, whole CUDA device used bytes, retained cloud frames/keyframes and current
 IMU/cloud/UWB queues. Device usage is explicitly not process-attributed. Resource
 sampling time is included in the processing latency measurement.
+
+### Static AA sufficient statistics
+
+In surveyed mode, independent Gaussian ranges for each static anchor pair share
+one distance prediction. Keep weight W=sum(1/variance), weighted mean, count and
+weighted scatter S. One replaceable factor represents exactly
+`W*(mean-distance(Ai,Aj))^2 + S`, including the constant scatter in its error.
+Each accepted physical sample remains in `uwb.csv` with its original identity,
+variance and raw pre-optimization innovation. No map prior is repeated. This
+aggregation is not valid for moving TA predictions or per-sample robust losses;
+neither is aggregated. Oracle AA remains consistency-only.
+
+`graph.csv` appends `aa_summary_factors` and `aa_accumulated_measurements`.
+Each update replaces affected pair factors using returned smoother factor indices;
+the number of AA factors is bounded by the map's unordered pair count. Clock reset
+clears both summaries and indices. Evaluation checks pair bounds, total factor
+bounds, and (without a clock reset) accumulated count against accepted raw IDs.

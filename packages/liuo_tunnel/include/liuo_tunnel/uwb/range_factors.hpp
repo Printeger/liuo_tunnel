@@ -2,6 +2,7 @@
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/geometry/Pose3.h>
 #include <optional>
+#include <cstdint>
 #include <stdexcept>
 
 namespace liuo_tunnel {
@@ -117,28 +118,60 @@ private:
   double beta_, measured_;
 };
 
+// Exact sufficient statistics for repeated independent Gaussian observations
+// of ONE unchanged scalar prediction (static anchor-pair distance). Never use
+// this across moving tag states or with per-sample robust kernels.
+struct GaussianRangeSummary {
+  uint64_t count = 0;
+  double weight = 0, mean = 0, scatter = 0;
+  void add(double measurement, double variance) {
+    if (!std::isfinite(measurement) || measurement <= 0 || !std::isfinite(variance) || variance <= 0) throw std::invalid_argument("invalid Gaussian range summary sample");
+    const double w = 1 / variance, next_weight = weight + w, delta = measurement - mean;
+    const double next_mean = mean + w / next_weight * delta;
+    scatter += w * delta * (measurement - next_mean);
+    weight = next_weight;
+    mean = next_mean;
+    ++count;
+    if (!std::isfinite(scatter) || scatter < 0 || !std::isfinite(weight)) throw std::runtime_error("invalid Gaussian range summary");
+  }
+  double sigma() const {
+    if (count == 0) throw std::logic_error("empty Gaussian range summary");
+    return 1 / std::sqrt(weight);
+  }
+};
+
 class AnchorAnchorRangeFactor : public gtsam::NoiseModelFactor {
 public:
-  AnchorAnchorRangeFactor(gtsam::Key a, gtsam::Key b, double measurement, double sigma)
-  : gtsam::NoiseModelFactor(gtsam::noiseModel::Isotropic::Sigma(1, sigma), gtsam::KeyVector{a, b}),
-    measured_(measurement) {
-    if (a == b || !std::isfinite(measurement) || measurement <= 0 || !std::isfinite(sigma) || sigma <= 0) throw std::invalid_argument("invalid AA factor");
+  AnchorAnchorRangeFactor(gtsam::Key a, gtsam::Key b, double measurement, double sigma, double whitened_scatter = 0)
+  : gtsam::NoiseModelFactor(summary_noise(sigma, whitened_scatter), gtsam::KeyVector{a, b}),
+    measured_(measurement),
+    scatter_(whitened_scatter) {
+    if (a == b || !std::isfinite(measurement) || measurement <= 0 || !std::isfinite(sigma) || sigma <= 0 || !std::isfinite(scatter_) || scatter_ < 0)
+      throw std::invalid_argument("invalid AA factor");
   }
   gtsam::Vector unwhitenedError(const gtsam::Values& v, gtsam::OptionalMatrixVecType H = nullptr) const override {
     const gtsam::Vector3 delta = v.at<gtsam::Point3>(keys()[0]) - v.at<gtsam::Point3>(keys()[1]);
     const double distance = delta.norm();
     if (!std::isfinite(distance) || distance < 1e-8) throw std::domain_error("RANGE_GEOMETRY_ZERO");
+    const int dim = scatter_ > 0 ? 2 : 1;
     if (H) {
-      H->resize(2);
-      (*H)[0] = -delta.transpose() / distance;
-      (*H)[1] = delta.transpose() / distance;
+      H->assign(2, gtsam::Matrix::Zero(dim, 3));
+      (*H)[0].row(0) = -delta.transpose() / distance;
+      (*H)[1].row(0) = delta.transpose() / distance;
     }
-    return gtsam::Vector1(measured_ - distance);
+    gtsam::Vector error = gtsam::Vector::Constant(dim, std::sqrt(scatter_));
+    error[0] = measured_ - distance;
+    return error;
   }
   gtsam::NonlinearFactor::shared_ptr clone() const override { return gtsam::make_shared<AnchorAnchorRangeFactor>(*this); }
 
 private:
-  double measured_;
+  static gtsam::SharedNoiseModel summary_noise(double sigma, double scatter) {
+    gtsam::Vector sigmas = gtsam::Vector::Ones(scatter > 0 ? 2 : 1);
+    sigmas[0] = sigma;
+    return gtsam::noiseModel::Diagonal::Sigmas(sigmas);
+  }
+  double measured_, scatter_;
 };
 
 // One prior over ALL provided map coordinates, retaining off-diagonal covariance.

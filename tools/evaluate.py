@@ -101,6 +101,34 @@ def evaluate(run):
         map_config = json.loads((run / "metadata/config/map.json").read_text())
         expected_anchors = len(map_config["anchors"]) if map_config["mode"] == "surveyed_map" else 0
         check(all(int(r["A"]) == expected_anchors for r in graph), "static anchors not retained")
+        check(
+            all(int(r["map_priors"]) == int(expected_anchors > 0) for r in graph),
+            "map prior count changed",
+        )
+        if graph and "aa_summary_factors" in graph[0]:
+            pair_bound = expected_anchors * (expected_anchors - 1) // 2
+            check(
+                all(int(r["aa_summary_factors"]) <= pair_bound for r in graph),
+                "AA summary pair bound exceeded",
+            )
+            if audit["clock_resets"] == 0:
+                check(
+                    int(graph[-1]["aa_accumulated_measurements"])
+                    == sum(r["reason"] == "ACCEPT_AA" for r in uwb),
+                    "AA accumulated/raw identity count mismatch",
+                )
+            cfg = json.loads((run / "metadata/config/phase1.json").read_text())
+            odometry = cfg["odometry"]
+            factor_bound = (
+                math.ceil(250 * (odometry["lag_s"] + 0.2))
+                + 102 * (odometry["connection_window"] + odometry.get("max_keyframes", 15) + 3)
+                + pair_bound
+                + 16
+            )
+            check(
+                all(int(r["total_factors"]) <= factor_bound for r in graph),
+                "factor history exceeds configured fixed-window/static-pair bound",
+            )
     else:
         check(all(r["reason"] == "RECORD_ONLY" for r in uwb), "raw UWB rejected")
     truth_sessions = list(dict.fromkeys(r["session"] for r in truth))
