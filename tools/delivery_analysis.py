@@ -68,6 +68,13 @@ def analyze(profile, delivery, decisions, trajectory, graph, clock, runtime):
             for elapsed, endpoints in anchor_rows
             if fault["begin_s"] <= elapsed < fault["end_s"]
         ]
+        output_frames = sum(
+            fault["begin_s"] <= float(row["stamp"]) - start_stamp < fault["end_s"]
+            for row in trajectory
+        )
+        expected_frames = round((fault["end_s"] - fault["begin_s"]) * 10)
+        if output_frames < expected_frames * 0.99:
+            failures.append("LIO publication gap during single-anchor outage")
         affected = sum(fault["anchor_id"] in endpoints for endpoints in selected)
         if not affected:
             failures.append("anchor outage had no affected observations")
@@ -95,6 +102,7 @@ def analyze(profile, delivery, decisions, trajectory, graph, clock, runtime):
                 "begin_s": fault["begin_s"],
                 "end_s": fault["end_s"],
                 "affected_observations": affected,
+                "online_frames_during_outage": output_frames,
                 "other_link_observations": len(selected) - affected,
                 "other_anchor_ta_accepted_during_outage": continued,
                 "failed_anchor_first_ta_recovery_wall_s": min(recovery) if recovery else None,

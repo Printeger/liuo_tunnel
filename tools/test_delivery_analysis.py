@@ -79,6 +79,9 @@ class DeliveryAnalysisTest(unittest.TestCase):
             )
 
         data[1] += [link(4, 7, "anchor_outage_drop"), link(5, 8, "original")]
+        data[3] += [
+            dict(stamp=str(8 + 0.1 * i), state_reason="JOINT_LIDAR_IMU_UWB") for i in range(10)
+        ]
         restored = link(6, 7, "original")
         restored["source_elapsed_s"] = "8.1"
         data[1].insert(0, restored)
@@ -97,6 +100,9 @@ class DeliveryAnalysisTest(unittest.TestCase):
         self.assertAlmostEqual(
             result["anchor_outages"][0]["failed_anchor_first_ta_recovery_wall_s"], 0.2
         )
+        last_frame = data[3].pop()
+        self.assertIn("LIO publication gap during single-anchor outage", analyze(*data)["failures"])
+        data[3].append(last_frame)
         restored_decision = data[2].pop()
         self.assertIn(
             "failed anchor TA never restored after single-anchor outage", analyze(*data)["failures"]
