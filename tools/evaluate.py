@@ -39,6 +39,8 @@ def evaluate(run):
         and abs(audit["imu_static_acc_z_mean"] - 9.80665) < 0.05,
         "static specific force",
     )
+    config = json.loads((run / "metadata/config/phase1.json").read_text())
+    fused = config["uwb"]["mode"] == "fuse"
     trajectory = rows(run / "export/odometry/trajectory.csv")
     truth = rows(run / "export/simulation/truth.csv")
     graph = rows(run / "export/odometry/graph.csv")
@@ -64,11 +66,17 @@ def evaluate(run):
     check(bool(identity["shared_libraries"]), "shared library hashes missing")
     check(any(int(r["lidar_factors"]) >= 3 for r in graph), "multi-frame raw lidar graph absent")
     check(
-        all(int(r["A"]) == 0 and int(r["fallback"]) == 0 for r in graph),
+        all(int(r["fallback"]) == 0 and (fused or int(r["A"]) == 0) for r in graph),
         "forbidden states/fallback",
     )
     check(all(int(r["X"]) <= 102 for r in graph), "fixed lag vehicle bound exceeded")
-    check(all(r["reason"] == "RECORD_ONLY" for r in uwb), "raw UWB rejected")
+    if fused:
+        check(any(r["reason"] == "ACCEPT_TA" for r in uwb), "no raw TA factors")
+        map_config = json.loads((run / "metadata/config/map.json").read_text())
+        expected_anchors = len(map_config["anchors"]) if map_config["mode"] == "surveyed_map" else 0
+        check(all(int(r["A"]) == expected_anchors for r in graph), "static anchors not retained")
+    else:
+        check(all(r["reason"] == "RECORD_ONLY" for r in uwb), "raw UWB rejected")
     truth_sessions = list(dict.fromkeys(r["session"] for r in truth))
     est_sessions = list(dict.fromkeys(r["session"] for r in trajectory))
     check(len(truth_sessions) == len(est_sessions), "session count mismatch")
@@ -87,7 +95,7 @@ def evaluate(run):
         # Fixed documented simulator/initial gauge offset only, never best-fit alignment.
         dx = float(r["x"]) - float(q["x"])
         dy = float(r["y"]) - float(q["y"])
-        dz = float(r["z"]) - (float(q["z"]) - 1.2)
+        dz = float(r["z"]) - (float(q["z"]) - (0 if fused else 1.2))
         e = math.sqrt(dx * dx + dy * dy + dz * dz)
         check(math.isfinite(e), "nonfinite trajectory")
         name = (
@@ -132,11 +140,27 @@ def evaluate(run):
             and bool(process.get("gpu_device")),
             "GPU execution identity missing",
         )
+    if fused:
+        check(
+            math.sqrt(statistics.mean(e * e for e in errors)) <= 0.30,
+            "known-map position RMSE >0.30m",
+        )
+        axial = [x for data in sections.values() for _, x in data]
+        check(quantile(axial, 0.95) <= 0.50, "known-map axial P95 >0.50m")
+        check(max(axial) <= 1.0, "known-map axial max >1.0m")
+        check(quantile(attitude, 0.95) <= 2.0, "known-map attitude P95 >2deg")
+        check(quantile(elapsed, 0.95) < 100, "processing P95 >=100ms")
+        check(quantile(latency, 0.95) < 0.25, "simulation-time latency P95 >=250ms")
+        check(runtime["real_time_factor"] >= 0.99, "actual input rate below 1x tolerance")
+        # Until wall-clock and paired-input evidence is implemented, a short live
+        # graph exercise cannot be promoted to phase-two acceptance.
+        check(False, "phase2 wall-latency/frozen-input/long-run acceptance not yet implemented")
     result = {
-        "scope": "phase1_snapshot_" + backend,
+        "scope": ("phase2_iteration_snapshot_" if fused else "phase1_snapshot_") + backend,
         "result": "FAIL" if failures else "PASS",
         "failures": failures,
         "metrics": metrics,
+        "position_rmse_m": math.sqrt(statistics.mean(e * e for e in errors)),
         "attitude_p95_deg": quantile(attitude, 0.95),
         "processing_p95_ms": quantile(elapsed, 0.95),
         "sim_time_latency_p95_s": quantile(latency, 0.95),

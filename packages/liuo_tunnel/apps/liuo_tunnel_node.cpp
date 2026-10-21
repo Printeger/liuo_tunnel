@@ -11,6 +11,9 @@
 #include <liuo_tunnel/common/imu_integration.hpp>
 #include <liuo_tunnel/common/cloud_covariance_estimation.hpp>
 #include <liuo_tunnel/common/sensors.hpp>
+#include <liuo_tunnel/uwb/known_map.hpp>
+#include <liuo_tunnel/uwb/measurement_queue.hpp>
+#include <gtsam_points/optimizers/levenberg_marquardt_ext.hpp>
 #include <liuo_tunnel/util/run_log_manager.hpp>
 #include <liuo_tunnel/util/logging.hpp>
 #include <gtsam_points/optimizers/incremental_fixed_lag_smoother_ext.hpp>
@@ -33,6 +36,7 @@
 #include <set>
 #include <fstream>
 #include <iomanip>
+using gtsam::symbol_shorthand::A;
 using gtsam::symbol_shorthand::B;
 using gtsam::symbol_shorthand::V;
 using gtsam::symbol_shorthand::X;
@@ -53,17 +57,24 @@ public:
       streams = std::make_unique<gtsam_points::StreamTempBufferRoundRobin>();
     }
     T_BL = lidar_extrinsic(cfg);
+    fuse = cfg.at("uwb").at("mode") == "fuse";
+    if (fuse) {
+      tag = vector3(cfg.at("sensors").at("T_BU_translation"));
+      map = KnownMap::load(declare_parameter<std::string>("map_file", ""), tag);
+    }
     logger = create_module_logger("odometry");
     auto& logs = RunLogManager::instance();
-    logs.write_run_info({{"backend", backend + "_RAW_MULTIFRAME_VGICP"}, {"uwb", "RECORD_ONLY"}, {"gpu_device", gpu_name}});
+    logs.write_run_info({{"backend", backend + "_RAW_MULTIFRAME_VGICP"}, {"uwb", fuse ? "FUSED_RAW" : "RECORD_ONLY"}, {"gpu_device", gpu_name}});
     trajectory.open(logs.export_path("odometry/trajectory.csv"));
     trajectory << std::setprecision(16) << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id\n";
     graph.open(logs.export_path("odometry/graph.csv"));
-    graph << "session,stamp,X,V,B,A,imu_factors,lidar_factors,total_factors,marginalized,optimization_ms,reset,fallback\n";
+    graph << "session,stamp,X,V,B,A,imu_factors,lidar_factors,total_factors,marginalized,optimization_ms,reset,fallback,uwb_ta,uwb_aa,map_priors,uwb_queue\n";
     icp.open(logs.export_path("odometry/icp.csv"));
     icp << "session,stamp,points,inlier_fraction,cost,eig0,eig1,eig2,eig3,eig4,eig5,weak_rx,weak_ry,weak_rz,weak_tx,weak_ty,weak_tz,weighting,nonplanar_covariances\n";
     uwb.open(logs.export_path("odometry/uwb.csv"));
-    uwb << std::setprecision(16) << "producer,session,sequence,measurement_stamp,receive_stamp,a_type,a,b_type,b,range,variance,reason\n";
+    uwb << std::setprecision(16)
+        << "producer,session,sequence,measurement_stamp,receive_stamp,a_type,a,b_type,b,range,variance,reason,key_left,key_right,key_anchor,residual_class,residual,whitened,"
+           "weight\n";
     timing.open(logs.profiling_path("odometry.csv"));
     timing << "session,stamp,preprocess_ms,optimize_ms,total_ms,latency_s,imu_queue,cloud_queue,pred_x,ba_x,ba_y,ba_z,bg_x,bg_y,bg_z\n";
     reset();
@@ -74,13 +85,13 @@ public:
       create_subscription<sensor_msgs::msg::PointCloud2>("/sensors/lidar/points", rclcpp::SensorDataQoS().keep_last(32), [this](sensor_msgs::msg::PointCloud2::ConstSharedPtr m) {
         if (clouds.size() >= cfg.at("odometry").at("cloud_queue_limit").get<size_t>()) throw std::runtime_error("cloud_queue_limit exceeded");
         clouds.push_back(m);
-        drain();
       });
     uwb_sub = create_subscription<liuo_tunnel_msgs::msg::UwbRange>(
       "/sensors/uwb/range",
       rclcpp::SensorDataQoS().keep_last(2048),
       [this](liuo_tunnel_msgs::msg::UwbRange::ConstSharedPtr m) { on_uwb(*m); });
-    logger->info("{} raw multi-frame VGICP ready; device={}; UWB record only; truth is not subscribed", backend, gpu_name);
+    estimator_timer = create_wall_timer(std::chrono::milliseconds(1), [this] { drain(); });
+    logger->info("{} raw multi-frame VGICP ready; device={}; UWB={}; truth is not subscribed", backend, gpu_name, fuse ? "FUSED_RAW" : "RECORD_ONLY");
   }
 
 private:
@@ -95,6 +106,11 @@ private:
     ip.acc_noise = cfg.at("sensors").at("sigma_acc_sample").get<double>() / std::sqrt(rate);
     ip.gyro_noise = cfg.at("sensors").at("sigma_gyro_sample").get<double>() / std::sqrt(rate);
     imu = std::make_unique<IMUIntegration>(ip);
+    for (const auto& old : range_queue.reset()) log_range(old, "CLOCK_RESET");
+    bootstrap_factors.resize(0);
+    bootstrap_values.clear();
+    bootstrap_times.clear();
+    bootstrapped = !fuse;
     clouds.clear();
     frames.clear();
     count = 0;
@@ -106,6 +122,7 @@ private:
     sum_w.setZero();
     initial_samples = 0;
     session++;
+    last_uwb = -1;
   }
   void status(const std::string& state, const std::string& reason, double t) {
     diagnostic_msgs::msg::DiagnosticArray a;
@@ -146,20 +163,93 @@ private:
       initial_samples++;
     }
     if (imu->imu_data_in_queue().size() > cfg.at("odometry").at("imu_queue_limit").get<size_t>()) throw std::runtime_error("imu_queue_limit exceeded");
-    drain();
+  }
+  void log_range(
+    const RangeObservation& o,
+    const std::string& reason,
+    const RangeBracket& bracket = {},
+    const std::string& anchor_key = "",
+    double residual = NAN,
+    const std::string& category = "NONE") {
+    uwb << o.producer << ',' << o.session << ',' << o.sequence << ',' << o.stamp << ',' << o.received << ',' << int(o.a_type) << ',' << o.a << ',' << int(o.b_type) << ',' << o.b
+        << ',' << o.range << ',' << o.variance << ',' << reason << ',';
+    if (bracket.reason == "SYNC" || bracket.reason == "INTERPOLATED") uwb << gtsam::DefaultKeyFormatter(bracket.left);
+    uwb << ',';
+    if (bracket.right) uwb << gtsam::DefaultKeyFormatter(*bracket.right);
+    uwb << ',' << anchor_key << ',' << category << ',' << residual << ',' << residual / std::sqrt(o.variance) << ",1\n";
   }
   void on_uwb(const liuo_tunnel_msgs::msg::UwbRange& m) {
-    std::string reason = "RECORD_ONLY";
-    if (m.node_a_type > 1 || m.node_b_type > 1 || m.node_a_type == 0 && m.node_b_type == 0)
-      reason = "UNSUPPORTED_LINK";
-    else if (m.status != 0)
-      reason = "INVALID_STATUS";
-    else if (
-      !std::isfinite(m.range_m) || m.range_m <= 0 || !std::isfinite(m.variance_m2) || m.variance_m2 <= 0 || !m.header.frame_id.empty() ||
-      rclcpp::Time(m.header.stamp).nanoseconds() <= 0 || m.node_a_type == m.node_b_type && m.node_a_id == m.node_b_id)
-      reason = "INVALID_FIELDS";
-    uwb << m.producer_id << ',' << m.session_id << ',' << m.sequence << ',' << rclcpp::Time(m.header.stamp).seconds() << ',' << now().seconds() << ',' << int(m.node_a_type) << ','
-        << m.node_a_id << ',' << int(m.node_b_type) << ',' << m.node_b_id << ',' << m.range_m << ',' << m.variance_m2 << ',' << reason << '\n';
+    RangeObservation o{
+      m.producer_id,
+      m.session_id,
+      m.sequence,
+      rclcpp::Time(m.header.stamp).seconds(),
+      now().seconds(),
+      m.range_m,
+      m.variance_m2,
+      m.node_a_type,
+      m.node_b_type,
+      m.node_a_id,
+      m.node_b_id};
+    if (m.status != 0 || !m.header.frame_id.empty()) {
+      log_range(o, "INVALID_STATUS_OR_FRAME");
+      return;
+    }
+    if (!fuse) {
+      log_range(o, "RECORD_ONLY");
+      return;
+    }
+    if (o.a_type == 1 && o.b_type == 0) {
+      std::swap(o.a_type, o.b_type);
+      std::swap(o.a, o.b);
+    }
+    if (o.a_type == 0 && o.a != 0) {
+      log_range(o, "UNKNOWN_TAG");
+      return;
+    }
+    try {
+      map.index(o.b);
+      if (o.a_type == 1) map.index(o.a);
+    } catch (const std::exception&) {
+      log_range(o, "UNKNOWN_ANCHOR");
+      return;
+    }
+    auto reason = range_queue.push(o);
+    if (reason != "QUEUED") log_range(o, reason);
+  }
+  void append_ranges(double t, gtsam::NonlinearFactorGraph& factors, const gtsam::Values& predicted) {
+    new_ta = 0;
+    new_aa = 0;
+    std::map<double, gtsam::Key> poses;
+    for (const auto& frame : frames) poses[frame.t] = X(frame.id);
+    poses[t] = X(count);
+    for (const auto& o : range_queue.take_until(t)) {
+      auto bracket = range_bracket(poses, o.stamp);
+      if (bracket.reason != "SYNC" && bracket.reason != "INTERPOLATED") {
+        log_range(o, bracket.reason);
+        continue;
+      }
+      const size_t j = map.index(o.b);
+      if (o.a_type == 1) {
+        const size_t i = map.index(o.a);
+        if (!map.surveyed()) {
+          log_range(o, "ORACLE_AA_CHECK", {}, "", o.range - (map.means[i] - map.means[j]).norm(), "CONSISTENCY_ONLY");
+          continue;
+        }
+        auto f = gtsam::make_shared<AnchorAnchorRangeFactor>(A(o.a), A(o.b), o.range, std::sqrt(o.variance));
+        factors.add(f);
+        new_aa++;
+        log_range(o, "ACCEPT_AA", {}, gtsam::DefaultKeyFormatter(A(o.a)) + ";" + gtsam::DefaultKeyFormatter(A(o.b)), f->unwhitenedError(predicted)[0], "PRE_OPT_INNOVATION");
+      } else {
+        auto anchor = map.surveyed() ? std::optional<gtsam::Key>(A(o.b)) : std::nullopt;
+        auto f = gtsam::make_shared<TagAnchorRangeFactor>(bracket.left, bracket.right, anchor, map.means[j], tag, bracket.beta, o.range, std::sqrt(o.variance));
+        double residual = f->unwhitenedError(predicted)[0];
+        factors.add(f);
+        new_ta++;
+        last_uwb = std::max(last_uwb, o.stamp);
+        log_range(o, "ACCEPT_TA", bracket, anchor ? gtsam::DefaultKeyFormatter(*anchor) : "constant:" + std::to_string(o.b), residual, "PRE_OPT_INNOVATION");
+      }
+    }
   }
   void drain() {
     while (!clouds.empty()) {
@@ -233,9 +323,21 @@ private:
       Eigen::Vector3d avg = sum_a / initial_samples;
       if (std::abs(avg.norm() - 9.80665) > .3 || (sum_w / initial_samples).norm() > .1) throw std::runtime_error("initialization requires stationary IMU interval");
       Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(avg, Eigen::Vector3d(0, 0, 9.80665));
-      state = gtsam::NavState(gtsam::Pose3(gtsam::Rot3(q), gtsam::Point3::Zero()), gtsam::Vector3::Zero());
+      auto guess = fuse ? vector3(cfg.at("uwb").at("initial_position_guess")) : gtsam::Vector3::Zero();
+      state = gtsam::NavState(gtsam::Pose3(gtsam::Rot3(q), guess), gtsam::Vector3::Zero());
       bias = gtsam::imuBias::ConstantBias(gtsam::Vector3::Zero(), sum_w / initial_samples);
-      factors.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(0), state.pose(), gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
+      if (fuse) {
+        factors.emplace_shared<GravityAlignmentFactor>(X(0), avg, .001);
+        if (map.surveyed()) {
+          gtsam::KeyVector keys;
+          for (size_t j = 0; j < map.ids.size(); j++) {
+            keys.push_back(A(map.ids[j]));
+            initial.insert(keys.back(), map.means[j]);
+          }
+          factors.emplace_shared<SurveyedMapPrior>(keys, map.means, map.covariance);
+        }
+      } else
+        factors.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(0), state.pose(), gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
       factors.emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(V(0), state.velocity(), gtsam::noiseModel::Isotropic::Sigma(3, .01));
       gtsam::Vector6 sig;
       sig.head<3>().setConstant(cfg.at("sensors").at("initial_acc_bias_sigma"));
@@ -273,8 +375,9 @@ private:
     initial.insert(X(count), state.pose());
     initial.insert(V(count), state.velocity());
     initial.insert(B(count), bias);
-    gtsam::Values predicted = smoother->calculateEstimate();
+    gtsam::Values predicted = bootstrapped ? smoother->calculateEstimate() : bootstrap_values;
     predicted.insert(initial);
+    if (fuse) append_ranges(t, factors, predicted);
     Eigen::Matrix<double, 6, 6> H = Eigen::Matrix<double, 6, 6>::Zero();
     double fraction = 0, cost = 0;
     gtsam_points::NonlinearFactorSetGPU gpu_factors;
@@ -295,7 +398,32 @@ private:
     auto eigen = eig.eigenvalues();
     auto weak = eig.eigenvectors().col(0).eval();
     gtsam::FixedLagSmoother::KeyTimestampMap times{{X(count), t}, {V(count), t}, {B(count), t}};
-    smoother->update(factors, initial, times);
+    if (fuse && map.surveyed())
+      for (auto id : map.ids) times[A(id)] = t;
+    if (!bootstrapped) {
+      bootstrap_factors.add(factors);
+      bootstrap_values.insert(initial);
+      for (const auto& kv : times) bootstrap_times[kv.first] = kv.second;
+      const double bootstrap_duration = cfg.at("uwb").at("bootstrap_s");
+      if (t - first_imu < bootstrap_duration) {
+        frames.push_back({count, t, voxel, count % 10 == 0});
+        last_cloud = t;
+        count++;
+        status("INITIALIZING", "MAP_FRAME_JOINT_BOOTSTRAP", t);
+        return;
+      }
+      gtsam_points::LevenbergMarquardtExtParams params;
+      params.maxIterations = 30;
+      auto optimized = gtsam_points::LevenbergMarquardtOptimizerExt(bootstrap_factors, bootstrap_values, params).optimize();
+      // Transfer the original factors and their joint optimized values exactly
+      // once. No marginal-map + reused-observation double counting.
+      smoother->update(bootstrap_factors, optimized, bootstrap_times);
+      bootstrap_factors.resize(0);
+      bootstrap_values.clear();
+      bootstrap_times.clear();
+      bootstrapped = true;
+    } else
+      smoother->update(factors, initial, times);
     state = gtsam::NavState(smoother->calculateEstimate<gtsam::Pose3>(X(count)), smoother->calculateEstimate<gtsam::Vector3>(V(count)));
     bias = smoother->calculateEstimate<gtsam::imuBias::ConstantBias>(B(count));
     if (!state.pose().matrix().allFinite() || !state.velocity().allFinite()) throw std::runtime_error("nonfinite optimized state");
@@ -328,9 +456,16 @@ private:
     auto finish = std::chrono::steady_clock::now();
     auto ms = [](auto a, auto b) { return std::chrono::duration<double, std::milli>(b - a).count(); };
     std::string mode = lidar.empty() ? "INITIALIZING" : (fraction < .5 || eigen[0] < 1e-6 || eigen[5] / std::max(eigen[0], 1e-12) > 1e6 ? "DEGRADED" : "TRACKING");
+    if (fuse) {
+      if (t - last_uwb > .3)
+        mode = "DEGRADED";
+      else
+        mode = "TRACKING";
+      if (cov.trace() > 100) mode = "LOST";
+    }
     nav_msgs::msg::Odometry out;
     out.header.stamp = m.header.stamp;
-    out.header.frame_id = "odom";
+    out.header.frame_id = fuse ? "map" : "odom";
     out.child_frame_id = "imu";
     auto p = state.position();
     auto q = state.pose().rotation().toQuaternion();
@@ -354,12 +489,14 @@ private:
     out.twist.twist.linear.y = body_v.y();
     out.twist.twist.linear.z = body_v.z();
     pub->publish(out);
-    status(mode, "LIDAR_INFORMATION_DIAGNOSTIC_NO_DOWNWEIGHTING", t);
+    status(mode, fuse ? (t - last_uwb > .3 ? "UWB_ABSENT_LIO_CONTINUES" : "JOINT_LIDAR_IMU_UWB") : "LIDAR_INFORMATION_DIAGNOSTIC_NO_DOWNWEIGHTING", t);
     trajectory << session << ',' << t << ',' << now().seconds() << ',' << p.x() << ',' << p.y() << ',' << p.z() << ',' << q.x() << ',' << q.y() << ',' << q.z() << ',' << q.w()
-               << ',' << v.x() << ',' << v.y() << ',' << v.z() << ",1," << mode << ",none\n";
-    size_t active = smoother->timestamps().size() / 3;
-    graph << session << ',' << t << ',' << active << ',' << active << ',' << active << ",0," << (count ? 1 : 0) << ',' << lidar.size() << ',' << smoother->getFactors().nrFactors()
-          << ',' << retired << ',' << ms(preprocessed, finish) << ',' << (session - 1) << ",0\n";
+               << ',' << v.x() << ',' << v.y() << ',' << v.z() << ",1," << mode << "," << (fuse ? map.id : "none") << "\n";
+    size_t anchors = fuse && map.surveyed() ? map.ids.size() : 0;
+    size_t active = (smoother->timestamps().size() - anchors) / 3;
+    graph << session << ',' << t << ',' << active << ',' << active << ',' << active << ',' << anchors << ',' << (count ? 1 : 0) << ',' << lidar.size() << ','
+          << smoother->getFactors().nrFactors() << ',' << retired << ',' << ms(preprocessed, finish) << ',' << (session - 1) << ",0," << new_ta << ',' << new_aa << ','
+          << (anchors ? 1 : 0) << ',' << range_queue.size() << "\n";
     icp << session << ',' << t << ',' << points.size() << ',' << fraction << ',' << cost;
     for (int i = 0; i < 6; i++) icp << ',' << eigen[i];
     for (int i = 0; i < 6; i++) icp << ',' << weak[i];
@@ -373,6 +510,16 @@ private:
   }
   std::unique_ptr<gtsam_points::StreamTempBufferRoundRobin> streams;
   std::string backend, gpu_name;
+  bool fuse = false, bootstrapped = true;
+  KnownMap map;
+  gtsam::Point3 tag;
+  RangeQueue range_queue;
+  double last_uwb = -1;
+  size_t new_ta = 0, new_aa = 0;
+  gtsam::NonlinearFactorGraph bootstrap_factors;
+  gtsam::Values bootstrap_values;
+  gtsam::FixedLagSmoother::KeyTimestampMap bootstrap_times;
+  rclcpp::TimerBase::SharedPtr estimator_timer;
   nlohmann::json cfg;
   Eigen::Isometry3d T_BL;
   std::unique_ptr<IMUIntegration> imu;

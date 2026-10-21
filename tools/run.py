@@ -32,6 +32,7 @@ def main():
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--reset-at", type=float, default=-1.0)
     p.add_argument("--config", type=Path, default=ROOT / "packages/liuo_tunnel/config/phase1.json")
+    p.add_argument("--map", type=Path, help="external oracle_map or surveyed_map JSON")
     p.add_argument("--formal", action="store_true")
     p.add_argument("--diagnostic-capture", action="store_true")
     p.add_argument("--inject-failure", choices=["simulation", "odometry"])
@@ -57,7 +58,15 @@ def main():
         config = run / "metadata/config/phase1.json"
         shutil.copyfile(args.config, config)
         rd.register_config_snapshot(run, config)
-        selected_backend = json.loads(config.read_text())["odometry"]["backend"]
+        effective_config = json.loads(config.read_text())
+        selected_backend = effective_config["odometry"]["backend"]
+        map_path = None
+        if effective_config["uwb"]["mode"] == "fuse":
+            if args.map is None:
+                raise RuntimeError("MAP_MISSING: fused mode requires --map")
+            map_path = run / "metadata/config/map.json"
+            shutil.copyfile(args.map, map_path)
+            rd.register_config_snapshot(run, map_path)
         if args.formal and (selected_backend != "gpu" or args.rate != 1.0):
             raise RuntimeError("formal validation requires GPU backend and requested rate 1.0")
         if selected_backend == "gpu":
@@ -180,6 +189,9 @@ def main():
             ]
             for name, binary in binaries.items()
         }
+        if map_path is not None:
+            commands["odometry"] += ["-p", "map_file:=" + str(map_path)]
+            identity["map_sha256"] = digest(map_path)
         commands["simulation"] += [
             "-p",
             f"duration_s:={args.duration}",
