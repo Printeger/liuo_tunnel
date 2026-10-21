@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Single owner: allocate, snapshot, start owned processes, retain failure, finalize."""
 import argparse
+import ctypes
 import hashlib
 import json
 import os
@@ -62,8 +63,20 @@ def main():
         if selected_backend == "gpu":
             preflight = subprocess.run(["nvidia-smi", "-q"], capture_output=True, text=True)
             (run / "metadata/gpu_preflight.txt").write_text(preflight.stdout + preflight.stderr)
-            if preflight.returncode:
-                raise RuntimeError("GPU preflight failed; no CPU fallback")
+            driver = ctypes.CDLL("libcuda.so.1")
+            init_status = driver.cuInit(0)
+            count = ctypes.c_int()
+            count_status = driver.cuDeviceGetCount(ctypes.byref(count))
+            rd._atomic_write_json(
+                run / "metadata/gpu_driver.json",
+                {
+                    "cuInit": init_status,
+                    "cuDeviceGetCount": count_status,
+                    "device_count": count.value,
+                },
+            )
+            if preflight.returncode or init_status or count_status or count.value < 1:
+                raise RuntimeError("GPU_NOT_READY: driver/device preflight failed; no CPU fallback")
         rd._atomic_write_json(
             run / "metadata/config/scenario.json",
             {
