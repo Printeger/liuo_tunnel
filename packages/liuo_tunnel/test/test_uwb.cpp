@@ -410,3 +410,36 @@ TEST(KnownMap, ReplacingStaticPairSummaryBoundsHistoryWithoutRepeatingMapPrior) 
   }
   EXPECT_EQ(summary.count, 501);
 }
+
+#include <gtsam/nonlinear/LinearContainerFactor.h>
+TEST(Smoother, DoglegMarginalPriorMustContributeToNonlinearAcceptanceCost) {
+  gtsam::ISAM2Params params;
+  params.setOptimizationParams(gtsam::ISAM2DoglegParams());
+  params.relinearizeSkip = 1;
+  liuo_tunnel::solver::IncrementalFixedLagSmootherExt smoother(1.0, params);
+  auto noise = gtsam::noiseModel::Isotropic::Sigma(3, .1);
+  for (size_t i = 0; i < 3; ++i) {
+    gtsam::NonlinearFactorGraph factors;
+    gtsam::Values initial;
+    initial.insert(i, gtsam::Point3(double(i), 0, 0));
+    if (i == 0)
+      factors.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(i, gtsam::Point3::Zero(), noise);
+    else
+      factors.emplace_shared<gtsam::BetweenFactor<gtsam::Point3>>(i - 1, i, gtsam::Point3(1, 0, 0), noise);
+    smoother.update(factors, initial, {{i, double(i)}});
+    smoother.calculateEstimate();
+  }
+  gtsam::Values displaced = smoother.getISAM2().getLinearizationPoint();
+  displaced.update(1, gtsam::Point3(1.2, 0, 0));
+  int marginal_count = 0;
+  for (const auto& factor : smoother.getFactors()) {
+    auto marginal = dynamic_cast<const gtsam::LinearContainerFactor*>(factor.get());
+    if (!marginal) continue;
+    ++marginal_count;
+    EXPECT_TRUE(marginal->hasLinearizationPoint());
+    // P1 prior variance is .01 + .01 after eliminating P0; displacement .2
+    // must cost .5 * .2^2 / .02 = 1 in the nonlinear Dogleg acceptance test.
+    EXPECT_NEAR(marginal->error(displaced), 1.0, 1e-10);
+  }
+  EXPECT_EQ(marginal_count, 1);
+}

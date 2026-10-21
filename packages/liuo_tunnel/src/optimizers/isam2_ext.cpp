@@ -718,7 +718,11 @@ void ISAM2Ext::marginalizeLeaves(const FastList<Key>& leafKeysList, FactorIndice
     for (const auto& factor : key_factors.second) {
       if (factor) {
         factorsToAdd.push_back(factor);
-        nonlinearFactorsToAdd.emplace_shared<LinearContainerFactor>(factor);
+        // Dogleg evaluates the nonlinear objective to accept its step. Without
+        // a reference, LinearContainerFactor::error returns zero and omits this
+        // historical prior. Keep the same Gaussian information at its original
+        // theta; fixedVariables_ below preserves these reference coordinates.
+        nonlinearFactorsToAdd.emplace_shared<LinearContainerFactor>(factor, theta_);
         for (Key factorKey : *factor) {
           fixedVariables_.insert(factorKey);
         }
