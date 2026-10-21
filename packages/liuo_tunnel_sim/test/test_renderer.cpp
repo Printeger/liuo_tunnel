@@ -198,3 +198,35 @@ TEST(RailWorld, SolidWallsHaveNoVoxelSamplingHoles) {
     EXPECT_NEAR(scan.beams[0].range_m, 3.0, .11);
   }
 }
+
+TEST(FirstHitLidarRenderer, ParallelRaysPreserveEveryHitAndBeamOrder) {
+  auto world = liuo_tunnel_sim::rail_world(2);
+  liuo_tunnel_sim::FirstHitLidarConfig config;
+  config.max_range_m = 40;
+  config.vertical_min_deg = -25;
+  config.vertical_max_deg = 25;
+  liuo_tunnel_sim::FirstHitLidarRenderer serial(config);
+  config.threads = 4;
+  liuo_tunnel_sim::FirstHitLidarRenderer parallel(config);
+  ASSERT_TRUE(serial.loadWorld(world));
+  ASSERT_TRUE(parallel.loadWorld(world));
+  for (double x : {0., 23.7, 49.8, 90.3}) {
+    auto pose = Eigen::Isometry3d::Identity();
+    pose.translation() = Eigen::Vector3d(x, 0, 1.2);
+    pose.linear() = Eigen::AngleAxisd(.05, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+    auto a = serial.render(pose), b = parallel.render(pose);
+    ASSERT_EQ(a.hits.size(), b.hits.size());
+    ASSERT_EQ(a.beams.size(), b.beams.size());
+    EXPECT_EQ(a.stats.dda_voxel_visits, b.stats.dda_voxel_visits);
+    for (size_t i = 0; i < a.hits.size(); i++) {
+      EXPECT_FLOAT_EQ(a.hits[i].x, b.hits[i].x);
+      EXPECT_FLOAT_EQ(a.hits[i].y, b.hits[i].y);
+      EXPECT_FLOAT_EQ(a.hits[i].z, b.hits[i].z);
+    }
+    for (size_t i = 0; i < a.beams.size(); i++) {
+      EXPECT_EQ(a.beams[i].outcome, b.beams[i].outcome);
+      EXPECT_DOUBLE_EQ(a.beams[i].range_m, b.beams[i].range_m);
+    }
+    std::cout << "render x=" << x << " serial_ms=" << a.stats.render_latency_ms << " parallel_ms=" << b.stats.render_latency_ms << std::endl;
+  }
+}

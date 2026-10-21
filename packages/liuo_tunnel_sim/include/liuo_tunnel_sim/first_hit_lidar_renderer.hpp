@@ -15,6 +15,7 @@
 namespace liuo_tunnel_sim {
 
 struct FirstHitLidarConfig {
+  int threads = 1;
   int horizontal_samples = 512;
   int vertical_samples = 40;
   double horizontal_fov_deg = 360.0;

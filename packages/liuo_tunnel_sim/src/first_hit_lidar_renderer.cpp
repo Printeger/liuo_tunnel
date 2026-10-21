@@ -140,8 +140,8 @@ struct FirstHitLidarRenderer::Impl {
 
 FirstHitLidarRenderer::FirstHitLidarRenderer(FirstHitLidarConfig config) : impl_(std::make_unique<Impl>(std::move(config))) {
   const auto& value = impl_->config;
-  impl_->valid_config = value.horizontal_samples > 0 && value.vertical_samples > 0 && std::isfinite(value.horizontal_fov_deg) && value.horizontal_fov_deg >= 0.0 &&
-                        value.horizontal_fov_deg <= 360.0 && std::isfinite(value.vertical_min_deg) && std::isfinite(value.vertical_max_deg) &&
+  impl_->valid_config = value.threads > 0 && value.threads <= 32 && value.horizontal_samples > 0 && value.vertical_samples > 0 && std::isfinite(value.horizontal_fov_deg) &&
+                        value.horizontal_fov_deg >= 0.0 && value.horizontal_fov_deg <= 360.0 && std::isfinite(value.vertical_min_deg) && std::isfinite(value.vertical_max_deg) &&
                         value.vertical_min_deg <= value.vertical_max_deg && std::isfinite(value.min_range_m) && value.min_range_m >= 0.0 && std::isfinite(value.max_range_m) &&
                         value.max_range_m > value.min_range_m && std::isfinite(value.world_voxel_resolution_m) && value.world_voxel_resolution_m > 0.0;
   if (impl_->valid_config) {
@@ -183,15 +183,25 @@ FirstHitLidarScan FirstHitLidarRenderer::render(const Eigen::Isometry3d& sensor_
   scan.beams.reserve(scan.stats.ray_count);
   if (impl_->world_loaded && sensor_pose_w.matrix().allFinite()) {
     const Eigen::Vector3d origin = sensor_pose_w.translation();
-    for (const auto& direction_sensor : impl_->directions_sensor) {
+    // Independent rays, then compact in original beam order. Identical geometry,
+    // traversal and random-stream indexing regardless of worker scheduling.
+    std::vector<pcl::PointXYZ> hits(scan.stats.ray_count);
+    std::vector<size_t> visits(scan.stats.ray_count, 0);
+    scan.beams.resize(scan.stats.ray_count);
+#pragma omp parallel for num_threads(impl_->config.threads) schedule(static)
+    for (int i = 0; i < static_cast<int>(scan.stats.ray_count); i++) {
+      const auto& direction_sensor = impl_->directions_sensor[i];
       const Eigen::Vector3d direction = (sensor_pose_w.linear() * direction_sensor).normalized();
       Eigen::Vector3d hit;
-      if (impl_->firstHit(origin, direction, &hit, &scan.stats.dda_voxel_visits)) {
-        scan.hits.push_back(pcl::PointXYZ(static_cast<float>(hit.x()), static_cast<float>(hit.y()), static_cast<float>(hit.z())));
-        scan.beams.push_back(FirstHitLidarBeam{direction_sensor, FirstHitLidarBeamOutcome::HIT, (hit - origin).norm()});
-      } else {
-        scan.beams.push_back(FirstHitLidarBeam{direction_sensor, FirstHitLidarBeamOutcome::NO_RETURN, impl_->config.max_range_m});
-      }
+      if (impl_->firstHit(origin, direction, &hit, &visits[i])) {
+        hits[i] = pcl::PointXYZ(static_cast<float>(hit.x()), static_cast<float>(hit.y()), static_cast<float>(hit.z()));
+        scan.beams[i] = FirstHitLidarBeam{direction_sensor, FirstHitLidarBeamOutcome::HIT, (hit - origin).norm()};
+      } else
+        scan.beams[i] = FirstHitLidarBeam{direction_sensor, FirstHitLidarBeamOutcome::NO_RETURN, impl_->config.max_range_m};
+    }
+    for (size_t i = 0; i < scan.stats.ray_count; i++) {
+      scan.stats.dda_voxel_visits += visits[i];
+      if (scan.beams[i].outcome == FirstHitLidarBeamOutcome::HIT) scan.hits.push_back(hits[i]);
     }
   } else {
     for (const auto& direction_sensor : impl_->directions_sensor) {

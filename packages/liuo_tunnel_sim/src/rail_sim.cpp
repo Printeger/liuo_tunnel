@@ -31,7 +31,12 @@ public:
     session = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     logger = liuo_tunnel::create_module_logger("simulation");
     auto& logs = RunLogManager::instance();
-    logs.write_run_info({{"scan_model", "snapshot"}, {"seed", std::to_string(seed)}, {"producer_session", std::to_string(session)}});
+    logs.write_run_info(
+      {{"scan_model", "snapshot"},
+       {"renderer_threads", "4"},
+       {"pacing", "absolute_deadline_no_drop"},
+       {"seed", std::to_string(seed)},
+       {"producer_session", std::to_string(session)}});
     truth.open(logs.export_path("simulation/truth.csv"));
     truth << std::setprecision(16) << "session,stamp,x,y,z,vx,vy,vz\n";
     uwblog.open(logs.export_path("simulation/uwb.csv"));
@@ -48,13 +53,14 @@ public:
     for (int i = 0; i < 13; i++) links.push_back({0, 0, i, 0, 0});
     for (int i = 0; i < 13; i++)
       for (int j = i + 1; j < 13; j++) links.push_back({1, i, j, 0, 0});
-    timer = create_wall_timer(std::chrono::nanoseconds(static_cast<int64_t>(5000000 / rate)), [this] { tick(); });
+    timer = create_wall_timer(std::chrono::milliseconds(1), [this] { service(); });
     logger->info("snapshot simulation ready seed={} duration={}s", seed, duration);
   }
 
 private:
   static FirstHitLidarConfig make_renderer() {
     FirstHitLidarConfig c;
+    c.threads = 4;
     c.max_range_m = 40;
     c.vertical_min_deg = -25;
     c.vertical_max_deg = 25;
@@ -70,6 +76,21 @@ private:
     world_points = p.size();
     std::string why;
     if (!renderer.loadWorld(p, &why)) throw std::runtime_error("renderer world: " + why);
+  }
+  void service() {
+    if (!ready) {
+      tick();
+      return;
+    }
+    // Absolute deadline pacing catches up ALL fixed steps after rendering;
+    // ROS timers alone skip missed periods. No dropped simulated samples.
+    for (int work = 0; work < 200 && rclcpp::ok(); work++) {
+      double due = std::chrono::duration<double>(std::chrono::steady_clock::now() - simulation_started).count() * rate;
+      double scheduled = total_ticks * .005;
+      if (scheduled > due) break;
+      if (due - scheduled > .25) throw std::runtime_error("SIMULATION_DEADLINE_MISSED: backlog >250ms");
+      tick();
+    }
   }
   void tick() {
     if (!ready) {
