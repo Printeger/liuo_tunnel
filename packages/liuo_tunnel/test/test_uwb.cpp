@@ -113,3 +113,91 @@ TEST(UwbFactors, RejectSingularGeometry) {
   TagAnchorRangeFactor f(0, std::nullopt, std::nullopt, {.1, .2, .3}, {.1, .2, .3}, 0, 1, .1);
   EXPECT_THROW(f.unwhitenedError(v), std::domain_error);
 }
+
+#include <liuo_tunnel/uwb/known_map.hpp>
+TEST(KnownMap, RejectInvalidFramesCovarianceAndExtrinsics) {
+  nlohmann::json j = {
+    {"schema_version", "liuo_known_map_v1"},
+    {"units", "m"},
+    {"axis_convention", "ENU"},
+    {"valid", true},
+    {"map_id", "survey-test"},
+    {"mode", "surveyed_map"},
+    {"frame", "map"},
+    {"provenance", "synthetic_survey"},
+    {"tag_lever_m", {.1, .2, .3}}};
+  for (int i = 0; i < 4; i++) j["anchors"].push_back({{"id", i}, {"mean_m", {double(i), double(i % 2), 2.}}});
+  std::vector<std::vector<double>> covariance(12, std::vector<double>(12, 0));
+  for (int i = 0; i < 12; i++) covariance[i][i] = .04;
+  covariance[0][3] = covariance[3][0] = .01;
+  j["joint_covariance_m2"] = covariance;
+  auto map = KnownMap::parse(j, {.1, .2, .3});
+  EXPECT_DOUBLE_EQ(map.covariance(0, 3), .01);
+  EXPECT_THROW(KnownMap::parse(j, {0, 0, 0}), std::invalid_argument);
+  auto invalid = j;
+  invalid["frame"] = "odom";
+  EXPECT_THROW(KnownMap::parse(invalid, {.1, .2, .3}), std::invalid_argument);
+  invalid = j;
+  invalid["joint_covariance_m2"][0][0] = -.1;
+  EXPECT_THROW(KnownMap::parse(invalid, {.1, .2, .3}), std::invalid_argument);
+  invalid = j;
+  invalid["anchors"][1]["id"] = 0;
+  EXPECT_THROW(KnownMap::parse(invalid, {.1, .2, .3}), std::invalid_argument);
+  invalid = j;
+  invalid["units"] = "mm";
+  EXPECT_THROW(KnownMap::parse(invalid, {.1, .2, .3}), std::invalid_argument);
+}
+
+#include <liuo_tunnel/uwb/measurement_queue.hpp>
+TEST(RangeQueue, AsyncDelayDisorderDuplicateExpiryAndReset) {
+  RangeQueue queue(3);
+  RangeObservation o;
+  o.producer = 1;
+  o.session = 7;
+  o.range = 800.08;
+  o.variance = .01;
+  o.stamp = 1.05;
+  EXPECT_EQ(queue.push(o), "QUEUED");  // do not truncate valid noisy range.
+  EXPECT_EQ(queue.push(o), "DUPLICATE");
+  o.sequence = 2;
+  o.stamp = 1.025;
+  EXPECT_EQ(queue.push(o), "QUEUED");
+  EXPECT_TRUE(queue.take_until(1).empty());
+  std::map<double, gtsam::Key> states{{1, 0}, {1.1, 1}};
+  auto pending = queue.take_until(1.1);
+  ASSERT_EQ(pending.size(), 2);
+  EXPECT_LT(pending[0].stamp, pending[1].stamp);
+  EXPECT_NEAR(range_bracket(states, pending[0].stamp).beta, .25, 1e-10);
+  EXPECT_NEAR(range_bracket(states, pending[1].stamp).beta, .5, 1e-10);
+  EXPECT_EQ(range_bracket(states, 1.1).reason, "SYNC");
+  EXPECT_EQ(range_bracket(states, 1.2).reason, "WAIT_RIGHT");
+  EXPECT_EQ(range_bracket(states, .9).reason, "WINDOW_EXPIRED");
+  EXPECT_EQ(range_bracket({{1, 0}, {1.2, 1}}, 1.05).reason, "TIME_BRACKET_GAP");
+  EXPECT_EQ(queue.push(o), "DUPLICATE");  // after consumption still duplicate.
+  queue.reset();
+  o.sequence++;
+  EXPECT_EQ(queue.push(o), "RETIRED_SESSION");
+  o.session++;
+  EXPECT_EQ(queue.push(o), "QUEUED");
+}
+TEST(RangeQueue, BoundAndLongSequenceHistory) {
+  RangeQueue queue(2);
+  RangeObservation o;
+  o.range = 10;
+  o.variance = .01;
+  o.stamp = 1;
+  for (uint64_t i = 0; i < 70000; i++) {
+    o.sequence = i;
+    ASSERT_EQ(queue.push(o), "QUEUED");
+    queue.take_until(1);
+  }
+  o.sequence = 0;
+  EXPECT_EQ(queue.push(o), "IDENTITY_TOO_OLD");
+  o.sequence = 70000;
+  EXPECT_EQ(queue.push(o), "QUEUED");
+  o.sequence++;
+  EXPECT_EQ(queue.push(o), "QUEUED");
+  o.sequence++;
+  EXPECT_EQ(queue.push(o), "QUEUE_LIMIT");
+  EXPECT_EQ(queue.size(), 2);
+}
