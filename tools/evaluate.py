@@ -200,6 +200,21 @@ def evaluate(run):
         )
         # Campaign acceptance also requires long-run paired trials, outages and all seeds.
         check(False, "phase2 long-run/paired-campaign acceptance not yet implemented")
+    delivery_summary = None
+    if fault_profile and fused:
+        from delivery_analysis import analyze
+
+        delivery_summary = analyze(
+            json.loads((run / "metadata/config/delivery.json").read_text()),
+            rows(run / "export/simulation/delivery.csv"),
+            uwb,
+            trajectory,
+            graph,
+            rows(run / "export/simulation/wall_clock.csv"),
+            runtime,
+        )
+        for reason in delivery_summary["failures"]:
+            check(False, "delivery audit: " + reason)
     covariance_summary = None
     covariance_path = run / "export/odometry/covariance.csv"
     if covariance_path.exists():
@@ -224,7 +239,10 @@ def evaluate(run):
         and audit.get("raw_sha256") == frozen["raw_sha256"]
         and audit["counts"] == frozen["counts"],
         "max_vehicle_states": max((int(r["X"]) for r in graph), default=0),
-        "simulation_runtime": runtime,
+        "simulation_runtime": {
+            k: v for k, v in runtime.items() if k not in ["duplicate_uwb", "delivered_sha256"]
+        },
+        "delivery_audit": delivery_summary,
         "raw_counts": audit["counts"],
         "covariance_diagnostics": covariance_summary,
         "sessions": len(est_sessions),

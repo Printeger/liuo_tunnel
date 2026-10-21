@@ -68,7 +68,7 @@ public:
     auto& logs = RunLogManager::instance();
     logs.write_run_info({{"backend", backend + "_RAW_MULTIFRAME_VGICP"}, {"uwb", fuse ? "FUSED_RAW" : "RECORD_ONLY"}, {"gpu_device", gpu_name}});
     trajectory.open(logs.export_path("odometry/trajectory.csv"));
-    trajectory << std::setprecision(16) << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id,publish_wall_ns\n";
+    trajectory << std::setprecision(16) << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id,publish_wall_ns,state_reason\n";
     bootstrap_log.open(logs.profiling_path("bootstrap.csv"));
     bootstrap_log << std::setprecision(16) << "session,iteration,total_error,cost_change,lambda,solve_success,elapsed_s,ta_error,translation_gradient_norm,x0,y0,z0\n";
     covariance_log.open(logs.export_path("odometry/covariance.csv"));
@@ -83,7 +83,7 @@ public:
     uwb.open(logs.export_path("odometry/uwb.csv"));
     uwb << std::setprecision(16)
         << "producer,session,sequence,measurement_stamp,receive_stamp,a_type,a,b_type,b,range,variance,reason,key_left,key_right,key_anchor,residual_class,residual,whitened,"
-           "weight\n";
+           "weight,decision_wall_ns\n";
     timing.open(logs.profiling_path("odometry.csv"));
     timing << "session,stamp,preprocess_ms,optimize_ms,total_ms,latency_s,imu_queue,cloud_queue,pred_x,ba_x,ba_y,ba_z,bg_x,bg_y,bg_z\n";
     reset();
@@ -101,6 +101,10 @@ public:
       [this](liuo_tunnel_msgs::msg::UwbRange::ConstSharedPtr m) { on_uwb(*m); });
     estimator_timer = create_wall_timer(std::chrono::milliseconds(1), [this] { drain(); });
     logger->info("{} raw multi-frame VGICP ready; device={}; UWB={}; truth is not subscribed", backend, gpu_name, fuse ? "FUSED_RAW" : "RECORD_ONLY");
+  }
+
+  ~TunnelNode() override {
+    for (const auto& observation : range_queue.reset()) log_range(observation, "SHUTDOWN_PENDING");
   }
 
 private:
@@ -149,9 +153,10 @@ private:
     d.values.push_back(kv);
     a.status.push_back(d);
     diagnostics->publish(a);
-    if (state != last_status) {
+    if (state != last_status || reason != last_status_reason) {
       logger->info("state={} reason={} stamp={} session={}", state, reason, t, session);
       last_status = state;
+      last_status_reason = reason;
     }
   }
   void on_imu(const sensor_msgs::msg::Imu& m) {
@@ -187,7 +192,8 @@ private:
     if (bracket.reason == "SYNC" || bracket.reason == "INTERPOLATED") uwb << gtsam::DefaultKeyFormatter(bracket.left);
     uwb << ',';
     if (bracket.right) uwb << gtsam::DefaultKeyFormatter(*bracket.right);
-    uwb << ',' << anchor_key << ',' << category << ',' << residual << ',' << residual / std::sqrt(o.variance) << ",1\n";
+    uwb << ',' << anchor_key << ',' << category << ',' << residual << ',' << residual / std::sqrt(o.variance) << ",1,"
+        << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() << '\n';
   }
   void on_uwb(const liuo_tunnel_msgs::msg::UwbRange& m) {
     RangeObservation o{
@@ -524,9 +530,10 @@ private:
       for (int j = 0; j < 3; j++) out.twist.covariance[i * 6 + j] = body_velocity_cov(i, j);
     pub->publish(out);
     auto publish_wall_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-    status(mode, fuse ? (t - last_uwb > .3 ? "UWB_ABSENT_LIO_CONTINUES" : "JOINT_LIDAR_IMU_UWB") : "LIDAR_INFORMATION_DIAGNOSTIC_NO_DOWNWEIGHTING", t);
+    const std::string state_reason = fuse ? (t - last_uwb > .3 ? "UWB_ABSENT_LIO_CONTINUES" : "JOINT_LIDAR_IMU_UWB") : "LIDAR_INFORMATION_DIAGNOSTIC_NO_DOWNWEIGHTING";
+    status(mode, state_reason, t);
     trajectory << session << ',' << t << ',' << now().seconds() << ',' << p.x() << ',' << p.y() << ',' << p.z() << ',' << q.x() << ',' << q.y() << ',' << q.z() << ',' << q.w()
-               << ',' << v.x() << ',' << v.y() << ',' << v.z() << ",1," << mode << "," << (fuse ? map.id : "none") << "," << publish_wall_ns << "\n";
+               << ',' << v.x() << ',' << v.y() << ',' << v.z() << ",1," << mode << "," << (fuse ? map.id : "none") << "," << publish_wall_ns << "," << state_reason << "\n";
     covariance_log << session << ',' << t;
     for (int i = 0; i < 9; i++)
       for (int j = 0; j < 9; j++) covariance_log << ',' << xv_cov(i, j);
@@ -573,7 +580,7 @@ private:
   Eigen::Vector3d sum_a, sum_w;
   std::ofstream trajectory, graph, icp, uwb, timing, covariance_log, bootstrap_log;
   std::shared_ptr<spdlog::logger> logger;
-  std::string last_status;
+  std::string last_status, last_status_reason;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub;
   rclcpp::Subscription<liuo_tunnel_msgs::msg::UwbRange>::SharedPtr uwb_sub;
