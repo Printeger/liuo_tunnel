@@ -33,3 +33,10 @@ Phase-two development commands (a completed process can still FAIL evaluation):
 ```
 
 Replay verifies complete source input counts and capture file hashes, uses the original measurement identities and timestamps at 1×, and verifies the received per-topic content hashes. The source trajectory need not pass accuracy for its complete raw inputs to be usable. Partial captures from failed processes are rejected. The replay producer is the sole clock/sensor publisher. Truth is copied for offline evaluation only. Known-map outputs use `map`, with initialization from the joint raw-observation graph, no true vehicle pose prior. The bundled surveyed map is explicitly a simulated survey with correlated uncertainty, not a field survey.
+
+Joint X/V covariance is exported to `export/odometry/covariance.csv`; body linear
+velocity covariance includes pose/velocity cross terms. Offline NEES and coverage
+appear in the analysis report and currently reveal substantial overconfidence.
+Angular velocity and its full covariance remain unfinished phase-two work.
+The 180 s seed-0 captured run reaches 1× but fails 3D accuracy and truthful status;
+see the acceptance record before treating this development path as deployable.

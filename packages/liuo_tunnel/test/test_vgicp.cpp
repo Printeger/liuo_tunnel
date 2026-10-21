@@ -158,3 +158,78 @@ TEST(VgicpGPU, BinaryFactorMustNotObserveCommonRigidMotion) {
   EXPECT_LT((h.information() - original.information()).norm() / original.information().norm(), 1e-6);
   EXPECT_NEAR(factor->error(values), native->error(values), 1e-8);
 }
+
+#include <liuo_tunnel/uwb/range_factors.hpp>
+#include <liuo_tunnel/common/imu_integration.hpp>
+#include <gtsam/navigation/ImuFactor.h>
+#include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/inference/Symbol.h>
+TEST(VgicpGPU, RawUwbPerturbationChangesSharedImuStatesAndLidarLinearization) {
+  using namespace gtsam::symbol_shorthand;
+  gtsam_points::LinearizationHook::register_hook([] { return std::make_shared<gtsam_points::NonlinearFactorSetGPU>(); });
+  std::vector<Eigen::Vector4d> world;
+  for (int i = -5; i <= 5; i++)
+    for (int j = -5; j <= 5; j++) {
+      world.emplace_back(i * .23, j * .23, .173, 1);
+      world.emplace_back(.237, i * .23, j * .23, 1);
+      world.emplace_back(i * .23, .321, j * .23, 1);
+    }
+  std::vector<gtsam_points::PointCloud::Ptr> clouds;
+  std::vector<gtsam_points::GaussianVoxelMap::Ptr> voxels;
+  gtsam::Values initial;
+  for (int i = 0; i < 3; i++) {
+    auto points = world;
+    for (auto& p : points) p.x() -= .2 * i;
+    auto cpu = std::make_shared<gtsam_points::PointCloudCPU>(points);
+    cpu->add_covs(std::vector<Eigen::Matrix4d>(points.size(), Eigen::Matrix4d::Identity() * .01));
+    clouds.push_back(gtsam_points::PointCloudGPU::clone(*cpu));
+    auto voxel = std::make_shared<gtsam_points::GaussianVoxelMapGPU>(.5);
+    voxel->insert(*clouds.back());
+    voxels.push_back(voxel);
+    initial.insert(X(i), gtsam::Pose3(gtsam::Rot3(), {.2 * i, 0, 0}));
+    initial.insert(V(i), gtsam::Vector3(.2, 0, 0));
+    initial.insert(B(i), gtsam::imuBias::ConstantBias());
+  }
+  gtsam::NonlinearFactorGraph shared;
+  // Synthetic gauge and known initial velocity/bias, never a per-frame pose observation.
+  shared.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(0), initial.at<gtsam::Pose3>(X(0)), gtsam::noiseModel::Isotropic::Sigma(6, .001));
+  shared.emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(V(0), initial.at<gtsam::Vector3>(V(0)), gtsam::noiseModel::Isotropic::Sigma(3, .1));
+  shared.emplace_shared<gtsam::PriorFactor<gtsam::imuBias::ConstantBias>>(B(0), gtsam::imuBias::ConstantBias(), gtsam::noiseModel::Isotropic::Sigma(6, .001));
+  liuo_tunnel::IMUIntegration imu;
+  for (int i = 0; i <= 400; i++) imu.insert_imu(1 + .005 * i, {0, 0, 9.80665}, {0, 0, 0});
+  for (int i = 1; i < 3; i++) {
+    int integrated;
+    imu.integrate_imu(i, i + 1, gtsam::imuBias::ConstantBias(), &integrated);
+    ASSERT_EQ(integrated, 200);
+    shared.emplace_shared<gtsam::ImuFactor>(X(i - 1), V(i - 1), X(i), V(i), B(i - 1), imu.integrated_measurements());
+    shared.emplace_shared<gtsam::BetweenFactor<gtsam::imuBias::ConstantBias>>(B(i - 1), B(i), gtsam::imuBias::ConstantBias(), gtsam::noiseModel::Isotropic::Sigma(6, .001));
+    for (int j = 0; j < i; j++) shared.emplace_shared<liuo_tunnel::GaugeConsistentVGICPFactorGPU>(X(j), X(i), voxels[j], clouds[i]);
+  }
+  const gtsam::Point3 anchor(4, 3, 2), lever(.12, -.08, .21);
+  const double measured = (gtsam::Point3(.3, 0, 0) + lever - anchor).norm();
+  auto solve = [&](double perturbation) {
+    auto graph = shared;
+    graph.emplace_shared<liuo_tunnel::TagAnchorRangeFactor>(X(1), X(2), std::nullopt, anchor, lever, .5, measured + perturbation, .1);
+    gtsam_points::LevenbergMarquardtExtParams parameters;
+    parameters.maxIterations = 30;
+    parameters.relativeErrorTol = 1e-9;
+    return gtsam::Values(gtsam_points::LevenbergMarquardtOptimizerExt(graph, initial, parameters).optimize());
+  };
+  auto nominal = solve(0), perturbed = solve(.3);
+  double dx = (nominal.at<gtsam::Pose3>(X(2)).translation() - perturbed.at<gtsam::Pose3>(X(2)).translation()).norm();
+  double dv = (nominal.at<gtsam::Vector3>(V(2)) - perturbed.at<gtsam::Vector3>(V(2))).norm();
+  double db = (nominal.at<gtsam::imuBias::ConstantBias>(B(1)).vector() - perturbed.at<gtsam::imuBias::ConstantBias>(B(1)).vector()).norm();
+  EXPECT_GT(dx, 1e-5);
+  EXPECT_GT(dv, 1e-6);
+  EXPECT_GT(db, 1e-10);
+  auto next_lidar = gtsam::make_shared<liuo_tunnel::GaugeConsistentVGICPFactorGPU>(X(0), X(2), voxels[0], clouds[2]);
+  auto linearized = [&](const gtsam::Values& values) {
+    gtsam_points::NonlinearFactorSetGPU batch;
+    batch.add(next_lidar);
+    batch.linearize(values);
+    return gtsam::HessianFactor(*next_lidar->linearize(values)).augmentedInformation();
+  };
+  double linearization_change = (linearized(nominal) - linearized(perturbed)).norm();
+  EXPECT_GT(linearization_change, 1e-5);
+  std::cout << "single raw UWB +0.3m: dx=" << dx << " dv=" << dv << " db=" << db << " next VGICP augmented-information change=" << linearization_change << std::endl;
+}
