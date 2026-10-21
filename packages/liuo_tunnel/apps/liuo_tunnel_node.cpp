@@ -100,6 +100,7 @@ private:
     p.relinearizeSkip = 1;
     p.relinearizeThreshold = .05;
     p.findUnusedFactorSlots = true;
+    p.setFactorization(cfg.at("odometry").value("factorization", std::string("CHOLESKY")));
     smoother = std::make_unique<gtsam_points::IncrementalFixedLagSmootherExt>(cfg.at("odometry").at("lag_s"), p);
     IMUIntegrationParams ip;
     double rate = cfg.at("sensors").at("imu_rate_hz");

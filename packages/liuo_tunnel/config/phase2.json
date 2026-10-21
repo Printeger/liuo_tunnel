@@ -34,7 +34,8 @@
     "cloud_queue_limit": 32,
     "covariance_neighbors": 20,
     "validate_covariance_planarity": true,
-    "backend": "gpu"
+    "backend": "gpu",
+    "factorization": "QR"
   },
   "uwb": {
     "mode": "fuse",
