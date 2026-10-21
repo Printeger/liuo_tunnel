@@ -2002,3 +2002,18 @@ frozen_input_verified=false、delivered_input_verified=true）。恢复后新TA
 无缺帧/重复；状态可用率99.8611%并不代表精度通过。完整分轴和逐恢复秒
 记录在压力run/export/analysis/{s44_navigation,pressure_audit,report}.json。
 pressure_audit保持FAIL（入口>1m），未改门槛；未扩大为多seed campaign。
+
+### 预登记 S45：禁止计时器独自认证断流恢复
+
+S44证明小postfit残差+小局部协方差+等待一个lag窗口仍会在实际位置
+未恢复时回到TRACKING。修复状态契约：已有uwb_recovery_until≥0表示
+本session曾启动恢复；窗口结束后，若无独立恢复验证机制，保持
+DEGRADED/UWB_RECOVERY_UNVERIFIED。复用现有deadline，不增加状态变量，
+不伪造验证器。无观测/拒绝/非有限/大残差等更具体原因继续优先；新session
+按原实现重置。默认名义无断流路径不变，初始多解问题仍另列FAIL。
+
+先添加会在旧逻辑失败的状态回归测试，再修改状态选择并运行组件/项目
+测试及S44同一80s压力回放。成功条件：首次恢复之后到session结束无
+TRACKING，断流仍明确报告缺测，异常原因不被隐藏，输入投递合同通过。
+这只修复无证据的恢复声明，不是精度修复，也不是自动恢复能力完成；
+不会把长期DEGRADED当作阶段通过或抹掉原始误差/协方差。
