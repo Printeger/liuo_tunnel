@@ -16,7 +16,7 @@ enum class RegularizationMethod { NONE, PLANE, NORMALIZED_MIN_EIG, FROBENIUS };
  */
 class CloudCovarianceEstimation {
 public:
-  CloudCovarianceEstimation(const int num_threads = 1);
+  CloudCovarianceEstimation(const int num_threads = 1, bool validate_planarity = true);
   ~CloudCovarianceEstimation();
 
   /**
@@ -59,6 +59,7 @@ public:
   Eigen::Matrix4d regularize(const Eigen::Matrix4d& cov, Eigen::Vector3d* eigenvalues = nullptr, Eigen::Matrix3d* eigenvectors = nullptr) const;
 
 private:
+  const bool validate_planarity;
   const RegularizationMethod regularization_method;
   const int num_threads;
 };

@@ -36,7 +36,7 @@ class TunnelNode : public rclcpp::Node {
   logger=create_module_logger("odometry"); auto& logs=RunLogManager::instance(); logs.write_run_info({{"backend","CPU_RAW_MULTIFRAME_VGICP"},{"uwb","RECORD_ONLY"}});
   trajectory.open(logs.export_path("odometry/trajectory.csv")); trajectory<<std::setprecision(16)<<"session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id\n";
   graph.open(logs.export_path("odometry/graph.csv"));graph<<"session,stamp,X,V,B,A,imu_factors,lidar_factors,total_factors,marginalized,optimization_ms,reset,fallback\n";
-  icp.open(logs.export_path("odometry/icp.csv"));icp<<"session,stamp,points,inlier_fraction,cost,eig0,eig1,eig2,eig3,eig4,eig5,weak_rx,weak_ry,weak_rz,weak_tx,weak_ty,weak_tz,weighting\n";
+  icp.open(logs.export_path("odometry/icp.csv"));icp<<"session,stamp,points,inlier_fraction,cost,eig0,eig1,eig2,eig3,eig4,eig5,weak_rx,weak_ry,weak_rz,weak_tx,weak_ty,weak_tz,weighting,nonplanar_covariances\n";
   uwb.open(logs.export_path("odometry/uwb.csv"));uwb<<std::setprecision(16)<<"producer,session,sequence,measurement_stamp,receive_stamp,a_type,a,b_type,b,range,variance,reason\n";
   timing.open(logs.profiling_path("odometry.csv"));timing<<"session,stamp,preprocess_ms,optimize_ms,total_ms,latency_s,imu_queue,cloud_queue,pred_x,ba_x,ba_y,ba_z,bg_x,bg_y,bg_z\n";
   reset();
@@ -113,7 +113,8 @@ class TunnelNode : public rclcpp::Node {
   if(points.size()<100)throw std::runtime_error("insufficient finite cloud points");
   gtsam_points::KdTree tree(points.data(),points.size()); const size_t k=cfg.at("odometry").at("covariance_neighbors"); std::vector<int> neighbors(points.size()*k);
   for(size_t i=0;i<points.size();i++){std::vector<size_t> ids(k);std::vector<double> distances(k);if(tree.knn_search(points[i].data(),k,ids.data(),distances.data())!=k)throw std::runtime_error("covariance neighborhood missing");for(size_t j=0;j<k;j++)neighbors[i*k+j]=ids[j];}
-  auto cloud=std::make_shared<gtsam_points::PointCloudCPU>(points); CloudCovarianceEstimation covariance(2);cloud->add_covs(covariance.estimate(points,neighbors));
+  auto cloud=std::make_shared<gtsam_points::PointCloudCPU>(points); CloudCovarianceEstimation covariance(2,cfg.at("odometry").at("validate_covariance_planarity"));
+  auto covariances=covariance.estimate(points,neighbors);size_t nonplanar=0;for(const auto& c:covariances)if(c.trace()>2.9)nonplanar++;cloud->add_covs(covariances);
   auto voxel=std::make_shared<gtsam_points::GaussianVoxelMapCPU>(cfg.at("odometry").at("voxel_resolution").get<double>());voxel->insert(*cloud);
   auto preprocessed=std::chrono::steady_clock::now();
   gtsam::Values initial;gtsam::NonlinearFactorGraph factors,lidar;
@@ -165,7 +166,7 @@ class TunnelNode : public rclcpp::Node {
   trajectory<<session<<','<<t<<','<<now().seconds()<<','<<p.x()<<','<<p.y()<<','<<p.z()<<','<<q.x()<<','<<q.y()<<','<<q.z()<<','<<q.w()<<','<<v.x()<<','<<v.y()<<','<<v.z()<<",1,"<<mode<<",none\n";
   size_t active=smoother->timestamps().size()/3;
   graph<<session<<','<<t<<','<<active<<','<<active<<','<<active<<",0,"<<(count?1:0)<<','<<lidar.size()<<','<<smoother->getFactors().nrFactors()<<','<<retired<<','<<ms(preprocessed,finish)<<','<<(session-1)<<",0\n";
-  icp<<session<<','<<t<<','<<points.size()<<','<<fraction<<','<<cost;for(int i=0;i<6;i++)icp<<','<<eigen[i];for(int i=0;i<6;i++)icp<<','<<weak[i];icp<<",none\n";
+  icp<<session<<','<<t<<','<<points.size()<<','<<fraction<<','<<cost;for(int i=0;i<6;i++)icp<<','<<eigen[i];for(int i=0;i<6;i++)icp<<','<<weak[i];icp<<",covariance_planarity_guard,"<<nonplanar<<'\n';
   timing<<session<<','<<t<<','<<ms(start,preprocessed)<<','<<ms(preprocessed,finish)<<','<<ms(start,finish)<<','<<now().seconds()-t<<','<<imu->imu_data_in_queue().size()<<','<<clouds.size()<<','<<pred_x;for(int i=0;i<6;i++)timing<<','<<bias.vector()[i];timing<<'\n';
   last_cloud=t;count++;
  }

@@ -28,3 +28,21 @@ TEST(Vgicp, VariablePoseFactorRecoversTranslatedGeometry) {
  auto out=gtsam::LevenbergMarquardtOptimizer(graph,values).optimize();
  EXPECT_NEAR(out.at<gtsam::Pose3>(1).translation().x(),.3,.03);
 }
+#include <gtsam/linear/HessianFactor.h>
+TEST(Vgicp, UnsupportedPlaneDoesNotFabricateAxialInformation) {
+ liuo_tunnel::CloudCovarianceEstimation original(1,false), guarded(1,true);
+ Eigen::Matrix4d line=Eigen::Matrix4d::Zero();line(0,0)=1e-7;line(1,1)=2e-7;line(2,2)=1;
+ auto old_cov=original.regularize(line),new_cov=guarded.regularize(line);
+ EXPECT_GT((old_cov.topLeftCorner<3,3>().inverse().norm()),new_cov.norm());
+ std::vector<Eigen::Vector4d> points{{.15,.15,.15,1},{.15,.15,.25,1},{.15,.15,.35,1}};
+ auto block=[&](const Eigen::Matrix4d& cov){
+  auto cloud=std::make_shared<gtsam_points::PointCloudCPU>(points);cloud->add_covs(std::vector<Eigen::Matrix4d>(points.size(),cov));
+  auto voxel=std::make_shared<gtsam_points::GaussianVoxelMapCPU>(.5);voxel->insert(*cloud);
+  gtsam_points::IntegratedVGICPFactor factor(0,1,voxel,cloud);gtsam::Values values;values.insert(0,gtsam::Pose3());values.insert(1,gtsam::Pose3());
+  gtsam::HessianFactor h(*factor.linearize(values));return h.hessianBlockDiagonal().at(1).eval();
+ };
+ auto old_h=block(old_cov),new_h=block(new_cov);
+ EXPECT_GT(old_h(3,3),new_h(3,3)*100);
+ Eigen::Matrix4d plane=Eigen::Matrix4d::Zero();plane(0,0)=.1;plane(1,1)=.2;plane(2,2)=1e-7;
+ EXPECT_NEAR(guarded.regularize(plane)(2,2),.001,1e-10);
+}

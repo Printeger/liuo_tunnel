@@ -18,7 +18,7 @@
 
 namespace liuo_tunnel {
 
-CloudCovarianceEstimation::CloudCovarianceEstimation(const int num_threads) : regularization_method(RegularizationMethod::PLANE), num_threads(num_threads) {}
+CloudCovarianceEstimation::CloudCovarianceEstimation(const int num_threads, bool validate_planarity) : validate_planarity(validate_planarity), regularization_method(RegularizationMethod::PLANE), num_threads(num_threads) {}
 
 CloudCovarianceEstimation::~CloudCovarianceEstimation() {}
 
@@ -191,6 +191,15 @@ Eigen::Matrix4d CloudCovarianceEstimation::regularize(const Eigen::Matrix4d& cov
       }
 
       Eigen::Vector3d values(1e-3, 1.0, 1.0);
+      // IAP's unconditional plane normalization fabricates a precise normal for
+      // collinear scan rings and volumetric/corner neighborhoods. Such a normal
+      // pinned the rail experiment near its start while IMU bias absorbed motion.
+      // Preserve isotropic uncertainty when a local plane is not supported.
+      // This changes the actual factor covariance, not a diagnostic-only gamma.
+      const auto spectrum = eig.eigenvalues();
+      if (validate_planarity && (spectrum[1] < 0.1 * spectrum[2] || spectrum[0] > 0.1 * spectrum[1])) {
+        values.setOnes();
+      }
       Eigen::Matrix4d c = Eigen::Matrix4d::Zero();
       c.block<3, 3>(0, 0) = eig.eigenvectors() * values.asDiagonal() * eig.eigenvectors().transpose();
       return c;
