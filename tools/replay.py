@@ -176,20 +176,9 @@ def main():
             if kind == "uwb":
                 identity = [message.producer_id, message.session_id, message.sequence]
                 measurement_stamp = message.header.stamp.sec + message.header.stamp.nanosec * 1e-9
-                base_range = message.range_m
-                base_status, base_variance = message.propagation_status, message.variance_m2
-                endpoints = [
-                    identity
-                    for kind, identity in [
-                        (message.node_a_type, message.node_a_id),
-                        (message.node_b_type, message.node_b_id),
-                    ]
-                    if kind == 1
-                ]
-                bias = scheduler.range_bias((record_ns - first_stamp) * 1e-9, endpoints)
-                if bias:
-                    message.range_m += bias
-                    message.propagation_status = message.NLOS_REPORTED
+                base_range, base_status, base_variance, bias = scheduler.apply_range_stress(
+                    message, (record_ns - first_stamp) * 1e-9
+                )
                 delivery_csv.writerow(
                     identity
                     + [

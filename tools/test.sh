@@ -10,3 +10,4 @@ cd "$ROOT"
 colcon --log-base "$ROOT/log/test" test --base-paths "$ROOT/packages" --build-base "$ROOT/build" --event-handlers console_direct+
 colcon --log-base "$ROOT/log/test" test-result --test-result-base "$ROOT/build" --verbose
 python3 -m unittest discover -s tools -p 'test_*.py' -v
+python3 tools/check_pressure_message.py

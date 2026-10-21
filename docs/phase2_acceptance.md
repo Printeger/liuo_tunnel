@@ -654,3 +654,12 @@ seed 1 oracle `20261021T143251Z_960` 540 s全程完成：RMSE0.174787 m、
 及设置严格配对通过。位置NEES43.5224、95%覆盖率6.5602%，继续保留
 局部后验过度自信诊断，未反调噪声。当前seed 1 OFF开始回放，其余种子
 仍未完成。原报告保留完整阶段尚未完成标志。
+
+新增`tools/check_pressure_message.py`真实ROS消息集成检查并纳入
+`tools/test.sh`：使用已安装的UwbRange执行CDR序列化往返，对整个
+消息对象核对仅range及声明的NLOS标志改变；身份、header时间、端点、
+状态和方差保持。验证名义模式无改动、重复消息正偏一致、加偏后超过
+800 m不截断，以及所有压力profile可完成运行前预检。实际检查PASS
+（`log/phase2-pressure-ros-message-test.txt`），37项Python回归PASS
+（`log/phase2-pressure-message-regressions.txt`）。此为消息链路集成检查，
+不是180 s压力场景或定位性能通过；未同时运行GPU测试影响当前正式回放。

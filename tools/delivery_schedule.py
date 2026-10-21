@@ -147,6 +147,23 @@ class DeliverySchedule:
         index = (elapsed_ns - self.bias_begin_ns) // self.bias_step_ns
         return self.bias_series[endpoints][index]
 
+    def apply_range_stress(self, message, elapsed):
+        """Return original range/status/variance and bias for the evidence log."""
+        original = (message.range_m, message.propagation_status, message.variance_m2)
+        endpoints = [
+            identity
+            for kind, identity in [
+                (message.node_a_type, message.node_a_id),
+                (message.node_b_type, message.node_b_id),
+            ]
+            if kind == 1
+        ]
+        bias = self.range_bias(elapsed, endpoints)
+        if bias:
+            message.range_m += bias
+            message.propagation_status = message.NLOS_REPORTED
+        return (*original, bias)
+
     def events(self, records):
         if self.anchor_outages and self.anchor_ids is None:
             raise ValueError("anchor outage requires endpoint decoder")
