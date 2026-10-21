@@ -144,3 +144,23 @@ class DeliveryScheduleTest(unittest.TestCase):
         fault["step_s"] = 0.00001
         with self.assertRaisesRegex(ValueError, "bound"):
             DeliverySchedule(profile)
+
+    def test_nlos_exact_nanosecond_grid_boundary(self):
+        profile = dict(
+            schema_version="liuo_delivery_v1",
+            begin_s=8,
+            end_s=80,
+            nlos_bias=dict(
+                anchor_id=4,
+                begin_s=40,
+                end_s=60,
+                seed=38591,
+                mean_m=2.0,
+                log_sigma=0.25,
+                correlation_s=2.0,
+                step_s=0.1,
+            ),
+        )
+        model = DeliverySchedule(profile)
+        self.assertEqual(model.range_bias(40.3, [4]), model.range_bias(40.35, [4]))
+        self.assertNotEqual(model.range_bias(40.3 - 1e-9, [4]), model.range_bias(40.3, [4]))

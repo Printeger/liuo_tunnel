@@ -95,9 +95,14 @@ class DeliverySchedule:
                     raise ValueError("invalid NLOS " + key)
             if not self.begin <= self.nlos["begin_s"] < self.nlos["end_s"] <= self.end:
                 raise ValueError("NLOS bias outside delivery window")
-            self.bias_steps = math.ceil(
-                (self.nlos["end_s"] - self.nlos["begin_s"]) / self.nlos["step_s"]
-            )
+            self.bias_begin_ns = round(self.nlos["begin_s"] * 1e9)
+            self.bias_end_ns = round(self.nlos["end_s"] * 1e9)
+            self.bias_step_ns = round(self.nlos["step_s"] * 1e9)
+            if self.bias_step_ns < 1:
+                raise ValueError("NLOS step below timestamp resolution")
+            self.bias_steps = (
+                self.bias_end_ns - self.bias_begin_ns + self.bias_step_ns - 1
+            ) // self.bias_step_ns
             if not 1 <= self.bias_steps <= 10000:
                 raise ValueError("NLOS time series bound exceeded")
         self.capacity = capacity
@@ -110,11 +115,12 @@ class DeliverySchedule:
         delivery never advance a random stream or change a physical sample.
         """
         fault = self.nlos
+        elapsed_ns = round(elapsed * 1e9)
         endpoints = tuple(sorted(anchor_ids))
         if (
             fault is None
             or fault["anchor_id"] not in endpoints
-            or not fault["begin_s"] <= elapsed < fault["end_s"]
+            or not self.bias_begin_ns <= elapsed_ns < self.bias_end_ns
         ):
             return 0.0
         if endpoints not in self.bias_series:
@@ -125,7 +131,7 @@ class DeliverySchedule:
             )
             rng = random.Random(seed)
             sigma = fault["log_sigma"]
-            rho = math.exp(-fault["step_s"] / fault["correlation_s"])
+            rho = math.exp(-self.bias_step_ns * 1e-9 / fault["correlation_s"])
             innovation = sigma * math.sqrt(1 - rho * rho)
             state = rng.gauss(0, sigma)
             values = []
@@ -138,7 +144,7 @@ class DeliverySchedule:
                 values.append(value)
             self.bias_series[endpoints] = values
             self.bias_values += len(values)
-        index = min(self.bias_steps - 1, int((elapsed - fault["begin_s"]) / fault["step_s"]))
+        index = (elapsed_ns - self.bias_begin_ns) // self.bias_step_ns
         return self.bias_series[endpoints][index]
 
     def events(self, records):
