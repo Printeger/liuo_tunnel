@@ -27,7 +27,7 @@
     "lag_s": 10.0,
     "connection_window": 3,
     "voxel_resolution": 0.5,
-    "downsample_m": 0.25,
+    "downsample_m": 0.5,
     "threads": 2,
     "initialization_s": 2.0,
     "imu_queue_limit": 10000,
