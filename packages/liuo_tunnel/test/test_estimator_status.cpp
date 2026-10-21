@@ -31,7 +31,7 @@ TEST(EstimatorStatus, RecoveryRequiresFreshWindowAndDoesNotHideNewOutage) {
   EXPECT_EQ(recovering.state, "DEGRADED");
   EXPECT_EQ(recovering.reason, "UWB_RECOVERING_WINDOW");
   EXPECT_EQ(fused_status(30.9, 30.89, -1, "", .01, .02, 31).state, "DEGRADED");
-  EXPECT_EQ(fused_status(31, 30.99, -1, "", .01, .02, 31).state, "TRACKING");
+  EXPECT_EQ(fused_status(31, 30.99, -1, "", .01, .02, 31).reason, "UWB_RECOVERY_UNVERIFIED");
   EXPECT_EQ(fused_status(25, 21, -1, "", .01, .02, 31).reason, "UWB_ABSENT_LIO_CONTINUES");
 }
 
@@ -41,13 +41,13 @@ TEST(EstimatorStatus, PostfitDisagreementPreventsFalseRecoveryWithSmallPosterior
   EXPECT_GT(limit, double(n));
   EXPECT_LT(limit, 100.);
   EXPECT_EQ(fused_status(72, 71.99, -1, "", .01, .02, 71, n, 1225. * 1225. * n).reason, "UWB_POSTFIT_INCONSISTENT");
-  EXPECT_EQ(fused_status(72, 71.99, -1, "", .01, .02, 71, n, limit).state, "TRACKING");
+  EXPECT_EQ(fused_status(72, 71.99, -1, "", .01, .02, -1, n, limit).state, "TRACKING");
   EXPECT_EQ(fused_status(72, 71.99, -1, "", .01, .02, 71, n, limit + 1).state, "LOST");
-  EXPECT_EQ(fused_status(72, 71.99, -1, "", .01, .02, 71, n, double(n)).state, "TRACKING");
+  EXPECT_EQ(fused_status(72, 71.99, -1, "", .01, .02, -1, n, double(n)).state, "TRACKING");
 }
 TEST(EstimatorStatus, PostfitNoDataNonfiniteAndMissingInputAreExplicit) {
   EXPECT_TRUE(std::isinf(liuo_tunnel::postfit_range_limit(0)));
-  EXPECT_EQ(fused_status(72, 71.99, -1, "", .01, .02, 71, 0, 0).state, "TRACKING");
+  EXPECT_EQ(fused_status(72, 71.99, -1, "", .01, .02, -1, 0, 0).state, "TRACKING");
   EXPECT_EQ(fused_status(72, 71.99, -1, "", .01, .02, 71, 2, NAN).reason, "UWB_POSTFIT_NONFINITE_OR_INVALID");
   EXPECT_EQ(fused_status(72, 71.99, -1, "", .01, .02, 71, 2, -1).state, "LOST");
   EXPECT_EQ(fused_status(72, 70, -1, "", .01, .02, 71, 2, 1e9).reason, "UWB_ABSENT_LIO_CONTINUES");
@@ -76,4 +76,13 @@ TEST(EstimatorStatus, RecoveryFailureOnlyLatchesAnActualFailedWindow) {
   EXPECT_EQ(recovery_failure_stamp(-1, 62, 71, 4, 1), -1);
   EXPECT_EQ(recovery_failure_stamp(-1, 62, 71, 4, NAN), 62);
   EXPECT_EQ(recovery_failure_stamp(62, 63, 71, 4, 1e9), 62);
+}
+
+TEST(EstimatorStatus, ExpiredTimerAndSmallResidualDoNotCertifyRecovery) {
+  const auto status = fused_status(71.2, 71.19, -1, "", .16, .17, 71.1, 6, 5.0, -1);
+  EXPECT_EQ(status.state, "DEGRADED");
+  EXPECT_EQ(status.reason, "UWB_RECOVERY_UNVERIFIED");
+  EXPECT_EQ(fused_status(80, 79, -1, "", .16, .17, 71.1).reason, "UWB_ABSENT_LIO_CONTINUES");
+  EXPECT_EQ(fused_status(80, 80, -1, "", NAN, NAN, 71.1).reason, "POSTERIOR_NONFINITE");
+  EXPECT_EQ(fused_status(9, 9, -1, "", .01, .02, -1).state, "TRACKING");
 }

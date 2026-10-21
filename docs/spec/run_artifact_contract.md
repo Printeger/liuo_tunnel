@@ -133,7 +133,9 @@ is evidenced by the failure file and process exit. The owner still marks the run
 failed. These files do not replace raw per-measurement decisions or the manifest.
 
 After an accepted-TA measurement gap exceeding 0.3 s, operational recovery
-requires one full lag with renewed input before TRACKING. Status CSV and
+keeps a full lag of renewed input marked as recovering. Expiring this timer does
+not certify recovery: subsequent otherwise healthy output remains DEGRADED with
+UWB_RECOVERY_UNVERIFIED until a new session. Status CSV and
 diagnostics expose `uwb_recovery_until`; `UWB_RECOVERING_WINDOW` is DEGRADED.
 Missing/rejected input and invalid posterior still take precedence. No state or
 covariance is changed by this reporting rule.
@@ -241,8 +243,10 @@ remain LOST; missing input and invalid posterior retain their specific reasons.
 This is a conservative failure report, not an accuracy certificate or an automatic
 relocalization algorithm. The current implementation clears it only when the
 estimator resets all graph/session state and initializes a new session. It never
-resets automatically in response to this flag. Normal uninterrupted fusion and
-recovery windows without a detected conflict do not latch. State, factors and
+resets automatically in response to this flag. Normal uninterrupted fusion is unaffected. S45 also keeps recovery unverified
+after any declared recovery window, even without a detected post-fit conflict,
+using the existing nonnegative uwb_recovery_until as session history. The
+failed_recovery_stamp field retains its original meaning and may remain -1. State, factors and
 covariance are not modified by this reporting rule. Automatic verified recovery
 remains an unmet phase-two capability.
 

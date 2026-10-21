@@ -44,6 +44,10 @@ inline EstimatorStatus fused_status(
   if (failed_recovery_stamp >= 0) return {"DEGRADED", "UWB_RECOVERY_UNVERIFIED"};
   if (position_trace > .25) return {"DEGRADED", "POSITION_POSTERIOR_WEAK"};
   if (stamp < recovery_until) return {"DEGRADED", "UWB_RECOVERING_WINDOW"};
+  // Elapsed time and a small local posterior do not verify global recovery.
+  // There is currently no independent recovery certificate; session reset
+  // clears this history explicitly. Keep the limitation visible.
+  if (recovery_until >= 0) return {"DEGRADED", "UWB_RECOVERY_UNVERIFIED"};
   return {"TRACKING", "JOINT_LIDAR_IMU_UWB"};
 }
 }  // namespace liuo_tunnel

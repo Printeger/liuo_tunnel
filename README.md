@@ -170,12 +170,12 @@ optimization. Excessive measurement-sigma-normalized squared residual reports
 This does not repair drift or calibrate covariance; small residuals do not prove
 correct global position. See docs/phase2_acceptance.md for failed sparse evidence.
 
-If a UWB recovery window has a post-fit conflict, later small residuals no longer
-restore TRACKING automatically. `DEGRADED/UWB_RECOVERY_UNVERIFIED` and the recorded
-`failed_recovery_stamp` persist until complete new-session initialization; the
+After a declared UWB recovery window, elapsed time and small residuals do not
+restore TRACKING automatically; independent recovery verification is not yet implemented. `DEGRADED/UWB_RECOVERY_UNVERIFIED` and the recorded
+`failed_recovery_stamp` (when a post-fit conflict occurred) persist until complete new-session initialization; the
 estimator continues publishing its actual trajectory and covariance. This exposes
 an unresolved recovery failure, not successful relocalization. No automatic reset
 or truth correction occurs. Phase two remains incomplete while this recovery and
 the documented sparse-layout accuracy failures are unresolved.
 
-当前七基站安装候选为 v5 高位优先四角循环：纵向 0/400/800/1200/1600/2000/2400 m，(y,z) 循环 (2.8,4.6)、(-2.8,4.6)、(-2.8,0.4)、(2.8,0.4) m。数量、密度、量程、噪声和验收门槛不变。此候选尚待实际 GPU 路线验证；历史 v4 冻结输入只能配其原地图快照，不能当作 v5 输入。
+当前七基站安装候选为 v5 高位优先四角循环：纵向 0/400/800/1200/1600/2000/2400 m，(y,z) 循环 (2.8,4.6)、(-2.8,4.6)、(-2.8,0.4)、(2.8,0.4) m。数量、密度、量程、噪声和验收门槛不变。此候选已做实际 GPU 路线和代表性断流验证，精度与可信恢复仍 FAIL；历史 v4 冻结输入只能配其原地图快照，不能当作 v5 输入。
