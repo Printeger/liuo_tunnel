@@ -1,3 +1,5 @@
+import math
+from long_run_audit import attitude_distributions
 import unittest
 from long_run_audit import continuity, coverage
 
@@ -67,3 +69,19 @@ class LongRunAuditTest(unittest.TestCase):
         returning = outbound + [row(90, 2000, -5), row(100, 0)]
         self.assertTrue(coverage(returning, True)["return_complete"])
         self.assertFalse(coverage(returning, False)["return_complete"])
+
+    def test_signed_attitude_axes_and_antipodal_quaternion(self):
+        for axis, key in [("roll", "qx"), ("pitch", "qy"), ("yaw", "qz")]:
+            state = row(1)
+            state.update(qx="0", qy="0", qz="0", qw=str(math.cos(math.pi / 12)))
+            state[key] = str(-math.sin(math.pi / 12))
+            antipodal = dict(state)
+            for k in ["qx", "qy", "qz", "qw"]:
+                antipodal[k] = str(-float(state[k]))
+            result = attitude_distributions([state, antipodal])
+            self.assertAlmostEqual(result["axes"][axis]["mean_deg"], -30)
+            self.assertAlmostEqual(result["axes"][axis]["absolute_p95_deg"], 30)
+            for other in set(["roll", "pitch", "yaw"]) - {axis}:
+                self.assertAlmostEqual(result["axes"][other]["rmse_deg"], 0)
+        with self.assertRaises(ValueError):
+            attitude_distributions([dict(state, qw="nan")])

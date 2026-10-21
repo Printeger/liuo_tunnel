@@ -97,6 +97,48 @@ def quantile(values, p):
     return sorted(values)[int((len(values) - 1) * p)]
 
 
+def attitude_distributions(trajectory):
+    """Signed ZYX Euler errors for the straight-world identity truth attitude."""
+    values = {name: [] for name in ["roll", "pitch", "yaw"]}
+    for row in trajectory:
+        x, y, z, w = [float(row[key]) for key in ["qx", "qy", "qz", "qw"]]
+        norm = math.sqrt(x * x + y * y + z * z + w * w)
+        if not math.isfinite(norm) or abs(norm - 1) > 1e-6:
+            raise ValueError("invalid quaternion in attitude distribution")
+        x, y, z, w = [q / norm for q in [x, y, z, w]]
+        angles = [
+            math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y)),
+            math.asin(max(-1, min(1, 2 * (w * y - z * x)))),
+            math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)),
+        ]
+        for name, angle in zip(values, angles):
+            values[name].append(math.degrees(angle))
+
+    def quantile(data, fraction):
+        ordered = sorted(data)
+        point = (len(ordered) - 1) * fraction
+        low, high = math.floor(point), math.ceil(point)
+        return ordered[low] + (ordered[high] - ordered[low]) * (point - low)
+
+    if not trajectory:
+        raise ValueError("empty attitude evidence")
+    return {
+        "convention": "signed ZYX Euler angles in degrees; straight-world identity truth only; no alignment; descriptive distributions, not replacement for geodesic attitude gate",
+        "samples": len(trajectory),
+        "axes": {
+            name: {
+                "mean_deg": statistics.mean(data),
+                "rmse_deg": math.sqrt(statistics.mean(x * x for x in data)),
+                "signed_quantiles_deg": {
+                    str(q): quantile(data, q) for q in [0, 0.05, 0.25, 0.5, 0.75, 0.95, 1]
+                },
+                "absolute_p95_deg": quantile([abs(x) for x in data], 0.95),
+            }
+            for name, data in values.items()
+        },
+    }
+
+
 def audit(run, require_return=False):
     failures = []
 
@@ -223,6 +265,7 @@ def audit(run, require_return=False):
         "campaign_still_pending": pending in report["failures"],
         "continuity": continuity_result,
         "route": route,
+        "attitude_distributions": attitude_distributions(trajectory),
         "resources": {
             "samples": len(resources),
             "rss_range_kib": [min(rss), max(rss)],
