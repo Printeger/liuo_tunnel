@@ -35,8 +35,11 @@ Original GTSAM author notices remain; license texts are retained in
 `licenses/GTSAM-BSD.txt` (upstream GTSAM 4.2 LICENSE.BSD) and
 `licenses/gtsam_points-MIT.txt` (source checkout LICENSE).
 The local namespace prevents symbol interposition on the installed library.
-The only algorithm change finishes the old graph delta before inserting new
-variables, keeping Dogleg's gradient/Newton vectors on the same key set.
+Local corrections finish the old graph delta before inserting new variables,
+keeping Dogleg's gradient/Newton vectors on the same key set, and restrict
+pre-update marginalization-tree queries to existing keys when a first bootstrap
+batch spans more than the lag. All expired keys still participate in ordering
+and post-update marginalization.
 The original GPU batching hook and Dogleg implementation remain linked from
 installed gtsam_points. No fallback smoother or additional prior is introduced.
 

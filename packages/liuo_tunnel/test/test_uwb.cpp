@@ -313,3 +313,25 @@ TEST(StateCovariance, JointMarginalPreservesCorrelatedPoseVelocity) {
   EXPECT_GT((covariance.block<6, 3>(0, 6)).norm(), .1);
   EXPECT_LT((covariance.topLeftCorner<6, 6>() - smoother.marginalCovariance(X(0))).norm(), 1e-10);
 }
+
+TEST(KnownMap, BootstrapBatchOlderThanLagMarginalizesNewKeys) {
+  liuo_tunnel::solver::IncrementalFixedLagSmootherExt smoother(10);
+  gtsam::NonlinearFactorGraph factors;
+  gtsam::Values values;
+  gtsam::FixedLagSmoother::KeyTimestampMap times;
+  auto noise = gtsam::noiseModel::Isotropic::Sigma(3, .1);
+  for (int i = 0; i <= 20; ++i) {
+    auto key = gtsam::Symbol('p', i);
+    gtsam::Point3 point(i, 0, 0);
+    values.insert(key, point);
+    times[key] = i;
+    if (i == 0)
+      factors.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(key, point, noise);
+    else
+      factors.emplace_shared<gtsam::BetweenFactor<gtsam::Point3>>(gtsam::Symbol('p', i - 1), key, gtsam::Point3(1, 0, 0), noise);
+  }
+  ASSERT_NO_THROW(smoother.update(factors, values, times));
+  EXPECT_EQ(smoother.timestamps().size(), 11);
+  EXPECT_FALSE(smoother.getLinearizationPoint().exists(gtsam::Symbol('p', 0)));
+  EXPECT_LT((smoother.calculateEstimate<gtsam::Point3>(gtsam::Symbol('p', 20)) - gtsam::Point3(20, 0, 0)).norm(), 1e-10);
+}

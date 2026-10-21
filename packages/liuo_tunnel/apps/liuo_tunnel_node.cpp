@@ -284,6 +284,9 @@ private:
         continue;
       }
       process(*cloud, t);
+      // Return to the single executor between graph updates so pending raw
+      // sensor callbacks can enqueue. Retain every remaining cloud in order.
+      return;
     }
   }
   struct Frame {

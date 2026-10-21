@@ -40,11 +40,8 @@ bool IncrementalFixedLagSmootherExt::equals(const FixedLagSmoother& rhs, double 
 }
 
 /* ************************************************************************* */
-FixedLagSmoother::Result IncrementalFixedLagSmootherExt::update(
-  const NonlinearFactorGraph& newFactors,
-  const Values& newTheta,
-  const KeyTimestampMap& timestamps,
-  const FactorIndices& factorsToRemove) {
+FixedLagSmoother::Result
+IncrementalFixedLagSmootherExt::update(const NonlinearFactorGraph& newFactors, const Values& newTheta, const KeyTimestampMap& timestamps, const FactorIndices& factorsToRemove) {
   const bool debug = ISDEBUG("IncrementalFixedLagSmootherExt update");
 
   if (debug) {
@@ -88,7 +85,13 @@ FixedLagSmoother::Result IncrementalFixedLagSmootherExt::update(
     std::cout << std::endl;
   }
 
-  std::unordered_set<Key> additionalKeys = BayesTreeMarginalizationHelper<ISAM2Ext>::gatherAdditionalKeysToReEliminate(isam_, marginalizableKeys);
+  // A first bootstrap batch can already span more than the lag. Its oldest
+  // keys belong to newTheta, not the OLD Bayes tree queried by this helper.
+  // Ordering constraints above still include every key to retire after update.
+  KeyVector existingMarginalizableKeys;
+  for (Key key : marginalizableKeys)
+    if (isam_.getLinearizationPoint().exists(key)) existingMarginalizableKeys.push_back(key);
+  std::unordered_set<Key> additionalKeys = BayesTreeMarginalizationHelper<ISAM2Ext>::gatherAdditionalKeysToReEliminate(isam_, existingMarginalizableKeys);
   KeyList additionalMarkedKeys(additionalKeys.begin(), additionalKeys.end());
 
   // Update iSAM2
@@ -148,9 +151,7 @@ void IncrementalFixedLagSmootherExt::eraseKeysBefore(double timestamp) {
 }
 
 /* ************************************************************************* */
-void IncrementalFixedLagSmootherExt::createOrderingConstraints(
-  const KeyVector& marginalizableKeys,
-  std::optional<FastMap<Key, int> >& constrainedKeys) const {
+void IncrementalFixedLagSmootherExt::createOrderingConstraints(const KeyVector& marginalizableKeys, std::optional<FastMap<Key, int> >& constrainedKeys) const {
   if (marginalizableKeys.size() > 0) {
     constrainedKeys = FastMap<Key, int>();
     // Generate ordering constraints so that the marginalizable variables will be eliminated first
