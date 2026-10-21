@@ -17,8 +17,7 @@ struct ScopedDirectory {
 
 TEST(RunLogManagerTest, AdoptsOwnerRunWithoutAllocatingNestedTimestamp) {
   const auto unique = std::to_string(::getpid());
-  const std::filesystem::path temp_root =
-      std::filesystem::temp_directory_path() / ("liuo_run_log_manager_test_" + unique);
+  const std::filesystem::path temp_root = std::filesystem::temp_directory_path() / ("liuo_run_log_manager_test_" + unique);
   const ScopedDirectory cleanup(temp_root);
   const std::filesystem::path config_dir = temp_root / "config";
   const std::filesystem::path run_dir = temp_root / "20260929T120000Z_001";
@@ -41,8 +40,7 @@ TEST(RunLogManagerTest, AdoptsOwnerRunWithoutAllocatingNestedTimestamp) {
   EXPECT_EQ(first.profiling_path("liuo_timing.csv").parent_path(), first.run_dir() / "profiling");
   EXPECT_EQ(first.export_path("liuo_icp.csv").parent_path(), first.run_dir() / "export");
   first.write_run_info({{"status", "running"}});
-  EXPECT_TRUE(std::filesystem::is_regular_file(
-      first.metadata_path("processes/test_run_log_manager.json")));
+  EXPECT_TRUE(std::filesystem::is_regular_file(first.metadata_path("processes/test_run_log_manager.json")));
   EXPECT_FALSE(std::filesystem::exists(first.metadata_path("run_info.json")));
   EXPECT_FALSE(std::filesystem::exists(run_dir / "20260929T120000Z_001"));
   EXPECT_FALSE(std::filesystem::exists(temp_root / "latest"));
@@ -52,4 +50,8 @@ TEST(RunLogManagerTest, AdoptsOwnerRunWithoutAllocatingNestedTimestamp) {
   std::filesystem::create_directories(outside);
   std::filesystem::create_directory_symlink(outside, first.export_path("") / "linked");
   EXPECT_THROW(first.export_path("linked/escape.csv"), std::invalid_argument);
+  std::filesystem::rename(run_dir / "export", run_dir / "original_export");
+  std::filesystem::create_directory_symlink(outside, run_dir / "export");
+  EXPECT_THROW(first.export_path("escape.csv"), std::invalid_argument);
+  EXPECT_THROW(first.export_path(""), std::invalid_argument);
 }

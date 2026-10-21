@@ -16,9 +16,9 @@ IMUIntegrationParams::IMUIntegrationParams(const bool upright) {
 IMUIntegrationParams::~IMUIntegrationParams() {}
 
 IMUIntegration::IMUIntegration(const IMUIntegrationParams& params) {
-  auto imu_params = gtsam::PreintegrationParams::MakeSharedU();
+  auto imu_params = gtsam::PreintegrationParams::MakeSharedU(9.80665);
   if (!params.upright) {
-    imu_params = gtsam::PreintegrationParams::MakeSharedD();
+    imu_params = gtsam::PreintegrationParams::MakeSharedD(9.80665);
   }
 
   imu_params->accelerometerCovariance = gtsam::Matrix3::Identity() * std::pow(params.acc_noise, 2);

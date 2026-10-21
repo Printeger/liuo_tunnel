@@ -148,8 +148,9 @@ def _retained_input_run_ids(parent: Path) -> set[str]:
         references = manifest.get("retained_input_run_ids", [])
         if not isinstance(references, list):
             continue
-        retained.update(name for name in references
-                        if isinstance(name, str) and _RUN_ID.fullmatch(name))
+        retained.update(
+            name for name in references if isinstance(name, str) and _RUN_ID.fullmatch(name)
+        )
     return retained
 
 
@@ -204,7 +205,9 @@ def prune_development_runs(
             if loaded is not None:
                 records.append((child, loaded[1]))
         records.sort(key=lambda item: item[0].name, reverse=True)
-        protected = {path.name for path, _ in records[:keep_latest]} | _retained_input_run_ids(parent)
+        protected = {path.name for path, _ in records[:keep_latest]} | _retained_input_run_ids(
+            parent
+        )
         cutoff = current_time - max_age
 
         for run_dir, ended_at in records[keep_latest:]:
@@ -336,9 +339,7 @@ def _git_value(*arguments: str) -> str:
 
 def _atomic_write_json(path: Path, value: dict) -> None:
     temporary = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}")
-    temporary.write_text(
-        json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     os.replace(temporary, path)
 
 
@@ -391,8 +392,7 @@ def finalize_run(
         )
     if safety_outcome is not None and safety_outcome not in _SAFETY_OUTCOMES:
         raise ValueError(
-            f"safety_outcome must be one of {sorted(_SAFETY_OUTCOMES)}, "
-            f"got {safety_outcome!r}"
+            f"safety_outcome must be one of {sorted(_SAFETY_OUTCOMES)}, " f"got {safety_outcome!r}"
         )
     run_dir = _validated_absolute(Path(run_dir), "run_dir")
     manifest_path = run_dir / "metadata" / "run_manifest.json"
@@ -404,9 +404,7 @@ def finalize_run(
     if (run_dir / "metadata/manifests/input_failure.json").exists():
         lifecycle = "failed"
     manifest["lifecycle"] = lifecycle
-    manifest["ended_at_utc"] = datetime.now(timezone.utc).isoformat().replace(
-        "+00:00", "Z"
-    )
+    manifest["ended_at_utc"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     if safety_outcome is not None:
         manifest["safety_outcome"] = safety_outcome
     _atomic_write_json(manifest_path, manifest)
@@ -465,5 +463,3 @@ def register_config_snapshot(run_dir: Path, path: Path) -> None:
         references.append(relative)
         references.sort()
         _atomic_write_json(manifest_path, manifest)
-
-

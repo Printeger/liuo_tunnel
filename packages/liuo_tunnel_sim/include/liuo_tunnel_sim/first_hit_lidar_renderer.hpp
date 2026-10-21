@@ -12,11 +12,9 @@
 #include <string>
 #include <vector>
 
-namespace liuo_tunnel_sim
-{
+namespace liuo_tunnel_sim {
 
-struct FirstHitLidarConfig
-{
+struct FirstHitLidarConfig {
   int horizontal_samples = 512;
   int vertical_samples = 40;
   double horizontal_fov_deg = 360.0;
@@ -27,50 +25,43 @@ struct FirstHitLidarConfig
   double world_voxel_resolution_m = 0.1;
 };
 
-struct FirstHitLidarStats
-{
+struct FirstHitLidarStats {
   std::size_t ray_count = 0;
   std::size_t hit_count = 0;
   std::size_t dda_voxel_visits = 0;
   double render_latency_ms = 0.0;
 };
 
-enum class FirstHitLidarBeamOutcome : std::uint8_t
-{
+enum class FirstHitLidarBeamOutcome : std::uint8_t {
   INVALID = 0,
   HIT = 1,
   NO_RETURN = 2,
 };
 
-struct FirstHitLidarBeam
-{
+struct FirstHitLidarBeam {
   Eigen::Vector3d direction_sensor = Eigen::Vector3d::Zero();
   FirstHitLidarBeamOutcome outcome = FirstHitLidarBeamOutcome::INVALID;
   double range_m = 0.0;
 };
 
-struct FirstHitLidarScan
-{
+struct FirstHitLidarScan {
   pcl::PointCloud<pcl::PointXYZ> hits;
   std::vector<FirstHitLidarBeam> beams;
   FirstHitLidarStats stats;
 };
 
-class FirstHitLidarRenderer
-{
+class FirstHitLidarRenderer {
 public:
   explicit FirstHitLidarRenderer(FirstHitLidarConfig config);
   ~FirstHitLidarRenderer();
-  FirstHitLidarRenderer(FirstHitLidarRenderer &&) noexcept;
-  FirstHitLidarRenderer & operator=(FirstHitLidarRenderer &&) noexcept;
-  FirstHitLidarRenderer(const FirstHitLidarRenderer &) = delete;
-  FirstHitLidarRenderer & operator=(const FirstHitLidarRenderer &) = delete;
+  FirstHitLidarRenderer(FirstHitLidarRenderer&&) noexcept;
+  FirstHitLidarRenderer& operator=(FirstHitLidarRenderer&&) noexcept;
+  FirstHitLidarRenderer(const FirstHitLidarRenderer&) = delete;
+  FirstHitLidarRenderer& operator=(const FirstHitLidarRenderer&) = delete;
 
-  bool loadWorld(
-    const pcl::PointCloud<pcl::PointXYZ> & world,
-    std::string * reason = nullptr);
-  FirstHitLidarScan render(const Eigen::Isometry3d & sensor_pose_w) const;
-  const FirstHitLidarConfig & config() const;
+  bool loadWorld(const pcl::PointCloud<pcl::PointXYZ>& world, std::string* reason = nullptr);
+  FirstHitLidarScan render(const Eigen::Isometry3d& sensor_pose_w) const;
+  const FirstHitLidarConfig& config() const;
 
 private:
   struct Impl;

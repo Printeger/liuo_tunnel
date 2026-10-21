@@ -58,8 +58,7 @@ std::string run_directory_timestamp() {
 #endif
 
   std::ostringstream oss;
-  oss << std::put_time(&tm, "%Y%m%dT%H%M%SZ")
-      << "_" << std::setw(3) << std::setfill('0') << millis;
+  oss << std::put_time(&tm, "%Y%m%dT%H%M%SZ") << "_" << std::setw(3) << std::setfill('0') << millis;
   return oss.str();
 }
 
@@ -93,8 +92,7 @@ std::string getenv_or_empty(const char* name) {
 
 std::string safe_filename(std::string value) {
   for (char& ch : value) {
-    const bool safe = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-                      (ch >= '0' && ch <= '9') || ch == '_' || ch == '-';
+    const bool safe = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-';
     if (!safe) {
       ch = '_';
     }
@@ -103,8 +101,7 @@ std::string safe_filename(std::string value) {
 }
 
 void atomic_write_json(const std::filesystem::path& path, const nlohmann::json& value) {
-  const auto temporary = path.parent_path() /
-      ("." + path.filename().string() + "." + std::to_string(::getpid()) + ".tmp");
+  const auto temporary = path.parent_path() / ("." + path.filename().string() + "." + std::to_string(::getpid()) + ".tmp");
   {
     std::ofstream ofs(temporary);
     if (!ofs.is_open()) {
@@ -116,17 +113,14 @@ void atomic_write_json(const std::filesystem::path& path, const nlohmann::json& 
   std::filesystem::rename(temporary, path, ec);
   if (ec) {
     std::filesystem::remove(temporary);
-    throw std::runtime_error("failed to publish artifact manifest '" +
-                             path.string() + "': " + ec.message());
+    throw std::runtime_error("failed to publish artifact manifest '" + path.string() + "': " + ec.message());
   }
 }
 
 bool truthy(const std::string& value) {
   std::string normalized = value;
-  std::transform(normalized.begin(), normalized.end(), normalized.begin(),
-                 [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-  return normalized == "1" || normalized == "true" ||
-         normalized == "yes" || normalized == "on";
+  std::transform(normalized.begin(), normalized.end(), normalized.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+  return normalized == "1" || normalized == "true" || normalized == "yes" || normalized == "on";
 }
 
 bool retention_enabled(const std::filesystem::path& root) {
@@ -135,8 +129,7 @@ bool retention_enabled(const std::filesystem::path& root) {
     return truthy(configured);
   }
   std::error_code ec;
-  const auto repository_root = std::filesystem::weakly_canonical(
-      std::filesystem::path(LIUO_SOURCE_ROOT) / "log", ec);
+  const auto repository_root = std::filesystem::weakly_canonical(std::filesystem::path(LIUO_SOURCE_ROOT) / "log", ec);
   return !ec && root == repository_root;
 }
 
@@ -159,15 +152,11 @@ struct RetentionCandidate {
   std::time_t ended_at = 0;
 };
 
-std::optional<RetentionCandidate> load_retention_candidate(
-    const std::filesystem::path& root,
-    const std::filesystem::path& path) {
-  static const std::regex run_id_pattern(
-      R"(^\d{8}T\d{6}Z_\d{3}(_\d{2})?$)");
+std::optional<RetentionCandidate> load_retention_candidate(const std::filesystem::path& root, const std::filesystem::path& path) {
+  static const std::regex run_id_pattern(R"(^\d{8}T\d{6}Z_\d{3}(_\d{2})?$)");
   std::error_code ec;
   const auto status = std::filesystem::symlink_status(path, ec);
-  if (ec || status.type() != std::filesystem::file_type::directory ||
-      !std::regex_match(path.filename().string(), run_id_pattern)) {
+  if (ec || status.type() != std::filesystem::file_type::directory || !std::regex_match(path.filename().string(), run_id_pattern)) {
     return std::nullopt;
   }
   const auto manifest_path = path / "metadata" / "run_manifest.json";
@@ -184,13 +173,11 @@ std::optional<RetentionCandidate> load_retention_candidate(
   }
   try {
     const std::string lifecycle = manifest.value("lifecycle", "");
-    if (manifest.value("schema_version", "") != "liuo_run_artifact_v1" ||
-        manifest.value("run_id", "") != path.filename().string() ||
-        manifest.value("run_root", "") != root.string() ||
-        manifest.value("run_dir", "") != path.string() ||
-        (lifecycle != "completed" && lifecycle != "failed" && lifecycle != "interrupted") ||
-        manifest.value("run_class", "") != "development" ||
-        manifest.value("retention_class", "") != "ordinary") {
+    if (
+      manifest.value("schema_version", "") != "liuo_run_artifact_v1" || manifest.value("run_id", "") != path.filename().string() ||
+      manifest.value("run_root", "") != root.string() || manifest.value("run_dir", "") != path.string() ||
+      (lifecycle != "completed" && lifecycle != "failed" && lifecycle != "interrupted") || manifest.value("run_class", "") != "development" ||
+      manifest.value("retention_class", "") != "ordinary") {
       return std::nullopt;
     }
     const auto ended_at = parse_utc_timestamp(manifest.value("ended_at_utc", ""));
@@ -246,33 +233,24 @@ void prune_development_runs(const std::filesystem::path& root) {
         candidates.push_back(*candidate);
       }
     }
-    std::sort(candidates.begin(), candidates.end(),
-              [](const auto& lhs, const auto& rhs) {
-                return lhs.path.filename().string() > rhs.path.filename().string();
-              });
+    std::sort(candidates.begin(), candidates.end(), [](const auto& lhs, const auto& rhs) { return lhs.path.filename().string() > rhs.path.filename().string(); });
     const std::time_t now = std::time(nullptr);
     constexpr double seven_days_seconds = 7.0 * 24.0 * 60.0 * 60.0;
     for (std::size_t index = 3; index < candidates.size(); ++index) {
       const auto& candidate = candidates[index];
-      if (std::difftime(now, candidate.ended_at) <= seven_days_seconds ||
-          run_is_locked(candidate.path) ||
-          !load_retention_candidate(root, candidate.path)) {
+      if (std::difftime(now, candidate.ended_at) <= seven_days_seconds || run_is_locked(candidate.path) || !load_retention_candidate(root, candidate.path)) {
         continue;
       }
-      const auto quarantine = root /
-          (".retention-trash." + candidate.path.filename().string() + "." +
-           std::to_string(::getpid()));
+      const auto quarantine = root / (".retention-trash." + candidate.path.filename().string() + "." + std::to_string(::getpid()));
       std::error_code ec;
       std::filesystem::rename(candidate.path, quarantine, ec);
       if (ec) {
-        spdlog::warn("[RunLogManager] retention could not quarantine {}: {}",
-                     candidate.path.string(), ec.message());
+        spdlog::warn("[RunLogManager] retention could not quarantine {}: {}", candidate.path.string(), ec.message());
         continue;
       }
       std::filesystem::remove_all(quarantine, ec);
       if (ec) {
-        spdlog::warn("[RunLogManager] retention could not remove {}: {}",
-                     quarantine.string(), ec.message());
+        spdlog::warn("[RunLogManager] retention could not remove {}: {}", quarantine.string(), ec.message());
       }
     }
   } catch (const std::exception& error) {
@@ -284,8 +262,7 @@ void prune_development_runs(const std::filesystem::path& root) {
 
 }  // namespace
 
-RunLogManager& RunLogManager::initialize(const std::string& process_name,
-                                         const std::string& config_dir_or_empty) {
+RunLogManager& RunLogManager::initialize(const std::string& process_name, const std::string& config_dir_or_empty) {
   if (!g_run_log_manager) {
     g_run_log_manager.reset(new RunLogManager(process_name, config_dir_or_empty));
     std::atexit([] {
@@ -310,10 +287,10 @@ RunLogManager* RunLogManager::get_if_initialized() {
 }
 
 RunLogManager::RunLogManager(std::string process_name, std::string config_dir_or_empty)
-    : process_name_(std::move(process_name)),
-      config_dir_(std::move(config_dir_or_empty)),
-      start_timestamp_(run_directory_timestamp()),
-      start_timestamp_iso_(iso_utc_timestamp(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()))) {
+: process_name_(std::move(process_name)),
+  config_dir_(std::move(config_dir_or_empty)),
+  start_timestamp_(run_directory_timestamp()),
+  start_timestamp_iso_(iso_utc_timestamp(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()))) {
   const std::string adopted_run = getenv_or_empty("LIUO_RUN_DIR");
   if (!adopted_run.empty()) {
     const std::filesystem::path requested(adopted_run);
@@ -368,11 +345,15 @@ std::filesystem::path RunLogManager::metadata_path(const std::string& name) cons
   return category_path("metadata", name);
 }
 
-std::filesystem::path RunLogManager::category_path(const std::string& category,
-                                                   const std::string& name) const {
+std::filesystem::path RunLogManager::category_path(const std::string& category, const std::string& name) const {
   const std::filesystem::path base = run_dir_ / category;
+  std::error_code category_ec;
+  const auto checked_base = std::filesystem::weakly_canonical(base, category_ec);
+  if (category_ec || std::mismatch(run_dir_.begin(), run_dir_.end(), checked_base.begin(), checked_base.end()).first != run_dir_.end()) {
+    throw std::invalid_argument("artifact category escapes run: " + category);
+  }
   if (name.empty()) {
-    return base;
+    return checked_base;
   }
   const std::filesystem::path relative(name);
   if (relative.is_absolute()) {
@@ -389,9 +370,7 @@ std::filesystem::path RunLogManager::category_path(const std::string& category,
     throw std::invalid_argument("artifact category cannot be resolved: " + category);
   }
   const auto resolved = std::filesystem::weakly_canonical(base / relative, ec);
-  if (ec || std::mismatch(
-                resolved_base.begin(), resolved_base.end(), resolved.begin(), resolved.end())
-                .first != resolved_base.end()) {
+  if (ec || std::mismatch(resolved_base.begin(), resolved_base.end(), resolved.begin(), resolved.end()).first != resolved_base.end()) {
     throw std::invalid_argument("artifact path escapes its category: " + name);
   }
   return resolved;
@@ -407,8 +386,7 @@ std::filesystem::path RunLogManager::resolve_log_root() const {
     }
   } else {
     const std::filesystem::path source_root(LIUO_SOURCE_ROOT);
-    if (std::filesystem::is_regular_file(source_root / "CMakeLists.txt") &&
-        std::filesystem::is_directory(source_root / "src")) {
+    if (std::filesystem::is_directory(source_root / "packages")) {
       root = source_root / "log";
     } else {
       const std::string xdg_state_home = getenv_or_empty("XDG_STATE_HOME");
@@ -418,7 +396,7 @@ std::filesystem::path RunLogManager::resolve_log_root() const {
       } else if (!user_home.empty()) {
         root = std::filesystem::path(user_home) / ".local" / "state" / "liuo_tunnel" / "log";
       } else {
-        throw std::runtime_error("cannot resolve IAP run root without HOME or XDG_STATE_HOME");
+        throw std::runtime_error("cannot resolve LIUO run root without HOME or XDG_STATE_HOME");
       }
     }
   }
@@ -457,25 +435,26 @@ void RunLogManager::allocate_run_directory() {
 }
 
 void RunLogManager::create_layout() {
-  for (const auto& directory : {
-           runtime_path(""), profiling_path(""), export_path(""), metadata_path("")}) {
+  for (const auto& directory : {runtime_path(""), profiling_path(""), export_path(""), metadata_path("")}) {
     std::error_code ec;
     std::filesystem::create_directories(directory, ec);
     if (ec) {
-      throw std::runtime_error("failed to create run artifact directory '" +
-                               directory.string() + "': " + ec.message());
+      throw std::runtime_error("failed to create run artifact directory '" + directory.string() + "': " + ec.message());
     }
   }
-  for (const auto& directory : {
-           runtime_path("ros"), export_path("odometry"), export_path("simulation"),
-           export_path("capture"), export_path("analysis"),
-           metadata_path("config"), metadata_path("processes"),
-           metadata_path("manifests")}) {
+  for (const auto& directory :
+       {runtime_path("ros"),
+        export_path("odometry"),
+        export_path("simulation"),
+        export_path("capture"),
+        export_path("analysis"),
+        metadata_path("config"),
+        metadata_path("processes"),
+        metadata_path("manifests")}) {
     std::error_code ec;
     std::filesystem::create_directories(directory, ec);
     if (ec) {
-      throw std::runtime_error("failed to create run artifact namespace '" +
-                               directory.string() + "': " + ec.message());
+      throw std::runtime_error("failed to create run artifact namespace '" + directory.string() + "': " + ec.message());
     }
   }
 }
@@ -493,7 +472,7 @@ void RunLogManager::update_latest_symlink() const {
   std::error_code ec;
   try {
     if (std::filesystem::exists(latest, ec) && !std::filesystem::is_symlink(latest, ec)) {
-      throw std::runtime_error("IAP latest path exists and is not a symlink: " + latest.string());
+      throw std::runtime_error("LIUO latest path exists and is not a symlink: " + latest.string());
     }
     ec.clear();
     if (std::filesystem::is_symlink(latest, ec)) {
@@ -508,8 +487,7 @@ void RunLogManager::update_latest_symlink() const {
       }
     }
 
-    const auto temporary = log_root_ /
-        (".latest." + std::to_string(::getpid()) + "." + start_timestamp_);
+    const auto temporary = log_root_ / (".latest." + std::to_string(::getpid()) + "." + start_timestamp_);
     ec.clear();
     std::filesystem::remove(temporary, ec);
     ec.clear();
@@ -536,6 +514,7 @@ std::map<std::string, std::string> RunLogManager::collect_run_info_fields() cons
 
   fields["start_timestamp"] = start_timestamp_iso_;
   fields["process_name"] = process_name_;
+  fields["pid"] = std::to_string(::getpid());
   fields["run_directory"] = run_dir_.string();
   fields["log_root"] = log_root_.string();
   fields["working_directory"] = std::filesystem::current_path().string();
@@ -569,39 +548,37 @@ std::map<std::string, std::string> RunLogManager::collect_run_info_fields() cons
 
 void RunLogManager::write_owner_manifest() const {
   nlohmann::json manifest = {
-      {"schema_version", "liuo_run_artifact_v1"},
-      {"run_id", run_dir_.filename().string()},
-      {"run_root", log_root_.string()},
-      {"run_dir", run_dir_.string()},
-      {"entrypoint", process_name_},
-      {"scenario", nullptr},
-      {"modules", nlohmann::json::array()},
-      {"started_at_utc", start_timestamp_iso_},
-      {"ended_at_utc", nullptr},
-      {"lifecycle", "active"},
-      {"safety_outcome", "not_applicable"},
-      {"acceptance", "not_evaluated"},
-      {"run_class", "development"},
-      {"retention_class", "ordinary"},
-      {"build", {{"build_type", LIUO_BUILD_TYPE}}},
-      {"host", nlohmann::json::object()},
-      {"config_snapshots", {"metadata/config"}},
-      {"subordinate_manifests", nlohmann::json::array()},
-      {"external_exports", nlohmann::json::array()},
+    {"schema_version", "liuo_run_artifact_v1"},
+    {"run_id", run_dir_.filename().string()},
+    {"run_root", log_root_.string()},
+    {"run_dir", run_dir_.string()},
+    {"entrypoint", process_name_},
+    {"scenario", nullptr},
+    {"modules", nlohmann::json::array()},
+    {"started_at_utc", start_timestamp_iso_},
+    {"ended_at_utc", nullptr},
+    {"lifecycle", "active"},
+    {"safety_outcome", "not_applicable"},
+    {"acceptance", "not_evaluated"},
+    {"run_class", "development"},
+    {"retention_class", "ordinary"},
+    {"build", {{"build_type", LIUO_BUILD_TYPE}}},
+    {"host", nlohmann::json::object()},
+    {"config_snapshots", {"metadata/config"}},
+    {"subordinate_manifests", nlohmann::json::array()},
+    {"external_exports", nlohmann::json::array()},
   };
   if (const auto fields = collect_run_info_fields(); fields.count("hostname")) {
     manifest["host"]["hostname"] = fields.at("hostname");
   }
   nlohmann::json source = {
-      {"git_commit", nullptr},
-      {"git_worktree_clean", nullptr},
+    {"git_commit", nullptr},
+    {"git_worktree_clean", nullptr},
   };
-  if (const auto commit = read_command_output(
-          "git -C \"" + std::string(LIUO_SOURCE_ROOT) + "\" rev-parse HEAD 2>/dev/null")) {
+  if (const auto commit = read_command_output("git -C \"" + std::string(LIUO_SOURCE_ROOT) + "\" rev-parse HEAD 2>/dev/null")) {
     source["git_commit"] = *commit;
   }
-  if (const auto status = read_command_output(
-          "git -C \"" + std::string(LIUO_SOURCE_ROOT) + "\" status --porcelain 2>/dev/null")) {
+  if (const auto status = read_command_output("git -C \"" + std::string(LIUO_SOURCE_ROOT) + "\" status --porcelain 2>/dev/null")) {
     source["git_worktree_clean"] = status->empty();
   } else {
     source["git_worktree_clean"] = true;
@@ -634,8 +611,7 @@ void RunLogManager::finalize_owner_manifest() noexcept {
       std::ifstream stream(path);
       stream >> manifest;
     }
-    if (manifest.value("run_id", "") != run_dir_.filename().string() ||
-        manifest.value("run_dir", "") != run_dir_.string()) {
+    if (manifest.value("run_id", "") != run_dir_.filename().string() || manifest.value("run_dir", "") != run_dir_.string()) {
       throw std::runtime_error("owner manifest identity changed before finalization");
     }
     manifest["lifecycle"] = "completed";
@@ -680,8 +656,7 @@ void RunLogManager::write_run_info(const std::map<std::string, std::string>& ext
   std::error_code ec;
   std::filesystem::create_directories(metadata_path("processes"), ec);
   try {
-    atomic_write_json(
-        metadata_path("processes") / (safe_filename(process_name_) + ".json"), json);
+    atomic_write_json(metadata_path("processes") / (safe_filename(process_name_) + ".json"), json);
   } catch (const std::exception& error) {
     spdlog::warn("[RunLogManager] failed to write process metadata: {}", error.what());
   }

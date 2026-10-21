@@ -18,7 +18,10 @@
 
 namespace liuo_tunnel {
 
-CloudCovarianceEstimation::CloudCovarianceEstimation(const int num_threads, bool validate_planarity) : validate_planarity(validate_planarity), regularization_method(RegularizationMethod::PLANE), num_threads(num_threads) {}
+CloudCovarianceEstimation::CloudCovarianceEstimation(const int num_threads, bool validate_planarity)
+: validate_planarity(validate_planarity),
+  regularization_method(RegularizationMethod::PLANE),
+  num_threads(num_threads) {}
 
 CloudCovarianceEstimation::~CloudCovarianceEstimation() {}
 

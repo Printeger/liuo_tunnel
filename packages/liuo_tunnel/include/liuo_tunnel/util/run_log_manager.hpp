@@ -9,8 +9,7 @@ namespace liuo_tunnel {
 
 class RunLogManager {
 public:
-  static RunLogManager& initialize(const std::string& process_name,
-                                   const std::string& config_dir_or_empty = std::string());
+  static RunLogManager& initialize(const std::string& process_name, const std::string& config_dir_or_empty = std::string());
   static RunLogManager& instance();
   static RunLogManager* get_if_initialized();
 
@@ -28,8 +27,7 @@ public:
 private:
   RunLogManager(std::string process_name, std::string config_dir_or_empty);
 
-  std::filesystem::path category_path(const std::string& category,
-                                      const std::string& name) const;
+  std::filesystem::path category_path(const std::string& category, const std::string& name) const;
   std::filesystem::path resolve_log_root() const;
   void allocate_run_directory();
   void create_layout();

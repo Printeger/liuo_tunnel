@@ -25,10 +25,7 @@ std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> ringbuffer_sink;
 std::string sanitize_log_name(const std::string& name) {
   std::string sanitized = name;
   for (char& ch : sanitized) {
-    const bool keep = (ch >= 'a' && ch <= 'z') ||
-                      (ch >= 'A' && ch <= 'Z') ||
-                      (ch >= '0' && ch <= '9') ||
-                      ch == '_' || ch == '-';
+    const bool keep = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-';
     if (!keep) {
       ch = '_';
     }
@@ -60,9 +57,7 @@ std::shared_ptr<spdlog::logger> create_module_logger(const std::string& module_n
   }
   const auto* run_logs = RunLogManager::get_if_initialized();
   if (!run_logs) {
-    spdlog::warn(
-      "[logging] RunLogManager is not initialized; file logging for '{}' is disabled",
-      module_name);
+    spdlog::warn("[logging] RunLogManager is not initialized; file logging for '{}' is disabled", module_name);
     return logger;
   }
   const auto log_path = run_logs->runtime_path("liuo_" + log_filename + ".log");
