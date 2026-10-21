@@ -85,7 +85,7 @@ public:
         << "producer,session,sequence,measurement_stamp,receive_stamp,a_type,a,b_type,b,range,variance,reason,key_left,key_right,key_anchor,residual_class,residual,whitened,"
            "weight,decision_wall_ns\n";
     timing.open(logs.profiling_path("odometry.csv"));
-    timing << "session,stamp,preprocess_ms,optimize_ms,total_ms,latency_s,imu_queue,cloud_queue,pred_x,ba_x,ba_y,ba_z,bg_x,bg_y,bg_z\n";
+    timing << "session,stamp,preprocess_ms,optimize_ms,total_ms,latency_s,imu_queue,cloud_queue,pred_x,ba_x,ba_y,ba_z,bg_x,bg_y,bg_z,gpu_diagnostic_ms,smoother_ms,covariance_ms\n";
     reset();
     pub = create_publisher<nav_msgs::msg::Odometry>("/liuo/odom", 100);
     diagnostics = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/liuo/diagnostics", 10);
@@ -111,7 +111,7 @@ private:
   void reset() {
     gtsam::ISAM2Params p;
     p.relinearizeSkip = 1;
-    p.relinearizeThreshold = .05;
+    p.relinearizeThreshold = cfg.at("odometry").value("relinearize_threshold", .05);
     p.findUnusedFactorSlots = true;
     if (cfg.at("odometry").value("use_dogleg", false)) p.setOptimizationParams(gtsam::ISAM2DoglegParams());
     p.setFactorization(cfg.at("odometry").value("factorization", std::string("CHOLESKY")));
@@ -397,6 +397,7 @@ private:
     if (fuse) append_ranges(t, factors, predicted);
     Eigen::Matrix<double, 6, 6> H = Eigen::Matrix<double, 6, 6>::Zero();
     double fraction = 0, cost = 0;
+    const auto diagnostics_start = std::chrono::steady_clock::now();
     gtsam_points::NonlinearFactorSetGPU gpu_factors;
     if (backend == "gpu") {
       gpu_factors.add(lidar);
@@ -417,6 +418,7 @@ private:
     gtsam::FixedLagSmoother::KeyTimestampMap times{{X(count), t}, {V(count), t}, {B(count), t}};
     if (fuse && map.surveyed())
       for (auto id : map.ids) times[A(id)] = t;
+    const auto solver_start = std::chrono::steady_clock::now();
     if (!bootstrapped) {
       bootstrap_factors.add(factors);
       bootstrap_values.insert(initial);
@@ -465,11 +467,13 @@ private:
     state = gtsam::NavState(smoother->calculateEstimate<gtsam::Pose3>(X(count)), smoother->calculateEstimate<gtsam::Vector3>(V(count)));
     bias = smoother->calculateEstimate<gtsam::imuBias::ConstantBias>(B(count));
     if (!state.pose().matrix().allFinite() || !state.velocity().allFinite()) throw std::runtime_error("nonfinite optimized state");
+    const auto covariance_start = std::chrono::steady_clock::now();
     auto xv_cov = joint_covariance(smoother->getISAM2(), X(count), V(count));
     gtsam::Matrix66 cov = xv_cov.topLeftCorner<6, 6>();
     auto velocity_H = body_velocity_jacobian(state.pose(), state.velocity());
     gtsam::Matrix33 body_velocity_cov = velocity_H * xv_cov * velocity_H.transpose();
     if (!cov.allFinite() || cov.diagonal().minCoeff() < 0) throw std::runtime_error("invalid pose covariance");
+    const auto covariance_end = std::chrono::steady_clock::now();
     double lag = cfg.at("odometry").at("lag_s");
     size_t retired = 0;
     while (!frames.empty() && frames.front().t < t - lag) {
@@ -488,7 +492,7 @@ private:
     frames.push_back({count, t, voxel, keyframe});
     size_t num_keys = std::count_if(frames.begin(), frames.end(), [](const Frame& f) { return f.keyframe; });
     for (auto& f : frames) {
-      if (num_keys <= 15) break;
+      if (num_keys <= cfg.at("odometry").value("max_keyframes", 15u)) break;
       if (f.keyframe) {
         f.keyframe = false;
         num_keys--;
@@ -550,7 +554,7 @@ private:
     timing << session << ',' << t << ',' << ms(start, preprocessed) << ',' << ms(preprocessed, finish) << ',' << ms(start, finish) << ',' << now().seconds() - t << ','
            << imu->imu_data_in_queue().size() << ',' << clouds.size() << ',' << pred_x;
     for (int i = 0; i < 6; i++) timing << ',' << bias.vector()[i];
-    timing << '\n';
+    timing << ',' << ms(diagnostics_start, solver_start) << ',' << ms(solver_start, covariance_start) << ',' << ms(covariance_start, covariance_end) << '\n';
     last_cloud = t;
     count++;
   }

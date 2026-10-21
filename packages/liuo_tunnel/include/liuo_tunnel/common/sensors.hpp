@@ -20,6 +20,10 @@ inline nlohmann::json load_config(const std::string& path) {
     j.at("uwb").at("maximum_range_m") != 800 || j.at("uwb").at("sigma_m") != .10 || j.at("uwb").at("exchange_budget_hz") != 250 || j.at("uwb").at("ta_round_hz") != 20 ||
     j.at("uwb").at("aa_link_hz") != 1)
     throw std::runtime_error("unsupported uwb baseline parameters");
+  const auto& odometry = j.at("odometry");
+  if (odometry.value("max_keyframes", 15) < 1 || odometry.value("max_keyframes", 15) > 100) throw std::runtime_error("max_keyframes must be in [1,100]");
+  double threshold = odometry.value("relinearize_threshold", .05);
+  if (!std::isfinite(threshold) || threshold <= 0) throw std::runtime_error("invalid relinearize_threshold");
   return j;
 }
 inline Eigen::Vector3d vector3(const nlohmann::json& j) {
