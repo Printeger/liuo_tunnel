@@ -30,7 +30,9 @@ TEST(Uwb, GaussianAndIndependentStreams) {
     double sum = 0, sq = 0;
     const int n = 20000;
     for (int i = 0; i < n; i++) {
-      double e = range({0, 0, 0}, {300, 400, 0}, 0, stream, i) - 500;
+      const Eigen::Vector3d a = anchor(2), b = anchor(4);
+      ASSERT_TRUE(line_of_sight(a, b));
+      double e = range(a, b, 0, stream, i) - (a - b).norm();
       sum += e;
       sq += e * e;
     }
