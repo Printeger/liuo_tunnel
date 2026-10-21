@@ -84,15 +84,13 @@ def main():
             if first_stamp is None:
                 first_stamp = record_ns
             deadline = start_ns + record_ns - first_stamp
-            while time.monotonic_ns() < deadline:
-                rclpy.spin_once(
-                    node,
-                    timeout_sec=(
-                        min(0.001, (deadline - time.monotonic_ns()) * 1e-9)
-                        if time.monotonic_ns() < deadline
-                        else 0
-                    ),
-                )
+            while True:
+                remaining_ns = deadline - time.monotonic_ns()
+                if remaining_ns <= 0:
+                    break
+                # Calculate once: a second clock read may cross the deadline.
+                # Negative rclpy timeouts mean an unbounded wait, not zero.
+                rclpy.spin_once(node, timeout_sec=min(0.001, remaining_ns * 1e-9))
             if time.monotonic_ns() - deadline > 250_000_000:
                 raise RuntimeError("REPLAY_DEADLINE_MISSED: backlog >250ms")
             message = deserialize_message(data, types[topic])
