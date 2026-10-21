@@ -53,3 +53,14 @@ TEST(Uwb, WorldLosIncludesCabinetsOutsideLidarCache) {
   EXPECT_FALSE(line_of_sight({100, 0, 1.2}, {100, 4, 2}));
   EXPECT_TRUE(line_of_sight({100, 0, 1.2}, {100, 2.8, 2}));
 }
+
+#include <Eigen/SVD>
+TEST(Uwb, EveryLocalAnchorQuartetIsNoncoplanar) {
+  for (int start = 0; start < 10; start++) {
+    Eigen::Matrix3d offsets;
+    for (int j = 0; j < 3; j++) offsets.col(j) = anchor(start + j + 1) - anchor(start);
+    auto spectrum = offsets.jacobiSvd().singularValues();
+    std::cout << "anchor quartet " << start << " minimum singular value=" << spectrum[2] << std::endl;
+    EXPECT_GT(spectrum[2], .01);
+  }
+}

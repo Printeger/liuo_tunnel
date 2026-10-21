@@ -2,6 +2,7 @@
 """Simulation-only oracle/survey fixtures. Never called by the estimator."""
 import argparse
 import json
+import math
 from pathlib import Path
 import random
 
@@ -17,11 +18,20 @@ def generate(directory):
         "tag_lever_m": [0.1, 0.15, 0.25],
         "coordinate_reference": "simulation world survey datum; no vehicle start pose constraint",
         "anchors": [
-            {"id": i, "mean_m": [200.0 * i, -2.8 if i % 2 else 2.8, 3.0 if i % 2 else 2.0]}
+            {
+                "id": i,
+                "mean_m": [
+                    200.0 * i,
+                    -2.8 if i % 2 else 2.8,
+                    (3.0 if i % 2 else 2.0) + 0.3 * math.sin(1.7 * i),
+                ],
+            }
             for i in range(13)
         ],
     }
-    base.update(map_id="rail_oracle_v1", mode="oracle_map", provenance="SIMULATION_TRUTH_ORACLE")
+    base.update(
+        map_id="rail_oracle_v2_noncoplanar", mode="oracle_map", provenance="SIMULATION_TRUTH_ORACLE"
+    )
     (directory / "oracle_map.json").write_text(json.dumps(base, indent=2) + "\n")
     # Survey error is independent of every raw sensor random stream, and contains
     # a common datum translation plus independent point measurement errors.
@@ -32,7 +42,7 @@ def generate(directory):
             v + common[k] + rng.gauss(0, 0.02) for k, v in enumerate(anchor["mean_m"])
         ]
     base.update(
-        map_id="rail_synthetic_survey_v1",
+        map_id="rail_synthetic_survey_v2_noncoplanar",
         mode="surveyed_map",
         provenance="SIMULATED_SURVEY_NOT_REAL_MEASUREMENTS",
         survey_seed=67129,

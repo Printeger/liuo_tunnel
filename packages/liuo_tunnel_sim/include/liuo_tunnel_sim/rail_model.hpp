@@ -71,7 +71,9 @@ inline Eigen::Vector3d specific_force(const Motion& m) {
   return m.R.transpose() * (m.a - Eigen::Vector3d(0, 0, -9.80665));
 }
 inline Eigen::Vector3d anchor(int i) {
-  return {200.0 * i, i % 2 ? -2.8 : 2.8, i % 2 ? 3.0 : 2.0};
+  // Alternating nominal 2/3 m height with surveyed installation staggering.
+  // Exact parity-locked wall/height pairs are coplanar and violate the scene contract.
+  return {200.0 * i, i % 2 ? -2.8 : 2.8, (i % 2 ? 3.0 : 2.0) + .3 * std::sin(1.7 * i)};
 }
 inline std::pair<Eigen::Vector3d, Eigen::Vector3d> cabinet_bounds(int k) {
   double center = 3.1 + k * 5.7 + std::sin(k * 1.7);
