@@ -238,7 +238,7 @@ def _update_latest(parent: Path, run_dir: Path) -> None:
             raise RuntimeError(f"automatic run latest path is not a symlink: {latest}")
         if latest.is_symlink():
             current_name = Path(os.readlink(latest)).name
-            if current_name >= run_dir.name:
+            if _RUN_ID.fullmatch(current_name) and current_name >= run_dir.name:
                 return
 
         temporary = parent / f".latest.{os.getpid()}.{uuid.uuid4().hex}"
@@ -347,9 +347,7 @@ def _write_run_manifest(run_dir: Path, *, entrypoint: str, scenario: str) -> Non
     commit = _git_value("rev-parse", "HEAD")
     dirty = bool(_git_value("status", "--porcelain"))
     package_root = Path(__file__).resolve().parents[1]
-    source_layout = (package_root / "CMakeLists.txt").is_file() and (
-        package_root / "src"
-    ).is_dir()
+    source_layout = (package_root / "packages").is_dir()
     manifest = {
         "schema_version": "liuo_tunnel_run_artifact_v1",
         "run_id": run_dir.name,

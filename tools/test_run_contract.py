@@ -21,6 +21,13 @@ class RunContract(unittest.TestCase):
                 m=json.loads((run/'metadata/run_manifest.json').read_text())
                 self.assertEqual(m['lifecycle'],'failed');self.assertIsNotNone(m['ended_at_utc'])
                 self.assertEqual(m['acceptance'],'not_evaluated')
+    def test_non_run_latest_does_not_hide_new_run(self):
+        with tempfile.TemporaryDirectory() as tmp,patch.dict(os.environ,{'LIUO_RUN_ROOT':tmp}):
+            (Path(tmp)/'latest').symlink_to('latest_test-result')
+            run=rd.resolve_run_directory(entrypoint='rail_sim')
+            self.assertEqual((Path(tmp)/'latest').resolve(),run)
+            rd.finalize_run(run,lifecycle='completed')
+
     def test_absolute_root_and_unknown_latest_protected(self):
         with patch.dict(os.environ,{'LIUO_RUN_ROOT':'relative'}):
             with self.assertRaises(RuntimeError):rd.resolve_run_directory(entrypoint='rail_sim')

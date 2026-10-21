@@ -8,5 +8,5 @@ source /opt/ros/jazzy/setup.bash
 source "$ROOT/install/local_setup.bash"
 cd "$ROOT"
 colcon --log-base "$ROOT/log/test" test --base-paths "$ROOT/packages" --build-base "$ROOT/build" --event-handlers console_direct+
-colcon test-result --test-result-base "$ROOT/build" --verbose
+colcon --log-base "$ROOT/log/test" test-result --test-result-base "$ROOT/build" --verbose
 python3 -m unittest discover -s tools -p 'test_*.py' -v
