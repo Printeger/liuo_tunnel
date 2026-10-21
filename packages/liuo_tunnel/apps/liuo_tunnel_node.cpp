@@ -666,27 +666,44 @@ private:
     }
     // Opt-in common-translation invariant probe before vehicle marginalization.
     // Relative GPU factors are not relinearized; their caches remain untouched.
-    if (fuse && cfg.at("odometry").value("translation_information_probe", false) && t <= 13.0) {
+    const bool yaw_probe = cfg.at("odometry").value("yaw_information_probe", false);
+    if (yaw_probe && backend != "gpu") throw std::runtime_error("yaw information probe requires GPU");
+    if (fuse && (yaw_probe || cfg.at("odometry").value("translation_information_probe", false)) && t <= 13.0) {
       const auto& theta = smoother->getLinearizationPoint();
       gtsam::GaussianFactorGraph ta;
       for (const auto& factor : smoother->getFactors()) {
-        if (factor && dynamic_cast<const TagAnchorRangeFactor*>(factor.get())) ta.push_back(factor->linearize(theta));
+        if (factor && (yaw_probe ? !dynamic_cast<const gtsam_points::IntegratedVGICPFactorGPU*>(factor.get()) : dynamic_cast<const TagAnchorRangeFactor*>(factor.get()) != nullptr))
+          ta.push_back(factor->linearize(theta));
       }
       const auto& cached = smoother->getLinearFactors();
       gtsam::GaussianFactorGraph tree(smoother->getISAM2());
       const auto zero = theta.zeroVectors();
-      const auto path = RunLogManager::instance().profiling_path("translation_information_probe.csv");
+      const auto path = RunLogManager::instance().profiling_path(yaw_probe ? "yaw_information_probe.csv" : "translation_information_probe.csv");
       const bool header = !std::filesystem::exists(path);
       std::ofstream output(path, std::ios::app);
       output.exceptions(std::ios::failbit | std::ios::badbit);
-      if (header) output << "session,stamp,axis,ta_gradient,cached_gradient,tree_gradient,ta_curvature,cached_curvature,tree_curvature\n";
+      if (header)
+        output
+          << (yaw_probe ? "session,stamp,axis,raw_gradient,cached_gradient,tree_gradient,raw_curvature,cached_curvature,tree_curvature\n"
+                        : "session,stamp,axis,ta_gradient,cached_gradient,tree_gradient,ta_curvature,cached_curvature,tree_curvature\n");
       output << std::setprecision(16);
-      for (int axis = 0; axis < 3; ++axis) {
+      for (int axis = yaw_probe ? 3 : 0; axis < (yaw_probe ? 4 : 3); ++axis) {
         auto positive = zero, negative = zero;
         for (const auto key : theta.keys()) {
+          if (yaw_probe && gtsam::Symbol(key).chr() == 'v') {
+            const gtsam::Vector3 direction = gtsam::Vector3::UnitZ().cross(theta.at<gtsam::Vector3>(key));
+            positive[key] = direction;
+            negative[key] = -direction;
+          }
           if (gtsam::Symbol(key).chr() != 'x') continue;
           gtsam::Vector6 direction = gtsam::Vector6::Zero();
-          direction.tail<3>() = theta.at<gtsam::Pose3>(key).rotation().matrix().transpose().col(axis);
+          const auto& pose = theta.at<gtsam::Pose3>(key);
+          if (yaw_probe) {
+            direction.head<3>() = pose.rotation().matrix().transpose() * gtsam::Vector3::UnitZ();
+            direction.tail<3>() = pose.rotation().matrix().transpose() * gtsam::Vector3::UnitZ().cross(pose.translation());
+          } else {
+            direction.tail<3>() = pose.rotation().matrix().transpose().col(axis);
+          }
           positive[key] = direction;
           negative[key] = -direction;
         }
