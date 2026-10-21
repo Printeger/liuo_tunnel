@@ -201,3 +201,45 @@ TEST(RangeQueue, BoundAndLongSequenceHistory) {
   EXPECT_EQ(queue.push(o), "QUEUE_LIMIT");
   EXPECT_EQ(queue.size(), 2);
 }
+
+#include <gtsam_points/optimizers/incremental_fixed_lag_smoother_ext.hpp>
+#include <gtsam/slam/PriorFactor.h>
+#include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/inference/Symbol.h>
+TEST(KnownMap, StaticAnchorsSurviveLongWindowWithoutRepeatedPriors) {
+  using gtsam::symbol_shorthand::A;
+  using gtsam::symbol_shorthand::X;
+  gtsam::ISAM2Params params;
+  params.findUnusedFactorSlots = true;
+  gtsam_points::IncrementalFixedLagSmootherExt smoother(10, params);
+  gtsam::KeyVector keys;
+  std::vector<gtsam::Point3> means;
+  for (int j = 0; j < 13; j++) {
+    keys.push_back(A(j));
+    means.emplace_back(j * 200, (j % 2 ? 2.8 : -2.8), 2);
+  }
+  for (int i = 0; i < 501; i++) {
+    double t = i * .1;
+    gtsam::NonlinearFactorGraph factors;
+    gtsam::Values values;
+    gtsam::FixedLagSmoother::KeyTimestampMap stamps;
+    for (auto key : keys) stamps[key] = t;  // Every update, including >20s with no UWB.
+    values.insert(X(i), gtsam::Pose3(gtsam::Rot3(), {double(i), 0, 0}));
+    stamps[X(i)] = t;
+    if (i == 0) {
+      for (int j = 0; j < 13; j++) values.insert(keys[j], means[j]);
+      gtsam::Matrix cov = gtsam::Matrix::Identity(39, 39) * .01;
+      cov(0, 3) = cov(3, 0) = .002;
+      factors.emplace_shared<SurveyedMapPrior>(keys, means, cov);
+      factors.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(i), values.at<gtsam::Pose3>(X(i)), gtsam::noiseModel::Isotropic::Sigma(6, .01));
+    } else
+      factors.emplace_shared<gtsam::BetweenFactor<gtsam::Pose3>>(X(i - 1), X(i), gtsam::Pose3(gtsam::Rot3(), {1, 0, 0}), gtsam::noiseModel::Isotropic::Sigma(6, .1));
+    smoother.update(factors, values, stamps);
+    size_t priors = 0;
+    for (const auto& f : smoother.getFactors())
+      if (dynamic_cast<SurveyedMapPrior*>(f.get())) priors++;
+    EXPECT_EQ(priors, 1);
+    EXPECT_LE(smoother.timestamps().size(), 115);
+    for (auto key : keys) EXPECT_TRUE(smoother.calculateEstimate().exists(key));
+  }
+}
