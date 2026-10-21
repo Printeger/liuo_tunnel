@@ -24,3 +24,24 @@ Source: IAP `dev/iap_refactor`, commit `fbccae16802402d7300bb817d2627f86e6a495df
 Runtime third-party libraries are independently installed, not copied IAP libraries. GTSAM (BSD), gtsam_points (MIT, Kenji Koide), Eigen (MPL2), PCL (BSD), spdlog (MIT), Boost (BSL), ROS 2 (package-specific Apache/BSD licenses) retain their system distributions and licenses. Exact tested dependency/build identities are recorded in the acceptance report and run manifests.
 
 GPU migration uses IAP odometry_estimation_gpu.cpp frame/stream/binary-factor orchestration at fbccae16802402d7300bb817d2627f86e6a495df. Matching uses public gtsam_points IntegratedVGICPFactorGPU (installed 1.2.1, build identity 85d0f4c), without IAP ARAIM/evidence extensions; IncrementalFixedLagSmootherExt enables batched CUDA linearization, with no fallback wrapper.
+
+## Phase-two optimizer correction
+
+`packages/liuo_tunnel/{include/liuo_tunnel,src}/optimizers/` adapts the three
+`isam2_ext`, `isam2_ext_impl`, and `incremental_fixed_lag_smoother_ext` header/source
+pairs from gtsam_points checkout `0a3c1b16a7e256721525f1fcb09588e033f85e63`.
+This source identity differs from the installed GPU library build `85d0f4c`.
+Original GTSAM author notices remain; license texts are retained in
+`licenses/GTSAM-BSD.txt` (upstream GTSAM 4.2 LICENSE.BSD) and
+`licenses/gtsam_points-MIT.txt` (source checkout LICENSE).
+The local namespace prevents symbol interposition on the installed library.
+The only algorithm change finishes the old graph delta before inserting new
+variables, keeping Dogleg's gradient/Newton vectors on the same key set.
+The original GPU batching hook and Dogleg implementation remain linked from
+installed gtsam_points. No fallback smoother or additional prior is introduced.
+
+`common/gauge_consistent_vgicp_gpu.hpp` derives from the public native GPU factor.
+It preserves the native correspondence, cost, source Hessian and gradient, and
+reconstructs target/cross blocks using the relative-pose adjoint in double
+precision to preserve common-motion gauge consistency. Tests compare these
+preserved quantities and the gauge nullspace directly.

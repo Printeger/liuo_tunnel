@@ -33,3 +33,12 @@
 - 文档、命令、完整 run ID/输入哈希、失败及第三阶段接口交付。
 
 当前短程融合评估器设置显式“尚无完整第二阶段证据”的失败项，完成真实墙钟/冻结输入/长时验证后才能由实际证据检查替代；不得直接删除以制造通过。
+
+## 融合失败与求解器修复（保留原始失败）
+
+- `20261021T100651Z_842`：GPU 共同运动 Hessian 一致性修复后，Gauss–Newton 融合运行完成，但位置 RMSE 2.599 m、姿态 P95 10.42°，**FAIL**，不能作为定位交付。
+- `20261021T101501Z_328`：Dogleg + MCAP 在首个增量帧失败，`VectorValues::dot ... different structure`；部分捕获不可当作完整冻结输入。
+- `20261021T102736Z_685`：GDB 确认异常位于 Dogleg ComputeBlend，调用自增量 updateDelta。非正式调试运行，不用于时延验收。
+- 最小复现：非零初始误差、Dogleg 小信赖域、relinearizeSkip=1，旧图 updateDelta 在新变量插入后计算，梯度仅含旧 keys，Newton 向量却包含新 keys。修复前 `log/phase2-dogleg-repro.txt` FAIL；将旧图 delta 更新移到 addVariables 前后，`log/phase2-dogleg-fixed.txt` PASS。项目内独立命名空间副本及许可证/版本见 THIRD_PARTY_NOTICES；不覆盖系统库。
+- 修复后的完整回归 `log/phase2-dogleg-tests.txt`：40 个 C++/组件测试及 3 个 Python 测试通过。实际融合精度和时延仍待重跑。
+- 原基站高度与左右侧严格同奇偶造成全体共面，违反场景要求。现使用明确记录的安装高度错列，地图 ID 更新为 v2_noncoplanar；所有连续四基站非共面测试通过。旧 runs 保持原布局，不混用新版地图解释旧输入。

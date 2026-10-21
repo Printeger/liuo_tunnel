@@ -202,7 +202,7 @@ TEST(RangeQueue, BoundAndLongSequenceHistory) {
   EXPECT_EQ(queue.size(), 2);
 }
 
-#include <gtsam_points/optimizers/incremental_fixed_lag_smoother_ext.hpp>
+#include <liuo_tunnel/optimizers/incremental_fixed_lag_smoother_ext.hpp>
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/inference/Symbol.h>
@@ -211,7 +211,7 @@ TEST(KnownMap, StaticAnchorsSurviveLongWindowWithoutRepeatedPriors) {
   using gtsam::symbol_shorthand::X;
   gtsam::ISAM2Params params;
   params.findUnusedFactorSlots = true;
-  gtsam_points::IncrementalFixedLagSmootherExt smoother(10, params);
+  liuo_tunnel::solver::IncrementalFixedLagSmootherExt smoother(10, params);
   gtsam::KeyVector keys;
   std::vector<gtsam::Point3> means;
   for (int j = 0; j < 13; j++) {
@@ -263,14 +263,18 @@ TEST(UwbFactors, GravityAlignmentDoesNotObservePositionOrYaw) {
 TEST(Smoother, DoglegAcceptsNewVariableAfterBatchBootstrap) {
   using gtsam::symbol_shorthand::X;
   gtsam::ISAM2Params params;
-  params.setOptimizationParams(gtsam::ISAM2DoglegParams());
+  gtsam::ISAM2DoglegParams dogleg;
+  dogleg.initialDelta = 0.01;
+  dogleg.adaptationMode = gtsam::DoglegOptimizerImpl::ONE_STEP_PER_ITERATION;
+  params.setOptimizationParams(dogleg);
+  params.relinearizeSkip = 1;
   params.findUnusedFactorSlots = true;
-  gtsam_points::IncrementalFixedLagSmootherExt smoother(10, params);
+  liuo_tunnel::solver::IncrementalFixedLagSmootherExt smoother(10, params);
   gtsam::NonlinearFactorGraph graph;
   gtsam::Values initial;
   gtsam::FixedLagSmoother::KeyTimestampMap stamps;
   for (int i = 0; i < 60; i++) {
-    initial.insert(X(i), gtsam::Pose3(gtsam::Rot3(), {i * .1, 0, 0}));
+    initial.insert(X(i), gtsam::Pose3(gtsam::Rot3::Rz(.1), {i * .1 + 1, .2, .3}));
     stamps[X(i)] = i * .1;
     if (i) graph.emplace_shared<gtsam::BetweenFactor<gtsam::Pose3>>(X(i - 1), X(i), gtsam::Pose3(gtsam::Rot3(), {.1, 0, 0}), gtsam::noiseModel::Isotropic::Sigma(6, .01));
   }

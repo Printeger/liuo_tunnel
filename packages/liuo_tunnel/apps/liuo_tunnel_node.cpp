@@ -17,7 +17,7 @@
 #include <gtsam_points/optimizers/levenberg_marquardt_ext.hpp>
 #include <liuo_tunnel/util/run_log_manager.hpp>
 #include <liuo_tunnel/util/logging.hpp>
-#include <gtsam_points/optimizers/incremental_fixed_lag_smoother_ext.hpp>
+#include <liuo_tunnel/optimizers/incremental_fixed_lag_smoother_ext.hpp>
 #include <gtsam_points/cuda/nonlinear_factor_set_gpu.hpp>
 #include <gtsam_points/cuda/stream_temp_buffer_roundrobin.hpp>
 #include <gtsam_points/types/point_cloud_gpu.hpp>
@@ -103,7 +103,7 @@ private:
     p.findUnusedFactorSlots = true;
     if (cfg.at("odometry").value("use_dogleg", false)) p.setOptimizationParams(gtsam::ISAM2DoglegParams());
     p.setFactorization(cfg.at("odometry").value("factorization", std::string("CHOLESKY")));
-    smoother = std::make_unique<gtsam_points::IncrementalFixedLagSmootherExt>(cfg.at("odometry").at("lag_s"), p);
+    smoother = std::make_unique<liuo_tunnel::solver::IncrementalFixedLagSmootherExt>(cfg.at("odometry").at("lag_s"), p);
     IMUIntegrationParams ip;
     double rate = cfg.at("sensors").at("imu_rate_hz");
     ip.acc_noise = cfg.at("sensors").at("sigma_acc_sample").get<double>() / std::sqrt(rate);
@@ -526,7 +526,7 @@ private:
   nlohmann::json cfg;
   Eigen::Isometry3d T_BL;
   std::unique_ptr<IMUIntegration> imu;
-  std::unique_ptr<gtsam_points::IncrementalFixedLagSmootherExt> smoother;
+  std::unique_ptr<liuo_tunnel::solver::IncrementalFixedLagSmootherExt> smoother;
   gtsam::NavState state;
   gtsam::imuBias::ConstantBias bias;
   std::deque<Frame> frames;
