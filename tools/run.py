@@ -222,16 +222,8 @@ def main():
             commands["odometry"] = [
                 "gdb",
                 "--batch",
-                "-ex",
-                "catch throw std::invalid_argument",
-                "-ex",
-                "run",
-                "-ex",
-                "bt 25",
-                "-ex",
-                "frame 2",
-                "-ex",
-                "info args",
+                "-x",
+                str(ROOT / "tools/solver_exception.gdb"),
                 "--args",
             ] + commands["odometry"]
         commands["observer"] = [sys.executable, str(ROOT / "tools/observe.py")]
