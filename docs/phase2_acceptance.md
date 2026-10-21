@@ -663,3 +663,12 @@ seed 1 oracle `20261021T143251Z_960` 540 s全程完成：RMSE0.174787 m、
 （`log/phase2-pressure-ros-message-test.txt`），37项Python回归PASS
 （`log/phase2-pressure-message-regressions.txt`）。此为消息链路集成检查，
 不是180 s压力场景或定位性能通过；未同时运行GPU测试影响当前正式回放。
+
+seed 1 OFF `20261021T144158Z_577`完成540 s；运行合同/长程检查PASS，
+但实际位置RMSE647.5490 m、姿态P95 18.2957°，不作为定位精度通过。
+处理/墙钟端到端P95 42.5609/48.8307 ms。seed 1三模式原始输入、
+估计器二进制、LIO及融合UWB设置严格一致；完整比较位于
+`log/campaign_20261021T142344565876Z/seed_1_paired.json`，保留OFF大漂移。
+目前仅seeds0和1完成三模式名义配对，seed 2 surveyed开始采集。
+启动时可用空间3,808,092,160字节，通过1.5 GiB产物预算+2 GiB保留量
+检查；后续继续每5 s监测，不因空间不足删除既有证据。
