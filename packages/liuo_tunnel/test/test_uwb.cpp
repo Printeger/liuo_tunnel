@@ -335,3 +335,24 @@ TEST(KnownMap, BootstrapBatchOlderThanLagMarginalizesNewKeys) {
   EXPECT_FALSE(smoother.getLinearizationPoint().exists(gtsam::Symbol('p', 0)));
   EXPECT_LT((smoother.calculateEstimate<gtsam::Point3>(gtsam::Symbol('p', 20)) - gtsam::Point3(20, 0, 0)).norm(), 1e-10);
 }
+
+TEST(StateCovariance, SelectedAncestorsMatchDenseCorrelatedMarginal) {
+  gtsam::GaussianFactorGraph graph;
+  auto noise = gtsam::noiseModel::Isotropic::Sigma(3, .2);
+  auto I = gtsam::Matrix33::Identity().eval();
+  auto zero = gtsam::Vector3::Zero().eval();
+  graph.emplace_shared<gtsam::JacobianFactor>(0, I, zero, noise);
+  for (gtsam::Key k = 1; k < 9; ++k) {
+    gtsam::Matrix33 coupling = I;
+    coupling(0, 1) = .13 * k;
+    graph.emplace_shared<gtsam::JacobianFactor>((k - 1) / 2, -coupling, k, I, zero, noise);
+  }
+  auto tree = graph.eliminateMultifrontal(gtsam::Ordering{8, 7, 6, 5, 4, 3, 2, 1, 0});
+  auto information = graph.hessian(gtsam::Ordering{0, 1, 2, 3, 4, 5, 6, 7, 8}).first;
+  gtsam::Matrix reference = information.inverse();
+  const gtsam::KeyVector selected{7, 2, 8};  // siblings, shared ancestors, non-key order
+  auto actual = selected_covariance(*tree, selected);
+  for (int i = 0; i < 3; ++i)
+    for (int j = 0; j < 3; ++j) EXPECT_LT((actual.block<3, 3>(3 * i, 3 * j) - reference.block<3, 3>(3 * selected[i], 3 * selected[j])).norm(), 1e-10);
+  EXPECT_THROW(selected_covariance(*tree, {7, 7}), std::invalid_argument);
+}
