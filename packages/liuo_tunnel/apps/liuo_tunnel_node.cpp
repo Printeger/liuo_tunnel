@@ -664,6 +664,40 @@ private:
       smoother->update(factors, initial, times, aa_removed);
       bind_aa_factor_indices();
     }
+    // Opt-in common-translation invariant probe before vehicle marginalization.
+    // Relative GPU factors are not relinearized; their caches remain untouched.
+    if (fuse && cfg.at("odometry").value("translation_information_probe", false) && t <= 13.0) {
+      const auto& theta = smoother->getLinearizationPoint();
+      gtsam::GaussianFactorGraph ta;
+      for (const auto& factor : smoother->getFactors()) {
+        if (factor && dynamic_cast<const TagAnchorRangeFactor*>(factor.get())) ta.push_back(factor->linearize(theta));
+      }
+      const auto& cached = smoother->getLinearFactors();
+      gtsam::GaussianFactorGraph tree(smoother->getISAM2());
+      const auto zero = theta.zeroVectors();
+      const auto path = RunLogManager::instance().profiling_path("translation_information_probe.csv");
+      const bool header = !std::filesystem::exists(path);
+      std::ofstream output(path, std::ios::app);
+      output.exceptions(std::ios::failbit | std::ios::badbit);
+      if (header) output << "session,stamp,axis,ta_gradient,cached_gradient,tree_gradient,ta_curvature,cached_curvature,tree_curvature\n";
+      output << std::setprecision(16);
+      for (int axis = 0; axis < 3; ++axis) {
+        auto positive = zero, negative = zero;
+        for (const auto key : theta.keys()) {
+          if (gtsam::Symbol(key).chr() != 'x') continue;
+          gtsam::Vector6 direction = gtsam::Vector6::Zero();
+          direction.tail<3>() = theta.at<gtsam::Pose3>(key).rotation().matrix().transpose().col(axis);
+          positive[key] = direction;
+          negative[key] = -direction;
+        }
+        auto moments = [&](const gtsam::GaussianFactorGraph& graph) {
+          const double ep = graph.error(positive), em = graph.error(negative), e0 = graph.error(zero);
+          return std::pair<double, double>{0.5 * (ep - em), ep + em - 2.0 * e0};
+        };
+        const auto a = moments(ta), b = moments(cached), c = moments(tree);
+        output << session << ',' << t << ',' << axis << ',' << a.first << ',' << b.first << ',' << c.first << ',' << a.second << ',' << b.second << ',' << c.second << '\n';
+      }
+    }
     // Read-only post-fit consistency of newly incorporated physical TA factors.
     // Evaluate against the joint optimized states, not published poses or truth.
     if (fuse && new_ta) {
