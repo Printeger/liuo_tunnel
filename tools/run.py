@@ -22,6 +22,12 @@ def digest(path):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--duration", type=float, default=45)
+    p.add_argument(
+        "--rate",
+        type=float,
+        default=1.0,
+        help="explicit simulation/wall reference rate; never automatic fallback",
+    )
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--reset-at", type=float, default=-1.0)
     p.add_argument("--config", type=Path, default=ROOT / "packages/liuo_tunnel/config/phase1.json")
@@ -29,6 +35,8 @@ def main():
     p.add_argument("--diagnostic-capture", action="store_true")
     p.add_argument("--inject-failure", choices=["simulation", "odometry"])
     args = p.parse_args()
+    if not 0 < args.rate <= 1:
+        p.error("--rate must be in (0,1]")
     run = rd.resolve_run_directory(entrypoint="rail_sim", scenario="rail_tunnel_straight_v1")
     if args.formal:
         path = run / "metadata/run_manifest.json"
@@ -48,6 +56,14 @@ def main():
         config = run / "metadata/config/phase1.json"
         shutil.copyfile(args.config, config)
         rd.register_config_snapshot(run, config)
+        selected_backend = json.loads(config.read_text())["odometry"]["backend"]
+        if args.formal and (selected_backend != "gpu" or args.rate != 1.0):
+            raise RuntimeError("formal validation requires GPU backend and requested rate 1.0")
+        if selected_backend == "gpu":
+            preflight = subprocess.run(["nvidia-smi", "-q"], capture_output=True, text=True)
+            (run / "metadata/gpu_preflight.txt").write_text(preflight.stdout + preflight.stderr)
+            if preflight.returncode:
+                raise RuntimeError("GPU preflight failed; no CPU fallback")
         rd._atomic_write_json(
             run / "metadata/config/scenario.json",
             {
@@ -57,6 +73,7 @@ def main():
                 "height_m": 5,
                 "gauge_m": 1.435,
                 "duration_s": args.duration,
+                "requested_rate": args.rate,
                 "seed": args.seed,
                 "scan_model": "snapshot",
                 "reset_at_s": args.reset_at,
@@ -157,6 +174,8 @@ def main():
             f"seed:={args.seed}",
             "-p",
             f"reset_at_s:={args.reset_at}",
+            "-p",
+            f"rate:={args.rate}",
         ]
         commands["observer"] = [sys.executable, str(ROOT / "tools/observe.py")]
         for name in ["observer", "odometry", "simulation"]:
@@ -193,7 +212,7 @@ def main():
             if args.inject_failure and not injected and time.monotonic() - start > 5:
                 children[args.inject_failure].kill()
                 injected = True
-            if time.monotonic() - start > max(120, args.duration * 8):
+            if time.monotonic() - start > max(120, args.duration / args.rate * 3):
                 raise RuntimeError("wall time budget exceeded; see timing evidence")
             time.sleep(0.1)
         time.sleep(2)

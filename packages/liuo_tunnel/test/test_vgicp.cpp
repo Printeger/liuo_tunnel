@@ -76,3 +76,37 @@ TEST(Vgicp, UnsupportedPlaneDoesNotFabricateAxialInformation) {
   plane(2, 2) = 1e-7;
   EXPECT_NEAR(guarded.regularize(plane)(2, 2), .001, 1e-10);
 }
+
+#include <gtsam_points/types/point_cloud_gpu.hpp>
+#include <gtsam_points/types/gaussian_voxelmap_gpu.hpp>
+#include <gtsam_points/factors/integrated_vgicp_factor_gpu.hpp>
+#include <gtsam_points/cuda/nonlinear_factor_set_gpu.hpp>
+#include <gtsam_points/optimizers/levenberg_marquardt_ext.hpp>
+TEST(VgicpGPU, BinaryRawFactorRecoversTranslation) {
+  gtsam_points::LinearizationHook::register_hook([] { return std::make_shared<gtsam_points::NonlinearFactorSetGPU>(); });
+  std::vector<Eigen::Vector4d> points;
+  for (int i = -12; i <= 12; i++)
+    for (int j = -12; j <= 12; j++) {
+      points.emplace_back(i * .13, j * .13, .173, 1);
+      points.emplace_back(.237, i * .13, j * .13, 1);
+      points.emplace_back(i * .13, .321, j * .13, 1);
+    }
+  auto cpu = std::make_shared<gtsam_points::PointCloudCPU>(points);
+  cpu->add_covs(std::vector<Eigen::Matrix4d>(points.size(), Eigen::Matrix4d::Identity() * .01));
+  auto target = gtsam_points::PointCloudGPU::clone(*cpu);
+  auto voxels = std::make_shared<gtsam_points::GaussianVoxelMapGPU>(.5);
+  voxels->insert(*target);
+  for (auto& p : points) p.x() -= .2;
+  auto shifted = std::make_shared<gtsam_points::PointCloudCPU>(points);
+  shifted->add_covs(std::vector<Eigen::Matrix4d>(points.size(), Eigen::Matrix4d::Identity() * .01));
+  auto source = gtsam_points::PointCloudGPU::clone(*shifted);
+  gtsam::NonlinearFactorGraph graph;
+  graph.emplace_shared<gtsam_points::IntegratedVGICPFactorGPU>(0, 1, voxels, source);
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(0, gtsam::Pose3(), gtsam::noiseModel::Isotropic::Sigma(6, 1e-5));
+  gtsam::Values initial;
+  initial.insert(0, gtsam::Pose3());
+  initial.insert(1, gtsam::Pose3(gtsam::Rot3(), {.17, .01, .01}));
+  auto result = gtsam_points::LevenbergMarquardtOptimizerExt(graph, initial).optimize();
+  EXPECT_NEAR(result.at<gtsam::Pose3>(1).x(), .2, .03);
+  EXPECT_EQ(graph.at(0)->keys().size(), 2);
+}

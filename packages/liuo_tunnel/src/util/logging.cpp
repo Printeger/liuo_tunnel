@@ -47,7 +47,7 @@ std::shared_ptr<spdlog::logger> create_module_logger(const std::string& module_n
   }
 
   const auto* config = liuo_tunnel::GlobalConfig::get_if_initialized();
-  const std::string log_filename = sanitize_log_name(module_name == "glim" ? "main" : module_name);
+  const std::string log_filename = sanitize_log_name(module_name);
 
   logger = spdlog::stdout_color_mt(module_name);
   logger->sinks().push_back(get_ringbuffer_sink());

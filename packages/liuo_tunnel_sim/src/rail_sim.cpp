@@ -23,6 +23,8 @@ public:
     cfg = liuo_tunnel::load_config(declare_parameter<std::string>("config_file", ""));
     seed = declare_parameter<int>("seed", 0);
     duration = declare_parameter<double>("duration_s", 45);
+    rate = declare_parameter<double>("rate", 1.0);
+    if (!std::isfinite(rate) || rate <= 0 || rate > 1) throw std::runtime_error("rate must be in (0,1]; explicit reference playback only");
     reset_at = declare_parameter<double>("reset_at_s", -1);
     T_BL = liuo_tunnel::lidar_extrinsic(cfg);
     tag = liuo_tunnel::vector3(cfg.at("sensors").at("T_BU_translation"));
@@ -46,7 +48,7 @@ public:
     for (int i = 0; i < 13; i++) links.push_back({0, 0, i, 0, 0});
     for (int i = 0; i < 13; i++)
       for (int j = i + 1; j < 13; j++) links.push_back({1, i, j, 0, 0});
-    timer = create_wall_timer(std::chrono::milliseconds(5), [this] { tick(); });
+    timer = create_wall_timer(std::chrono::nanoseconds(static_cast<int64_t>(5000000 / rate)), [this] { tick(); });
     logger->info("snapshot simulation ready seed={} duration={}s", seed, duration);
   }
 
@@ -268,7 +270,7 @@ private:
   std::chrono::steady_clock::time_point startup = std::chrono::steady_clock::now(), simulation_started;
   nlohmann::json cfg;
   int seed = 0, loaded = -100;
-  double duration = 45, reset_at = -1;
+  double duration = 45, reset_at = -1, rate = 1;
   bool reset_done = false;
   uint64_t ticks = 0, total_ticks = 0, exchange = 0, session = 1, sequence = 0;
   size_t world_points = 0;

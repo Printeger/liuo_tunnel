@@ -3,7 +3,7 @@
 - Modify project files only here; IAP and demo are read-only provenance sources.
 - Inspect branch and worktree before edits. Preserve user changes. No extra branches or worktrees, history rewriting, or broad process cleanup.
 - Stage only task files; commit checked logical changes. Formal live evidence binds a clean committed revision.
-- Phase one uses original CPU VGICP factors and IMU in a fixed-lag X/V/B graph. UWB is recorded only. No predicted-pose priors, GNSS, clock states, planning, or duplicate motion observations.
+- Phase one uses original GPU VGICP factors (CPU is an explicit diagnostic reference) and IMU in a fixed-lag X/V/B graph. UWB is recorded only. No predicted-pose priors, GNSS, clock states, planning, or duplicate motion observations.
 - Truth belongs only to simulation and evaluation. Never subscribe to truth in the estimator or constrain it to the rail.
 - New abstractions, states and weighting need a reproduced problem. Resolve the first violated invariant, without silent fallback or weakened acceptance.
 - Coordinate frames, units, timestamps and covariances are contracts; update callers and meaningful tests together.

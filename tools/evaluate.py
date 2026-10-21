@@ -117,8 +117,18 @@ def evaluate(run):
         )
     elapsed = [float(r["total_ms"]) for r in timing]
     latency = [float(r["latency_s"]) for r in timing]
+    backend = json.loads((run / "metadata/config/phase1.json").read_text())["odometry"].get(
+        "backend", "cpu"
+    )
+    if backend == "gpu":
+        process = json.loads((run / "metadata/processes/odometry.json").read_text())
+        check(
+            process.get("backend") == "gpu_RAW_MULTIFRAME_VGICP"
+            and bool(process.get("gpu_device")),
+            "GPU execution identity missing",
+        )
     result = {
-        "scope": "phase1_snapshot_cpu_reference",
+        "scope": "phase1_snapshot_" + backend,
         "result": "FAIL" if failures else "PASS",
         "failures": failures,
         "metrics": metrics,
@@ -129,7 +139,7 @@ def evaluate(run):
         "simulation_runtime": runtime,
         "raw_counts": audit["counts"],
         "sessions": len(est_sessions),
-        "gpu": "NOT_VALIDATED",
+        "gpu": ("FAIL" if failures else "PASS") if backend == "gpu" else "NOT_VALIDATED",
         "rolling_deskew": "NOT_VALIDATED",
         "accuracy_thresholds": "Phase-two/three fused-navigation thresholds not applied to phase-one LIO observation baseline.",
     }

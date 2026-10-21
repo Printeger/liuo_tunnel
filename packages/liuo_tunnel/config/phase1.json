@@ -27,13 +27,14 @@
     "lag_s": 10.0,
     "connection_window": 3,
     "voxel_resolution": 0.5,
-    "downsample_m": 0.5,
+    "downsample_m": 0.25,
     "threads": 2,
     "initialization_s": 2.0,
     "imu_queue_limit": 10000,
     "cloud_queue_limit": 32,
     "covariance_neighbors": 20,
-    "validate_covariance_planarity": true
+    "validate_covariance_planarity": true,
+    "backend": "gpu"
   },
   "uwb": {
     "mode": "record_only",

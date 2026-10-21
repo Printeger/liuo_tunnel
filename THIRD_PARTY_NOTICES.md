@@ -22,3 +22,5 @@ Source: IAP `dev/iap_refactor`, commit `fbccae16802402d7300bb817d2627f86e6a495df
 - Artifact tests and first-hit renderer tests migrated from corresponding IAP `test/` and `local_sensing/test/` paths. Tunnel physics and runtime audits are new.
 
 Runtime third-party libraries are independently installed, not copied IAP libraries. GTSAM (BSD), gtsam_points (MIT, Kenji Koide), Eigen (MPL2), PCL (BSD), spdlog (MIT), Boost (BSL), ROS 2 (package-specific Apache/BSD licenses) retain their system distributions and licenses. Exact tested dependency/build identities are recorded in the acceptance report and run manifests.
+
+GPU migration uses IAP odometry_estimation_gpu.cpp frame/stream/binary-factor orchestration at fbccae16802402d7300bb817d2627f86e6a495df. Matching uses public gtsam_points IntegratedVGICPFactorGPU (installed 1.2.1, build identity 85d0f4c), without IAP ARAIM/evidence extensions; IncrementalFixedLagSmootherExt enables batched CUDA linearization, with no fallback wrapper.

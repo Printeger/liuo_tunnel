@@ -13,7 +13,13 @@
 #include <liuo_tunnel/common/sensors.hpp>
 #include <liuo_tunnel/util/run_log_manager.hpp>
 #include <liuo_tunnel/util/logging.hpp>
-#include <gtsam/nonlinear/IncrementalFixedLagSmoother.h>
+#include <gtsam_points/optimizers/incremental_fixed_lag_smoother_ext.hpp>
+#include <gtsam_points/cuda/nonlinear_factor_set_gpu.hpp>
+#include <gtsam_points/cuda/stream_temp_buffer_roundrobin.hpp>
+#include <gtsam_points/types/point_cloud_gpu.hpp>
+#include <gtsam_points/types/gaussian_voxelmap_gpu.hpp>
+#include <gtsam_points/factors/integrated_vgicp_factor_gpu.hpp>
+#include <cuda_runtime_api.h>
 #include <gtsam/slam/PriorFactor.h>
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/inference/Symbol.h>
@@ -35,10 +41,21 @@ class TunnelNode : public rclcpp::Node {
 public:
   TunnelNode() : Node("liuo_tunnel_node") {
     cfg = load_config(declare_parameter<std::string>("config_file", ""));
+    backend = cfg.at("odometry").at("backend");
+    if (backend != "gpu" && backend != "cpu") throw std::runtime_error("unknown backend");
+    if (backend == "gpu") {
+      int devices = 0;
+      auto result = cudaGetDeviceCount(&devices);
+      if (result != cudaSuccess || devices < 1) throw std::runtime_error(std::string("GPU required: ") + cudaGetErrorString(result));
+      cudaDeviceProp props{};
+      if (cudaGetDeviceProperties(&props, 0) != cudaSuccess) throw std::runtime_error("GPU device properties unavailable");
+      gpu_name = props.name;
+      streams = std::make_unique<gtsam_points::StreamTempBufferRoundRobin>();
+    }
     T_BL = lidar_extrinsic(cfg);
     logger = create_module_logger("odometry");
     auto& logs = RunLogManager::instance();
-    logs.write_run_info({{"backend", "CPU_RAW_MULTIFRAME_VGICP"}, {"uwb", "RECORD_ONLY"}});
+    logs.write_run_info({{"backend", backend + "_RAW_MULTIFRAME_VGICP"}, {"uwb", "RECORD_ONLY"}, {"gpu_device", gpu_name}});
     trajectory.open(logs.export_path("odometry/trajectory.csv"));
     trajectory << std::setprecision(16) << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id\n";
     graph.open(logs.export_path("odometry/graph.csv"));
@@ -63,7 +80,7 @@ public:
       "/sensors/uwb/range",
       rclcpp::SensorDataQoS().keep_last(2048),
       [this](liuo_tunnel_msgs::msg::UwbRange::ConstSharedPtr m) { on_uwb(*m); });
-    logger->info("CPU raw multi-frame VGICP ready; UWB record only; truth is not subscribed");
+    logger->info("{} raw multi-frame VGICP ready; device={}; UWB record only; truth is not subscribed", backend, gpu_name);
   }
 
 private:
@@ -72,7 +89,7 @@ private:
     p.relinearizeSkip = 1;
     p.relinearizeThreshold = .05;
     p.findUnusedFactorSlots = true;
-    smoother = std::make_unique<gtsam::IncrementalFixedLagSmoother>(cfg.at("odometry").at("lag_s"), p);
+    smoother = std::make_unique<gtsam_points::IncrementalFixedLagSmootherExt>(cfg.at("odometry").at("lag_s"), p);
     IMUIntegrationParams ip;
     double rate = cfg.at("sensors").at("imu_rate_hz");
     ip.acc_noise = cfg.at("sensors").at("sigma_acc_sample").get<double>() / std::sqrt(rate);
@@ -95,7 +112,7 @@ private:
     a.header.stamp = now();
     diagnostic_msgs::msg::DiagnosticStatus d;
     d.name = "liuo/odometry";
-    d.hardware_id = "cpu";
+    d.hardware_id = backend;
     d.level = state == "TRACKING" ? 0 : 1;
     d.message = state + ":" + reason;
     diagnostic_msgs::msg::KeyValue kv;
@@ -165,7 +182,7 @@ private:
   struct Frame {
     size_t id;
     double t;
-    std::shared_ptr<gtsam_points::GaussianVoxelMapCPU> voxels;
+    gtsam_points::GaussianVoxelMap::Ptr voxels;
     bool keyframe;
   };
   void process(const sensor_msgs::msg::PointCloud2& m, double t) {
@@ -200,8 +217,15 @@ private:
     for (const auto& c : covariances)
       if (c.trace() > 2.9) nonplanar++;
     cloud->add_covs(covariances);
-    auto voxel = std::make_shared<gtsam_points::GaussianVoxelMapCPU>(cfg.at("odometry").at("voxel_resolution").get<double>());
-    voxel->insert(*cloud);
+    gtsam_points::PointCloud::Ptr match_cloud = cloud;
+    gtsam_points::GaussianVoxelMap::Ptr voxel;
+    double resolution = cfg.at("odometry").at("voxel_resolution");
+    if (backend == "gpu") {
+      match_cloud = gtsam_points::PointCloudGPU::clone(*cloud);
+      voxel = std::make_shared<gtsam_points::GaussianVoxelMapGPU>(resolution);
+    } else
+      voxel = std::make_shared<gtsam_points::GaussianVoxelMapCPU>(resolution);
+    voxel->insert(*match_cloud);
     auto preprocessed = std::chrono::steady_clock::now();
     gtsam::Values initial;
     gtsam::NonlinearFactorGraph factors, lidar;
@@ -232,8 +256,15 @@ private:
       int window = cfg.at("odometry").at("connection_window");
       for (auto it = frames.rbegin(); it != frames.rend(); ++it) {
         if (int(count - it->id) > window && !it->keyframe) continue;
-        auto f = gtsam::make_shared<gtsam_points::IntegratedVGICPFactor>(X(it->id), X(count), it->voxels, cloud);
-        f->set_num_threads(cfg.at("odometry").at("threads"));
+        gtsam::NonlinearFactor::shared_ptr f;
+        if (backend == "gpu") {
+          auto sb = streams->get_stream_buffer();
+          f = gtsam::make_shared<gtsam_points::IntegratedVGICPFactorGPU>(X(it->id), X(count), it->voxels, match_cloud, sb.first, sb.second);
+        } else {
+          auto cpu = gtsam::make_shared<gtsam_points::IntegratedVGICPFactor>(X(it->id), X(count), it->voxels, match_cloud);
+          cpu->set_num_threads(cfg.at("odometry").at("threads"));
+          f = cpu;
+        }
         lidar.add(f);
         factors.add(f);
       }
@@ -246,11 +277,18 @@ private:
     predicted.insert(initial);
     Eigen::Matrix<double, 6, 6> H = Eigen::Matrix<double, 6, 6>::Zero();
     double fraction = 0, cost = 0;
+    gtsam_points::NonlinearFactorSetGPU gpu_factors;
+    if (backend == "gpu") {
+      gpu_factors.add(lidar);
+      gpu_factors.linearize(predicted);
+      gpu_factors.error(predicted);
+    }
     for (const auto& f : lidar) {
       gtsam::HessianFactor h(*f->linearize(predicted));
       H += h.hessianBlockDiagonal().at(X(count));
       cost += f->error(predicted);
-      fraction += dynamic_cast<gtsam_points::IntegratedVGICPFactor*>(f.get())->inlier_fraction();
+      fraction += backend == "gpu" ? dynamic_cast<gtsam_points::IntegratedVGICPFactorGPU*>(f.get())->inlier_fraction()
+                                   : dynamic_cast<gtsam_points::IntegratedVGICPFactor*>(f.get())->inlier_fraction();
     }
     if (!lidar.empty()) fraction /= lidar.size();
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 6, 6>> eig(H);
@@ -333,10 +371,12 @@ private:
     last_cloud = t;
     count++;
   }
+  std::unique_ptr<gtsam_points::StreamTempBufferRoundRobin> streams;
+  std::string backend, gpu_name;
   nlohmann::json cfg;
   Eigen::Isometry3d T_BL;
   std::unique_ptr<IMUIntegration> imu;
-  std::unique_ptr<gtsam::IncrementalFixedLagSmoother> smoother;
+  std::unique_ptr<gtsam_points::IncrementalFixedLagSmootherExt> smoother;
   gtsam::NavState state;
   gtsam::imuBias::ConstantBias bias;
   std::deque<Frame> frames;
@@ -357,6 +397,7 @@ private:
 }  // namespace liuo_tunnel
 int main(int argc, char** argv) {
   rclcpp::init(argc, argv);
+  gtsam_points::LinearizationHook::register_hook([] { return std::make_shared<gtsam_points::NonlinearFactorSetGPU>(); });
   try {
     liuo_tunnel::RunLogManager::initialize("odometry");
     rclcpp::spin(std::make_shared<liuo_tunnel::TunnelNode>());
