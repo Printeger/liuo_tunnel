@@ -1,0 +1,6 @@
+{
+  "schema_version": "liuo_delivery_v1",
+  "begin_s": 8,
+  "end_s": 80,
+  "anchor_outages": [{"anchor_id": 4, "begin_s": 40, "end_s": 60}]
+}

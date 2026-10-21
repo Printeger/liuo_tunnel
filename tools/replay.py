@@ -24,9 +24,7 @@ def main():
     parser.add_argument("--source-run", type=Path, required=True)
     parser.add_argument("--delivery-profile", type=Path)
     args = parser.parse_args()
-    scheduler = DeliverySchedule(
-        json.loads(args.delivery_profile.read_text()) if args.delivery_profile else None
-    )
+    profile = json.loads(args.delivery_profile.read_text()) if args.delivery_profile else None
     source = args.source_run.resolve()
     run = Path(os.environ["LIUO_RUN_DIR"])
     duration = json.loads((source / "export/simulation/runtime.json").read_text())["simulation_s"]
@@ -57,6 +55,19 @@ def main():
             reliability=ReliabilityPolicy.RELIABLE if reliable else ReliabilityPolicy.BEST_EFFORT,
         )
         publishers[topic.name] = node.create_publisher(types[topic.name], topic.name, qos)
+
+    def anchor_ids(data):
+        message = deserialize_message(data, types["/sensors/uwb/range"])
+        return [
+            identity
+            for kind, identity in [
+                (message.node_a_type, message.node_a_id),
+                (message.node_b_type, message.node_b_id),
+            ]
+            if kind == 1
+        ]
+
+    scheduler = DeliverySchedule(profile, anchor_ids=anchor_ids)
     if set(publishers) != set(allowed):
         raise RuntimeError("frozen input lacks required topics")
     (run / "metadata/processes/simulation.json").write_text(
@@ -126,6 +137,10 @@ def main():
                 "source_elapsed_s",
                 "delivery_elapsed_s",
                 "action",
+                "a_type",
+                "a",
+                "b_type",
+                "b",
             ]
         )
         clock_log.write("session,stamp,scheduled_wall_ns,published_wall_ns\n")
@@ -161,9 +176,13 @@ def main():
                         (record_ns - first_stamp) * 1e-9,
                         (delivery_ns - first_stamp) * 1e-9,
                         action,
+                        message.node_a_type,
+                        message.node_a_id,
+                        message.node_b_type,
+                        message.node_b_id,
                     ]
                 )
-                if action == "outage_drop":
+                if action in ["outage_drop", "anchor_outage_drop"]:
                     continue
                 if action == "duplicate":
                     duplicates.append(identity)

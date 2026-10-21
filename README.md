@@ -123,3 +123,7 @@ PID、run和逐次审计；仅该脚本正常完成仍不表示第二阶段完�
 
 压力回放完成后运行 `python3 tools/pressure_audit.py log/<run>`，核查断流及
 恢复状态并保留原始精度失败；此报告不替代名义种子配对验收。
+
+单基站失效压力回放使用
+`--delivery-profile packages/liuo_tunnel/config/delivery/single_anchor_loss.json`；
+仅停止声明基站的链路，不改变测距数值。其实际验收进度见第二阶段报告。

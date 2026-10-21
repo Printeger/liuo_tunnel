@@ -5,7 +5,7 @@ import math
 
 
 class DeliverySchedule:
-    def __init__(self, profile=None, capacity=4096):
+    def __init__(self, profile=None, capacity=4096, anchor_ids=None):
         self.profile = profile or {}
         allowed = {
             "schema_version",
@@ -17,6 +17,7 @@ class DeliverySchedule:
             "expired_every",
             "expired_delay_s",
             "outages",
+            "anchor_outages",
         }
         if set(self.profile) - allowed:
             raise ValueError("unknown delivery profile fields")
@@ -49,6 +50,20 @@ class DeliverySchedule:
                 raise ValueError("invalid outage interval")
             if not self.begin <= interval[0] < interval[1] <= self.end:
                 raise ValueError("outage outside delivery window")
+        self.anchor_outages = self.profile.get("anchor_outages", [])
+        self.anchor_ids = anchor_ids
+        for fault in self.anchor_outages:
+            if set(fault) != {"anchor_id", "begin_s", "end_s"}:
+                raise ValueError("invalid anchor outage fields")
+            if type(fault["anchor_id"]) is not int or fault["anchor_id"] < 0:
+                raise ValueError("invalid outage anchor ID")
+            a, b = fault["begin_s"], fault["end_s"]
+            if not all(type(x) in (int, float) and math.isfinite(x) for x in [a, b]):
+                raise ValueError("invalid anchor outage time")
+            if not self.begin <= a < b <= self.end:
+                raise ValueError("anchor outage outside delivery window")
+        if self.anchor_outages and anchor_ids is None:
+            raise ValueError("anchor outage requires endpoint decoder")
         self.capacity = capacity
         self.peak = 0
 
@@ -85,6 +100,13 @@ class DeliverySchedule:
                     )
                     if any(a <= elapsed < b for a, b in self.outages):
                         delay, action, duplicate = 0, "outage_drop", False
+                    elif self.anchor_outages:
+                        endpoints = set(self.anchor_ids(data))
+                        if any(
+                            f["begin_s"] <= elapsed < f["end_s"] and f["anchor_id"] in endpoints
+                            for f in self.anchor_outages
+                        ):
+                            delay, action, duplicate = 0, "anchor_outage_drop", False
             events = [(stamp + delay, action)]
             if duplicate:
                 events.append(

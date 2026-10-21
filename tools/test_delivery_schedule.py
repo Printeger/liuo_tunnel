@@ -80,3 +80,37 @@ class DeliveryScheduleTest(unittest.TestCase):
                 profile = dict(schema_version="liuo_delivery_v1", begin_s=0, end_s=1)
                 profile.update(change)
                 DeliverySchedule(profile)
+
+    def test_anchor_outage_ta_aa_boundaries_and_unaffected_bytes(self):
+        profile = dict(
+            schema_version="liuo_delivery_v1",
+            begin_s=0,
+            end_s=3,
+            anchor_outages=[dict(anchor_id=7, begin_s=1, end_s=2)],
+        )
+        source = [
+            ("/clock", (), 0),
+            ("/sensors/uwb/range", (7,), 999999999),
+            ("/sensors/uwb/range", (7,), 1000000000),
+            ("/sensors/uwb/range", (4, 7), 1500000000),
+            ("/sensors/uwb/range", (4, 8), 1600000000),
+            ("/sensors/uwb/range", (7,), 2000000000),
+        ]
+        events = list(DeliverySchedule(profile, anchor_ids=lambda data: data).events(source))
+        self.assertEqual(
+            [e[4] for e in events],
+            [
+                "original",
+                "original",
+                "anchor_outage_drop",
+                "anchor_outage_drop",
+                "original",
+                "original",
+            ],
+        )
+        self.assertEqual([(e[0], e[1], e[2]) for e in events], source)
+        with self.assertRaisesRegex(ValueError, "decoder"):
+            DeliverySchedule(profile)
+        profile["anchor_outages"][0]["anchor_id"] = True
+        with self.assertRaisesRegex(ValueError, "ID"):
+            DeliverySchedule(profile, anchor_ids=lambda data: data)

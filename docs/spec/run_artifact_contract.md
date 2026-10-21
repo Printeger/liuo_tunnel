@@ -142,3 +142,12 @@ covariance is changed by this reporting rule.
 separates nominal accuracy comparisons from Handbook 8.1 pressure behavior.
 It reports outage/recovery errors and timing, checks delivered-input identity and
 recovery states, and does not claim nominal or complete-stage acceptance.
+
+Delivery profiles may additionally declare `anchor_outages` with explicit
+`anchor_id`, `begin_s`, `end_s` inside the profile window. Both TA and AA links
+involving that anchor are withheld in the half-open interval; other endpoints,
+measurement payloads, effective stamps and identities remain unchanged.
+`delivery.csv` appends `a_type,a,b_type,b` and uses `anchor_outage_drop`. The
+auditor checks all original events, including outside the declared interval,
+for missed selections and unintended drops. This is a physical link-loss
+pressure condition, not a changed nominal range/noise model.

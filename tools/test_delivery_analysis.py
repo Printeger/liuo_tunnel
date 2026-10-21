@@ -58,3 +58,33 @@ class DeliveryAnalysisTest(unittest.TestCase):
         self.assertEqual(analyze(*data)["result"], "PASS")
         data[3][0]["state_reason"] = "UWB_REJECTED_LIO_CONTINUES:INVENTED_REASON"
         self.assertTrue(any("absence reason" in s for s in analyze(*data)["failures"]))
+
+    def test_anchor_outage_checks_selected_and_unrelated_links(self):
+        data = self.fixture()
+        data[0]["anchor_outages"] = [dict(anchor_id=7, begin_s=7, end_s=8)]
+        for row in data[1]:
+            row.update(a_type="0", a="0", b_type="1", b="9")
+
+        def link(sequence, b, action):
+            return dict(
+                producer="1",
+                session="10",
+                sequence=str(sequence),
+                source_elapsed_s="7.1",
+                a_type="0",
+                a="0",
+                b_type="1",
+                b=str(b),
+                action=action,
+            )
+
+        data[1] += [link(4, 7, "anchor_outage_drop"), link(5, 8, "original")]
+        self.assertEqual(analyze(*data)["result"], "PASS")
+        data[1][-1]["action"] = "anchor_outage_drop"
+        self.assertIn(
+            "anchor outage incorrectly dropped unrelated link", analyze(*data)["failures"]
+        )
+        data[1][-2]["action"] = "original"
+        self.assertIn(
+            "anchor outage missed selected physical measurement", analyze(*data)["failures"]
+        )

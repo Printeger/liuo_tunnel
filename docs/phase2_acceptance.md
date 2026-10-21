@@ -565,3 +565,11 @@ RMSE0.184014 m、姿态P95 0.311807°、处理P95 39.5558 ms、墙钟
 在线时刻，不作轨迹对齐。位置NEES35.9830、95%覆盖率4.3045%，说明
 过度自信并非只来自surveyed地图误差。原始report保留阶段未完成标志。
 OFF回放正在进行，当前只完成seed 0的双地图数值验证，不是全部campaign。
+
+单基站失效压力入口已补齐：
+`packages/liuo_tunnel/config/delivery/single_anchor_loss.json` 在40–60 s
+停止基站4的TA/AA投递。其他链路保持原始字节和时刻，记录端点及明确
+丢弃原因；审计核查声明区间内外所有记录，误丢、漏丢均失败。
+28项Python回归通过（`log/phase2-anchor-fault-tests.txt`），但此场景
+尚未运行，不标为实际压力验收PASS。当前在跑的OFF回放使用启动时已加载
+的名义回放实现；后续运行由各自源码提交及输入身份绑定。

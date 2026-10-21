@@ -18,7 +18,9 @@ def analyze(profile, delivery, decisions, trajectory, graph, clock, runtime):
     expired_rejected = {identity(r) for r in decisions if r["reason"] == "WINDOW_EXPIRED"}
     if not expired <= expired_rejected:
         failures.append("delayed expired measurements were not explicitly rejected")
-    dropped = {identity(r) for r in delivery if r["action"] == "outage_drop"}
+    dropped = {
+        identity(r) for r in delivery if r["action"] in ["outage_drop", "anchor_outage_drop"]
+    }
     if dropped & set(accepted_ids):
         failures.append("intentionally withheld measurement entered graph")
     if any(int(r["reset"]) or int(r["fallback"]) for r in graph):
@@ -27,13 +29,57 @@ def analyze(profile, delivery, decisions, trajectory, graph, clock, runtime):
         raise ValueError("combined clock reset and transport fault audit not implemented")
     start_wall = int(clock[0]["scheduled_wall_ns"])
     start_stamp = float(clock[0]["stamp"])
-    original = {identity(r): r for r in delivery if r["action"] not in ["duplicate", "outage_drop"]}
+    original = {
+        identity(r): r
+        for r in delivery
+        if r["action"] not in ["duplicate", "outage_drop", "anchor_outage_drop"]
+    }
     rejection_reasons = {
         r["reason"]
         for r in decisions
         if r["reason"]
         not in ["ACCEPT_TA", "ACCEPT_AA", "ORACLE_AA_CHECK", "CLOCK_RESET", "SHUTDOWN_PENDING"]
     }
+
+    anchor_outages = []
+    anchor_rows = []
+    if profile.get("anchor_outages"):
+        for row in delivery:
+            if row["action"] == "duplicate":
+                continue
+            elapsed = float(row["source_elapsed_s"])
+            endpoints = {int(row[k]) for k in ["a", "b"] if int(row[k + "_type"]) == 1}
+            expected_drop = any(
+                f["begin_s"] <= elapsed < f["end_s"] and f["anchor_id"] in endpoints
+                for f in profile["anchor_outages"]
+            )
+            full_outage = any(a <= elapsed < b for a, b in profile.get("outages", []))
+            expected_action = (
+                "outage_drop" if full_outage else "anchor_outage_drop" if expected_drop else None
+            )
+            if expected_action and row["action"] != expected_action:
+                failures.append("anchor outage missed selected physical measurement")
+            if not expected_action and row["action"] in ["outage_drop", "anchor_outage_drop"]:
+                failures.append("anchor outage incorrectly dropped unrelated link")
+            anchor_rows.append((elapsed, endpoints))
+    for fault in profile.get("anchor_outages", []):
+        selected = [
+            endpoints
+            for elapsed, endpoints in anchor_rows
+            if fault["begin_s"] <= elapsed < fault["end_s"]
+        ]
+        affected = sum(fault["anchor_id"] in endpoints for endpoints in selected)
+        if not affected:
+            failures.append("anchor outage had no affected observations")
+        anchor_outages.append(
+            {
+                "anchor_id": fault["anchor_id"],
+                "begin_s": fault["begin_s"],
+                "end_s": fault["end_s"],
+                "affected_observations": affected,
+                "other_link_observations": len(selected) - affected,
+            }
+        )
 
     def reports_no_accepted_uwb(row):
         reason = row.get("state_reason", "")
@@ -78,5 +124,6 @@ def analyze(profile, delivery, decisions, trajectory, graph, clock, runtime):
         "expired_delayed_rejections": len(expired & expired_rejected),
         "delivery_queue_peak": runtime["delivery_queue_peak"],
         "outages": outages,
+        "anchor_outages": anchor_outages,
         "scope": "transport/unique ingestion/LIO continuity only; navigation accuracy and covariance evaluated separately",
     }
