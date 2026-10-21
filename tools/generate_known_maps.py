@@ -7,7 +7,7 @@ import random
 import math
 
 
-LAYOUT = "four_corner_400m_7_anchors_v4"
+LAYOUT = "high_first_four_corner_400m_7_anchors_v5"
 
 
 def validate_deployment(anchors):
@@ -37,8 +37,8 @@ def generate(directory, survey_seed=67129):
                 "id": i,
                 "mean_m": [
                     400.0 * i,
-                    2.8 if i % 4 < 2 else -2.8,
-                    0.4 if i % 4 in (0, 3) else 4.6,
+                    2.8 if i % 4 in (0, 3) else -2.8,
+                    4.6 if i % 4 < 2 else 0.4,
                 ],
             }
             for i in range(7)
@@ -46,7 +46,7 @@ def generate(directory, survey_seed=67129):
     }
     validate_deployment(base["anchors"])
     base.update(
-        map_id="rail_oracle_v4_four_corner_400m",
+        map_id="rail_oracle_v5_high_first_four_corner_400m",
         mode="oracle_map",
         provenance="SIMULATION_TRUTH_ORACLE",
     )
@@ -60,7 +60,7 @@ def generate(directory, survey_seed=67129):
             v + common[k] + rng.gauss(0, 0.02) for k, v in enumerate(anchor["mean_m"])
         ]
     base.update(
-        map_id="rail_synthetic_survey_v4_four_corner_400m",
+        map_id="rail_synthetic_survey_v5_high_first_four_corner_400m",
         mode="surveyed_map",
         provenance="SIMULATED_SURVEY_NOT_REAL_MEASUREMENTS",
         survey_seed=survey_seed,

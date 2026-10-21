@@ -177,3 +177,5 @@ estimator continues publishing its actual trajectory and covariance. This expose
 an unresolved recovery failure, not successful relocalization. No automatic reset
 or truth correction occurs. Phase two remains incomplete while this recovery and
 the documented sparse-layout accuracy failures are unresolved.
+
+当前七基站安装候选为 v5 高位优先四角循环：纵向 0/400/800/1200/1600/2000/2400 m，(y,z) 循环 (2.8,4.6)、(-2.8,4.6)、(-2.8,0.4)、(2.8,0.4) m。数量、密度、量程、噪声和验收门槛不变。此候选尚待实际 GPU 路线验证；历史 v4 冻结输入只能配其原地图快照，不能当作 v5 输入。

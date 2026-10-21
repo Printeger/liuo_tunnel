@@ -81,11 +81,11 @@ inline Motion rail_motion(double seconds, bool return_trip = false) {
 inline Eigen::Vector3d specific_force(const Motion& m) {
   return m.R.transpose() * (m.a - Eigen::Vector3d(0, 0, -9.80665));
 }
-// Deployment v4: seven anchors at 400 m spacing; at most three per closed 1 km.
+// Deployment v5: seven anchors at 400 m spacing; at most three per closed 1 km.
 // Coordinates belong only to the simulator; the estimator loads its external map.
 inline constexpr int anchor_count = 7;
 inline Eigen::Vector3d anchor(int i) {
-  return {400.0 * i, i % 4 < 2 ? 2.8 : -2.8, (i % 4 == 0 || i % 4 == 3) ? .4 : 4.6};
+  return {400.0 * i, (i % 4 == 0 || i % 4 == 3) ? 2.8 : -2.8, i % 4 < 2 ? 4.6 : .4};
 }
 // Reserve one in ten exchange slots for AA to prevent starvation under TA overload.
 inline bool prefer_anchor_exchange(uint64_t slot) {
