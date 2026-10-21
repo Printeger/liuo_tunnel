@@ -43,3 +43,58 @@ class CampaignControlTest(unittest.TestCase):
         ]:
             with self.subTest(entries=invalid), self.assertRaises(ValueError):
                 validate_resume_groups(invalid, range(10))
+
+
+class CaptureReleaseTest(unittest.TestCase):
+    def test_release_preserves_results_and_records_hash_and_is_idempotent(self):
+        import hashlib
+        import json
+        import tempfile
+        from pathlib import Path
+        from run_campaign import release_raw_capture
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = root / "log" / "test_run"
+            raw = run / "export/capture/raw"
+            raw.mkdir(parents=True)
+            (run / "metadata/manifests").mkdir(parents=True)
+            manifest = run / "metadata/run_manifest.json"
+            manifest.write_text(json.dumps(dict(run_id=run.name, lifecycle="failed")))
+            original = manifest.read_bytes()
+            (raw / "raw_0.mcap").write_bytes(b"frozen input")
+            (raw / "metadata.yaml").write_text("retained metadata")
+            with patch("run_campaign.ROOT", root):
+                receipt = release_raw_capture(run, "explicit user authorization")
+                self.assertEqual(
+                    receipt["files"][0]["sha256"], hashlib.sha256(b"frozen input").hexdigest()
+                )
+                self.assertFalse((raw / "raw_0.mcap").exists())
+                self.assertTrue((raw / "metadata.yaml").exists())
+                self.assertEqual(manifest.read_bytes(), original)
+                self.assertEqual(release_raw_capture(run, "retry"), receipt)
+
+    def test_active_external_and_symlinked_captures_are_refused(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from run_campaign import release_raw_capture
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            run = root / "log" / "test_run"
+            raw = run / "export/capture/raw"
+            raw.mkdir(parents=True)
+            (run / "metadata/manifests").mkdir(parents=True)
+            manifest = run / "metadata/run_manifest.json"
+            target = root / "keep.mcap"
+            target.write_bytes(b"keep")
+            (raw / "raw_0.mcap").symlink_to(target)
+            with patch("run_campaign.ROOT", root):
+                for state in ["active", "completed"]:
+                    manifest.write_text(json.dumps(dict(run_id=run.name, lifecycle=state)))
+                    with self.assertRaises(ValueError):
+                        release_raw_capture(run, "test")
+                with self.assertRaises(ValueError):
+                    release_raw_capture(root, "test")
+            self.assertEqual(target.read_bytes(), b"keep")

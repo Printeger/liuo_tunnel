@@ -46,6 +46,71 @@ def validate_resume_groups(entries, seeds):
     return groups
 
 
+def release_raw_capture(run, reason):
+    """Release only terminal task-owned MCAP files, preserving a hash receipt."""
+    run = Path(run).absolute()
+    if run.parent != ROOT / "log" or run.resolve() != run:
+        raise ValueError("capture release requires a direct nonsymlink project run")
+    manifest = json.loads((run / "metadata/run_manifest.json").read_text())
+    if manifest.get("run_id") != run.name or manifest.get("lifecycle") not in (
+        "completed",
+        "failed",
+        "interrupted",
+    ):
+        raise ValueError("capture release requires a matching terminal run")
+    raw = run / "export/capture/raw"
+    receipt = run / "metadata/manifests/raw_capture_release.json"
+    if raw.resolve() != raw or receipt.parent.resolve() != receipt.parent:
+        raise ValueError("capture release refuses symlinked artifact directories")
+    if receipt.exists():
+        previous = json.loads(receipt.read_text())
+        if previous.get("status") == "released" and not list(raw.glob("*.mcap")):
+            return previous
+        raise ValueError("incomplete capture release requires inspection")
+    files = []
+    identities = {}
+    for path in sorted(raw.glob("*.mcap")):
+        if path.is_symlink() or not path.is_file():
+            raise ValueError("capture release refuses nonregular MCAP")
+        with path.open("rb") as stream:
+            digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        identities[path] = path.stat()
+        files.append(
+            {"path": str(path.relative_to(run)), "bytes": path.stat().st_size, "sha256": digest}
+        )
+    if not files:
+        raise ValueError("no raw capture files to release")
+    record = {
+        "run_id": run.name,
+        "status": "prepared",
+        "reason": reason,
+        "utc": datetime.now(timezone.utc).isoformat(),
+        "files": files,
+        "released_bytes": sum(f["bytes"] for f in files),
+        "original_capture_replayable": False,
+        "retained": "reports, images, CSV, config, source/input identities and manifests",
+    }
+
+    def save_receipt():
+        temporary = receipt.with_suffix(".json.tmp")
+        temporary.write_text(json.dumps(record, indent=2) + "\n")
+        temporary.replace(receipt)
+
+    save_receipt()  # Preserve identities before the first irreversible operation.
+    for path, before in identities.items():
+        after = path.lstat()
+        if (before.st_ino, before.st_size, before.st_mtime_ns) != (
+            after.st_ino,
+            after.st_size,
+            after.st_mtime_ns,
+        ):
+            raise ValueError("capture changed during release")
+        path.unlink()
+    record["status"] = "released"
+    save_receipt()
+    return record
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seeds", nargs="+", type=int, default=list(range(10)))
@@ -191,6 +256,12 @@ def main():
         for seed, group in groups.items():
             paired = compare([Path(e["run"]) for e in group], strict_estimator_settings=True)
             (directory / f"seed_{seed}_paired.json").write_text(json.dumps(paired, indent=2) + "\n")
+            if seed != 0:
+                source = Path(next(e["run"] for e in group if e["mode"] == "surveyed_map"))
+                release_raw_capture(
+                    source, "User-authorized release after strict three-mode pairing"
+                )
+
         for seed in args.seeds:
             if seed in groups:
                 continue
@@ -228,6 +299,11 @@ def main():
             )
             paired = compare([source, oracle, baseline], strict_estimator_settings=True)
             (directory / f"seed_{seed}_paired.json").write_text(json.dumps(paired, indent=2) + "\n")
+            if seed != 0:
+                release_raw_capture(
+                    source, "User-authorized release after strict three-mode pairing"
+                )
+
         report = campaign([Path(r["run"]) for r in record["runs"]])
         (directory / "nominal_campaign_audit.json").write_text(json.dumps(report, indent=2) + "\n")
         record["status"] = (

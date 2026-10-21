@@ -183,3 +183,23 @@ The original MCAP remains immutable; profile SHA plus the original source
 identity identifies the derived input, and delivered hashes must agree between
 producer, observer and paired runs. Audits recompute the transform, check
 estimator-observed values and retain navigation errors separately.
+
+### User-authorized raw capture release
+
+The user authorized bounded campaign storage on 2026-10-21. This is an explicit
+exception to protected raw-capture retention, not ordinary run garbage collection.
+After all three modes pass their per-run audits and strict pairing is saved,
+the nominal campaign releases only MCAP files for seeds other than 0. Seed 0
+remains a representative complete input. Failed/incomplete groups are not
+released automatically. The three separately authorized historical captures
+are listed in the phase-two acceptance report.
+
+Before deletion, `metadata/manifests/raw_capture_release.json` records each
+relative path, byte count, SHA256, reason and a prepared status. Successful
+deletion marks it released; interrupted release requires inspection. Only direct,
+nonsymlink, terminal project runs qualify. Primary manifests and original capture
+hashes remain immutable historical records. Reports, failure evidence, referenced
+images, configuration, source/binary identities, trajectories and diagnostic CSV
+remain. Replay is unavailable after release; later CSV/identity re-audits do not
+constitute a new verification of deleted MCAP bytes. Do not substitute regenerated
+seed data for the historical frozen input.

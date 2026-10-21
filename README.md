@@ -135,7 +135,7 @@ PID、run和逐次审计；仅该脚本正常完成仍不表示第二阶段完�
 记录保留，新campaign单独记录复用来源。
 
 Campaign在启动前检查预计产物空间，每5 s监测2 GiB保留空间；不足时
-仅向自身创建的owner发SIGINT，等待其收尾并记录失败，不清理历史产物。
+仅向自身创建的owner发SIGINT，等待其收尾并记录失败；磁盘不足不会触发历史产物清理。
 预计空间为540 s捕获1.5 GiB或回放0.25 GiB，另加2 GiB保留量；这是
 根据实测的启动预算，不保证其他进程不会消耗空间。
 
@@ -143,3 +143,12 @@ Campaign在启动前检查预计产物空间，每5 s监测2 GiB保留空间；�
 `--delivery-profile packages/liuo_tunnel/config/delivery/correlated_nlos.json`。
 它生成明确标记的派生测距输入，并保留原始值和正偏日志；不同模式必须
 使用同一源run及profile并核对实际投递哈希，不能只比较种子。
+
+名义 campaign 按用户授权采用逐组原始包释放：每个 seed 完成 surveyed/oracle/OFF
+运行审计、严格输入哈希与设置核对并保存配对报告后，删除该捕获的 MCAP。
+seed 0 始终保留为代表性完整输入；其余 seed 的已完成复用组也执行此策略。
+失败或不完整组不会自动释放。保留全部报告、图片、轨迹和诊断 CSV、配置、
+源码/二进制身份以及输入哈希。每个释放记录位于
+`metadata/manifests/raw_capture_release.json`，包含原文件大小、SHA256 和原因。
+被释放的历史输入不能再直接回放；相同 seed 重生成也不冒充原始冻结输入。
+已完成组可继续用保留的 CSV 与身份记录复核，但不声称重新核验已删除文件。
