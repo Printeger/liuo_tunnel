@@ -12,13 +12,13 @@
 | 可观无噪声图恢复 | PASS（组件） | 显式独立旋转观测固定姿态规范，未把距离当完整姿态观测 |
 | 同一 X/V/B 原始 GPU VGICP + IMU + UWB | PASS（已运行范围） | 生产 graph.csv；受控单测距扰动改变图内 X/V/B 和后续点云线性化 |
 | surveyed 地图联合不确定度 | PASS（结构与已运行范围） | 保留非对角协方差、仅一次地图先验；坐标/外参/SPD 无效输入拒绝 |
-| 静态基站与车辆窗口 | PASS（180 s） | v3 `20261021T113638Z_097` 始终 49 A、1 地图先验、最多 101 X/V/B；UWB 队列最多 75，无 reset/fallback |
+| 静态基站与车辆窗口 | PASS（1070 s surveyed 往返） | `20261021T120354Z_887` 全程独立审计通过，49 A、一次地图先验、车辆/点云与队列结构边界保持；无 reset/fallback |
 | 异步/重复/过期、5/20 s 断流恢复 | PASS（旧布局单组故障审计） | `20261021T110347Z_804`；v3 最终配置完整配对仍未验证 |
 | 原始冻结回放与内容核对 | PASS（已列 runs） | 完整 MCAP 和逐 topic SHA/count；20 s 旧布局 ON/OFF/oracle/surveyed 配对保留 |
 | 位姿、线/区间角速度及完整 twist 协方差 | PASS（组件及30 s线上合同） | `a7e12ae`；48 组件/11 Python 测试；220 条融合与279条 OFF 输出独立核对，无违规 |
-| 可信状态与后验一致性 | FAIL | 长程仍有误差超标却 TRACKING、NEES 过度自信；不能靠真值或调整噪声掩盖 |
-| 已知地图定位精度 | FAIL | 最新 v3 180 s surveyed RMSE 0.2052 m；该次门槛通过，但历史长程失败、oracle/最终配置全程仍需验证 |
-| 处理/端到端/1×实时 | PASS（180 s指定配置） | `20261021T113638Z_097`：61.37/67.40 ms，实际0.999994×；不是所有 seeds/工况结论 |
+| 可信状态与后验一致性 | FAIL | 最新完整往返精度达标，但位置 NEES 均值27.67、95%覆盖率8.17%；拒绝/异常状态分类仍需完善，历史误差超标却 TRACKING 保留 |
+| 已知地图定位精度 | PASS（单次 surveyed 往返）/整体未验证 | `20261021T120354Z_887` RMSE 0.2119 m、姿态 P95 0.340°；oracle 与 seeds 0–9 尚未完成 |
+| 处理/端到端/1×实时 | PASS（1070 s surveyed 往返） | `20261021T120354Z_887`：52.74/82.95 ms，实际0.999999×；不是所有 seeds/工况结论 |
 | 最终配置 ON/OFF、双地图、全程走停、seeds 0–9 | 未验证 | 仍需完整逐次 campaign 和可用率≥99%核对，不能使用短跑或均值替代 |
 | rolling/去畸变、第三阶段 | 未验证/不在本阶段 | snapshot 范围明确；不提前交付自标定或规划 |
 
@@ -303,3 +303,37 @@ RSS范围198388–367660 KiB，设备总使用1540554752–1946353664 bytes。
 连接配置不同被正确拒绝为受控模式对照。模拟测绘生成器新增独立 survey seed，
 默认67129与既有夹具逐字节相同；不同seed只改模拟测绘均值/身份，不改oracle
 布局和联合协方差，避免未来跨seed统计无意重复同一地图噪声实现。
+
+
+## 首次完整 surveyed 往返（seed 0）
+
+`20261021T120354Z_887`，源 `061103d`，正式 GPU/snapshot 输入1070 s：
+包含600/1200/1800/2350 m停车点、2350 m处停留后保持朝向倒车返回0 m。
+214000 IMU、10700 cloud、267499 UWB、214000 clock，发布/观察数量一致。
+位置 RMSE 0.211907 m、退化段 RMSE 0.214318 m，退化段轴向 P95/max
+0.05750/0.15165 m；姿态 P95 0.33963°，优化处理 P95 52.736 ms、模拟时间
+延迟 P95 80 ms、墙钟端到端 P95 82.951 ms，实际0.999999×。
+
+独立 `long_run_audit.py --require-return` PASS：声明初始化后的10620个预期
+10 Hz时刻均有有效输出，全部 TRACKING，完整停车/返回覆盖，无额外时刻、
+重复输出、reset/fallback；1062条资源采样连续。RSS范围197296–389480 KiB，
+设备总使用1527054336–2058354688 bytes，后半段RSS拟合斜率−4.20 KiB/s。
+结构边界通过与采样趋势分开报告，不声称所有进程或所有分配器内存已有证明。
+
+位置 NEES均值27.6736、联合9维NEES均值127.5285、位置95%椭球覆盖率8.173%，
+明确显示局部后验过度自信；没有反调噪声。本次原始评估仍为FAIL，唯一该报告
+失败项为完整配对campaign未完成。独立全程审计PASS不能将阶段标为完成。
+证据在该run的 `export/analysis/report.json` 和 `long_run_audit.json`；原始MCAP
+在 `export/capture/raw`，所有失败历史继续保留。
+
+复现及双地图配对命令：
+
+```bash
+tools/run.sh --formal --duration 1070 --return-trip --seed 0 --config packages/liuo_tunnel/config/phase2.json --map packages/liuo_tunnel/config/maps/surveyed_map.json --capture
+python3 tools/long_run_audit.py log/20261021T120354Z_887 --require-return
+tools/run.sh --formal --replay log/20261021T120354Z_887 --config packages/liuo_tunnel/config/phase2.json --map packages/liuo_tunnel/config/maps/oracle_map.json
+```
+
+严格OFF对照从同一phase2配置只改 `uwb.mode` 为 `record_only`，保持同一二进制
+和全部LIO设置；不能用原phase1默认连接窗口作模式对照。当前oracle配对run
+`20261021T122540Z_225` 尚在执行，未提前登记结果。
