@@ -25,7 +25,7 @@
   },
   "odometry": {
     "lag_s": 10.0,
-    "connection_window": 3,
+    "connection_window": 1,
     "voxel_resolution": 0.5,
     "downsample_m": 0.25,
     "threads": 2,
@@ -36,7 +36,8 @@
     "validate_covariance_planarity": true,
     "backend": "gpu",
     "factorization": "CHOLESKY",
-    "use_dogleg": true
+    "use_dogleg": true,
+    "max_keyframes": 1
   },
   "uwb": {
     "mode": "fuse",
