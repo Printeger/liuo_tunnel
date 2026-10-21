@@ -664,6 +664,11 @@ private:
       smoother->update(factors, initial, times, aa_removed);
       bind_aa_factor_indices();
     }
+    // Bounded diagnostic: re-optimize the SAME early graph without new data.
+    // Never enabled implicitly or extended after a failed experiment.
+    if (fuse && cfg.at("odometry").value("early_five_extra_updates", false) && t <= 13.0) {
+      for (int iteration = 0; iteration < 5; ++iteration) smoother->update();
+    }
     // Opt-in common-translation invariant probe before vehicle marginalization.
     // Relative GPU factors are not relinearized; their caches remain untouched.
     const bool yaw_probe = cfg.at("odometry").value("yaw_information_probe", false);
