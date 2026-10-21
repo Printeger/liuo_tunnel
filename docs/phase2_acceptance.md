@@ -1640,3 +1640,16 @@ S23固定投影配置/初值/地图/MCAP，仅lag不同，各125秒owner墙钟�
 协方差NEES、图规模、处理延迟。缺帧/失败/无法处理到120秒记INVALID，
 不能当作误差改善或否定几何假设。不改变队列/输入速率来强行完成。
 无论结果如何，不继续扩大lag，不以此替代实时部署配置或名义验收。
+
+S30精度假设 **INVALID**：基线`20261021T183646Z_230`按125秒预算收尾；
+lag120诊断`20261021T183912Z_725`在74.8秒后触发cloud_queue_limit exceeded，
+odometry退出1，owner收尾自身simulation/observer。实际最大车辆X=719，
+marginalized=0，说明本段确实保留历史，但未到[110,120)且比较帧数0。
+最后一帧处理130.205ms；不能将不完整轨迹当精度改善或否定历史影响。
+队列保护按预期工作，没有扩容、降输入速率或重试。该运行不能用于实时
+或精度验收，也不将lag120作为部署配置。失败原始日志及manifest保留。
+证据在长窗口run `export/analysis/s30_history_comparison.json`、
+`runtime/odometry_console.log`，基线与诊断console位于`log/sparse_s30_*_console.txt`。
+`log/sparse_s30_compare.py`保留完整100帧硬断言，未放宽以让残缺结果通过。
+后续若研究历史影响，需独立定义不冒充实时验收的有界离线计算实验；
+不能继续加大实时窗口或用更多队列掩盖处理不足。
