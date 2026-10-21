@@ -98,7 +98,8 @@ public:
     graph << "session,stamp,X,V,B,A,imu_factors,lidar_factors,total_factors,marginalized,optimization_ms,reset,fallback,uwb_ta,uwb_aa,map_priors,uwb_queue,aa_summary_factors,aa_"
              "accumulated_measurements\n";
     icp.open(logs.export_path("odometry/icp.csv"));
-    icp << "session,stamp,points,inlier_fraction,cost,eig0,eig1,eig2,eig3,eig4,eig5,weak_rx,weak_ry,weak_rz,weak_tx,weak_ty,weak_tz,weighting,nonplanar_covariances\n";
+    icp << "session,stamp,points,inlier_fraction,cost,eig0,eig1,eig2,eig3,eig4,eig5,weak_rx,weak_ry,weak_rz,weak_tx,weak_ty,weak_tz,weighting,nonplanar_covariances,surface_eig0,"
+           "surface_eig1,surface_eig2,translation_rank\n";
     uwb.open(logs.export_path("odometry/uwb.csv"));
     uwb << std::setprecision(16)
         << "producer,session,sequence,measurement_stamp,receive_stamp,a_type,a,b_type,b,range,variance,reason,key_left,key_right,key_anchor,residual_class,residual,whitened,"
@@ -402,6 +403,9 @@ private:
     const double tangent_variance = cfg.at("odometry").value("cloud_tangent_variance", 1.0);
     CloudCovarianceEstimation covariance(2, cfg.at("odometry").at("validate_covariance_planarity"), tangent_variance);
     auto covariances = covariance.estimate(points, neighbors);
+    Eigen::Vector3d surface_spectrum = Eigen::Vector3d::Zero();
+    Eigen::Matrix3d translation_projector = Eigen::Matrix3d::Identity();
+    if (cfg.at("odometry").value("project_weak_lidar_translation", false)) translation_projector = surface_translation_projector(covariances, &surface_spectrum);
     size_t nonplanar = 0;
     for (const auto& c : covariances)
       if (c.trace() > 2.9 * tangent_variance) nonplanar++;
@@ -464,7 +468,7 @@ private:
         gtsam::NonlinearFactor::shared_ptr f;
         if (backend == "gpu") {
           auto sb = streams->get_stream_buffer();
-          f = gtsam::make_shared<GaugeConsistentVGICPFactorGPU>(X(it->id), X(count), it->voxels, match_cloud, sb.first, sb.second, lidar_weight);
+          f = gtsam::make_shared<GaugeConsistentVGICPFactorGPU>(X(it->id), X(count), it->voxels, match_cloud, sb.first, sb.second, lidar_weight, translation_projector);
         } else {
           auto cpu = gtsam::make_shared<gtsam_points::IntegratedVGICPFactor>(X(it->id), X(count), it->voxels, match_cloud);
           cpu->set_num_threads(cfg.at("odometry").at("threads"));
@@ -677,7 +681,8 @@ private:
     icp << session << ',' << t << ',' << points.size() << ',' << fraction << ',' << cost;
     for (int i = 0; i < 6; i++) icp << ',' << eigen[i];
     for (int i = 0; i < 6; i++) icp << ',' << weak[i];
-    icp << ",covariance_planarity_guard_tangent_variance=" << tangent_variance << "_native_cost_weight=" << lidar_weight << "," << nonplanar << '\n';
+    icp << ",covariance_planarity_guard_tangent_variance=" << tangent_variance << "_native_cost_weight=" << lidar_weight << "," << nonplanar << ',' << surface_spectrum[0] << ','
+        << surface_spectrum[1] << ',' << surface_spectrum[2] << ',' << translation_projector.trace() << '\n';
     timing << session << ',' << t << ',' << ms(start, preprocessed) << ',' << ms(preprocessed, finish) << ',' << ms(start, finish) << ',' << now().seconds() - t << ','
            << imu->imu_data_in_queue().size() << ',' << clouds.size() << ',' << pred_x;
     for (int i = 0; i < 6; i++) timing << ',' << bias.vector()[i];

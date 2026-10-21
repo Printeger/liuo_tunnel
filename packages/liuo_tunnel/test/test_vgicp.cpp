@@ -298,3 +298,83 @@ TEST(VgicpGPU, PointCountNormalizationScalesCostGradientAndInformationTogether) 
   EXPECT_LT((copy.augmentedInformation() - scaled.augmentedInformation()).norm(), 1e-10);
   EXPECT_NEAR(cloned->error(values), normalized->error(values), 1e-12);
 }
+
+TEST(SurfaceProjection, MeasuredNormalsSelectDirectionsWithoutWorldAxis) {
+  std::vector<Eigen::Matrix4d> covs;
+  for (auto n : {Eigen::Vector3d(0, 1, 0), Eigen::Vector3d(0, 0, 1)})
+    for (int i = 0; i < 5; ++i) {
+      Eigen::Matrix4d c = Eigen::Matrix4d::Zero();
+      c.topLeftCorner<3, 3>() = Eigen::Matrix3d::Identity() - .999 * n * n.transpose();
+      covs.push_back(c);
+    }
+  Eigen::Matrix3d expected = Eigen::Vector3d(0, 1, 1).asDiagonal();
+  EXPECT_LT((liuo_tunnel::surface_translation_projector(covs) - expected).norm(), 1e-10);
+  auto R = gtsam::Rot3::RzRyRx(.3, -.4, .7).matrix();
+  for (auto& c : covs) c.topLeftCorner<3, 3>() = R * c.topLeftCorner<3, 3>() * R.transpose();
+  EXPECT_LT((liuo_tunnel::surface_translation_projector(covs) - R * expected * R.transpose()).norm(), 1e-10);
+  EXPECT_THROW(liuo_tunnel::surface_translation_projector({Eigen::Matrix4d::Identity()}), std::runtime_error);
+}
+
+TEST(SurfaceProjection, NontrivialPoseProjectionHasCorrectRightLocalJacobians) {
+  using Factor = liuo_tunnel::GaugeConsistentVGICPFactorGPU;
+  gtsam::Pose3 target(gtsam::Rot3::RzRyRx(.3, -.4, .7), {7, -2, 4});
+  gtsam::Pose3 source(gtsam::Rot3::RzRyRx(-.2, .5, -.3), {8, -1, 5});
+  const auto D = target.between(source);
+  const Eigen::Vector3d n = Eigen::Vector3d(1, 2, 3).normalized();
+  const Eigen::Matrix3d P = Eigen::Matrix3d::Identity() - n * n.transpose();
+  const Eigen::Matrix3d targetP = D.rotation().matrix() * P * D.rotation().matrix().transpose();
+  gtsam::Matrix66 S = gtsam::Matrix66::Identity();
+  S.bottomRightCorner<3, 3>() = P;
+  gtsam::Matrix66 Htarget = -S * D.inverse().AdjointMap();
+  for (int endpoint = 0; endpoint < 2; ++endpoint) {
+    gtsam::Matrix66 numerical;
+    for (int k = 0; k < 6; ++k) {
+      gtsam::Vector6 delta = gtsam::Vector6::Zero();
+      delta[k] = 1e-6;
+      auto plus = endpoint ? target.between(source.retract(delta)) : target.retract(delta).between(source);
+      auto minus = endpoint ? target.between(source.retract(-delta)) : target.retract(-delta).between(source);
+      numerical.col(k) =
+        (D.localCoordinates(Factor::project_relative(plus, D.translation(), targetP)) - D.localCoordinates(Factor::project_relative(minus, D.translation(), targetP))) / 2e-6;
+    }
+    EXPECT_LT((numerical - (endpoint ? S : Htarget)).norm(), 1e-8);
+  }
+}
+
+TEST(VgicpGPU, ProjectedWeakTranslationHasNoTrialCostOrInformationWhileRotationRemains) {
+  using Factor = liuo_tunnel::GaugeConsistentVGICPFactorGPU;
+  std::vector<Eigen::Vector4d> points;
+  for (int i = -10; i <= 10; i++)
+    for (int j = -10; j <= 10; j++) {
+      points.emplace_back(i * .13, j * .13, .173, 1);
+      points.emplace_back(.237, i * .13, j * .13, 1);
+    }
+  auto cpu = std::make_shared<gtsam_points::PointCloudCPU>(points);
+  cpu->add_covs(std::vector<Eigen::Matrix4d>(points.size(), Eigen::Matrix4d::Identity() * .01));
+  auto cloud = gtsam_points::PointCloudGPU::clone(*cpu);
+  auto voxel = std::make_shared<gtsam_points::GaussianVoxelMapGPU>(.5);
+  voxel->insert(*cloud);
+  Eigen::Matrix3d P = Eigen::Vector3d(0, 1, 1).asDiagonal();
+  auto native = gtsam::make_shared<Factor>(0, 1, voxel, cloud);
+  auto projected = gtsam::make_shared<Factor>(0, 1, voxel, cloud, nullptr, nullptr, 1.0, P);
+  gtsam::Values values;
+  values.insert(0, gtsam::Pose3());
+  values.insert(1, gtsam::Pose3(gtsam::Rot3::RzRyRx(.01, -.02, .03), {.01, .02, .03}));
+  gtsam_points::NonlinearFactorSetGPU batch;
+  batch.add(native);
+  batch.add(projected);
+  batch.linearize(values);
+  gtsam::HessianFactor h(*native->linearize(values)), projected_h(*projected->linearize(values));
+  auto H = h.hessianBlockDiagonal().at(1), HP = projected_h.hessianBlockDiagonal().at(1);
+  EXPECT_LT(HP.row(3).norm(), 1e-10);
+  EXPECT_LT((HP.topLeftCorner<3, 3>() - H.topLeftCorner<3, 3>()).norm(), 1e-10);
+  batch.error(values);
+  const double error = projected->error(values);
+  native->error(values);
+  gtsam::Vector6 delta = gtsam::Vector6::Zero();
+  delta[3] = .3;
+  auto shifted = values;
+  shifted.update(1, values.at<gtsam::Pose3>(1).retract(delta));
+  batch.error(shifted);
+  EXPECT_NEAR(projected->error(shifted), error, 1e-5);
+  EXPECT_GT(std::abs(native->error(shifted) - error), 1e-3);
+}

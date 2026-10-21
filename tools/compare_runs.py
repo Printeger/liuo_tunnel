@@ -29,6 +29,7 @@ def estimator_settings(config):
         ("max_keyframes", 15),
         ("cloud_tangent_variance", 1.0),
         ("normalize_lidar_by_point_count", False),
+        ("project_weak_lidar_translation", False),
         ("relinearize_threshold", 0.05),
         ("use_dogleg", False),
         ("factorization", "CHOLESKY"),

@@ -23,6 +23,10 @@ inline nlohmann::json load_config(const std::string& path) {
   const auto& odometry = j.at("odometry");
   if (odometry.value("max_keyframes", 15) < 1 || odometry.value("max_keyframes", 15) > 100) throw std::runtime_error("max_keyframes must be in [1,100]");
   if (odometry.value("normalize_lidar_by_point_count", false) && odometry.at("backend") != "gpu") throw std::runtime_error("native point-count normalization is GPU-only");
+  if (
+    odometry.value("project_weak_lidar_translation", false) &&
+    (odometry.at("backend") != "gpu" || odometry.value("normalize_lidar_by_point_count", false) || !odometry.at("validate_covariance_planarity").get<bool>()))
+    throw std::runtime_error("surface projection requires GPU, validated planes and unnormalized native cost");
   double tangent_variance = odometry.value("cloud_tangent_variance", 1.0);
   if (!std::isfinite(tangent_variance) || tangent_variance < 1 || tangent_variance > 100) throw std::runtime_error("cloud_tangent_variance must be in [1,100]");
   double threshold = odometry.value("relinearize_threshold", .05);
