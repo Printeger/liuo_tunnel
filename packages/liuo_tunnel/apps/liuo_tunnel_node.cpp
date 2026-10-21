@@ -11,6 +11,7 @@
 #include <liuo_tunnel/common/imu_integration.hpp>
 #include <liuo_tunnel/common/cloud_covariance_estimation.hpp>
 #include <liuo_tunnel/common/sensors.hpp>
+#include <liuo_tunnel/common/gauge_consistent_vgicp_gpu.hpp>
 #include <liuo_tunnel/uwb/known_map.hpp>
 #include <liuo_tunnel/uwb/measurement_queue.hpp>
 #include <gtsam_points/optimizers/levenberg_marquardt_ext.hpp>
@@ -362,7 +363,7 @@ private:
         gtsam::NonlinearFactor::shared_ptr f;
         if (backend == "gpu") {
           auto sb = streams->get_stream_buffer();
-          f = gtsam::make_shared<gtsam_points::IntegratedVGICPFactorGPU>(X(it->id), X(count), it->voxels, match_cloud, sb.first, sb.second);
+          f = gtsam::make_shared<GaugeConsistentVGICPFactorGPU>(X(it->id), X(count), it->voxels, match_cloud, sb.first, sb.second);
         } else {
           auto cpu = gtsam::make_shared<gtsam_points::IntegratedVGICPFactor>(X(it->id), X(count), it->voxels, match_cloud);
           cpu->set_num_threads(cfg.at("odometry").at("threads"));

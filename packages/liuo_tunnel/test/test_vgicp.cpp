@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <liuo_tunnel/common/gauge_consistent_vgicp_gpu.hpp>
 #include <liuo_tunnel/common/cloud_covariance_estimation.hpp>
 #include <gtsam_points/types/point_cloud_cpu.hpp>
 #include <gtsam_points/types/gaussian_voxelmap_cpu.hpp>
@@ -109,4 +110,51 @@ TEST(VgicpGPU, BinaryRawFactorRecoversTranslation) {
   auto result = gtsam_points::LevenbergMarquardtOptimizerExt(graph, initial).optimize();
   EXPECT_NEAR(result.at<gtsam::Pose3>(1).x(), .2, .03);
   EXPECT_EQ(graph.at(0)->keys().size(), 2);
+}
+
+TEST(VgicpGPU, BinaryFactorMustNotObserveCommonRigidMotion) {
+  std::vector<Eigen::Vector4d> points;
+  for (int i = -20; i <= 20; i++)
+    for (int j = -12; j <= 12; j++) {
+      points.emplace_back(i * .37, j * .13, .173, 1);
+      points.emplace_back(.237, i * .37, j * .13, 1);
+      points.emplace_back(i * .37, .321, j * .13, 1);
+    }
+  auto make = [](const std::vector<Eigen::Vector4d>& p) {
+    auto cpu = std::make_shared<gtsam_points::PointCloudCPU>(p);
+    cpu->add_covs(std::vector<Eigen::Matrix4d>(p.size(), Eigen::Matrix4d::Identity() * .01));
+    return gtsam_points::PointCloudGPU::clone(*cpu);
+  };
+  auto target = make(points);
+  auto voxels = std::make_shared<gtsam_points::GaussianVoxelMapGPU>(.5);
+  voxels->insert(*target);
+  gtsam::Pose3 delta(gtsam::Rot3::RzRyRx(.03, -.04, .02), {.2, .1, -.1});
+  for (auto& point : points) point.head<3>() = delta.transformTo(gtsam::Point3(point.head<3>()));
+  auto source = make(points);
+  auto factor = gtsam::make_shared<liuo_tunnel::GaugeConsistentVGICPFactorGPU>(0, 1, voxels, source);
+  gtsam::Pose3 world(gtsam::Rot3::RzRyRx(.2, -.3, .5), {100, 20, 3});
+  gtsam::Values values;
+  values.insert(0, world);
+  values.insert(1, world.compose(delta));
+  gtsam_points::NonlinearFactorSetGPU batch;
+  batch.add(factor);
+  batch.linearize(values);
+  gtsam::HessianFactor h(*factor->linearize(values));
+  Eigen::Matrix<double, 12, 6> gauge;
+  gauge.topRows<6>().setIdentity();
+  gauge.bottomRows<6>() = delta.inverse().AdjointMap();
+  auto information = h.information();
+  double defect = (information * gauge).norm() / information.norm();
+  std::cout << "GPU common-motion relative information defect=" << defect << std::endl;
+  EXPECT_LT(defect, 1e-12);
+  auto native = gtsam::make_shared<gtsam_points::IntegratedVGICPFactorGPU>(0, 1, voxels, source);
+  gtsam_points::NonlinearFactorSetGPU reference;
+  reference.add(native);
+  reference.linearize(values);
+  gtsam::HessianFactor original(*native->linearize(values));
+  EXPECT_LT((h.hessianBlockDiagonal().at(1) - original.hessianBlockDiagonal().at(1)).norm(), 1e-10);
+  EXPECT_LT((h.linearTerm(h.begin() + 1) - original.linearTerm(original.begin() + 1)).norm(), 1e-10);
+  EXPECT_DOUBLE_EQ(h.constantTerm(), original.constantTerm());
+  EXPECT_LT((h.information() - original.information()).norm() / original.information().norm(), 1e-6);
+  EXPECT_NEAR(factor->error(values), native->error(values), 1e-8);
 }

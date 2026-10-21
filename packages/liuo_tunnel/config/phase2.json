@@ -35,7 +35,7 @@
     "covariance_neighbors": 20,
     "validate_covariance_planarity": true,
     "backend": "gpu",
-    "factorization": "QR"
+    "factorization": "CHOLESKY"
   },
   "uwb": {
     "mode": "fuse",
