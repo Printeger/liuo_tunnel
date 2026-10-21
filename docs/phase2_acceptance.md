@@ -540,3 +540,19 @@ TRACKING；至少等待一个完整lag，期间报告UWB_RECOVERING_WINDOW。
 共5项长程审计测试通过。旧完整返回运行`20261021T120354Z_887`重新离线审计
 PASS，分布见其`export/analysis/long_run_audit.json`；当前campaign结束后仍需
 用此版审计工具重新汇总，不将旧版本结果冒充最终二进制验证。
+
+## 当前名义campaign：seed 0 surveyed全程完成
+
+`20261021T134311Z_303`（源码2f967cb）540 s完整走停，原始输入捕获
+在`export/capture/raw`。最新长程审计PASS，5320/5320初始化后输出有效，
+全部停车点覆盖，无非预期reset/fallback；实际倍率0.999999875。
+位置RMSE0.226330 m、姿态P95 0.335123°、处理P95 52.9385 ms、墙钟
+端到端P95 80.834687 ms，名义数值门槛本次通过。原始report仍明确FAIL
+（唯一失败为尚未完成完整阶段campaign），不将单次通过升级为阶段通过。
+位置NEES均值34.9242、95%覆盖率1.466%，明显过度自信，仍需如实报告。
+同输入oracle/OFF及seeds1–9未完成。campaign目录
+`log/campaign_20261021T134311136289Z`保存逐次命令、运行及失败。
+因文件系统余量持续下降，对本任务campaign owner设置独立空间监测：
+可用空间不足2 GiB时只向该owner发SIGINT，让其收尾并保留原因；不删除
+历史证据或操作其他任务。完整campaign需要更多磁盘空间，已向用户说明，
+当前尚可继续回放。
