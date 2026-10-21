@@ -34,6 +34,11 @@ def main():
     p.add_argument("--reset-at", type=float, default=-1.0)
     p.add_argument("--config", type=Path, default=ROOT / "packages/liuo_tunnel/config/phase1.json")
     p.add_argument("--map", type=Path, help="external oracle_map or surveyed_map JSON")
+    p.add_argument(
+        "--debug-throw",
+        action="store_true",
+        help="diagnostic gdb backtrace at first estimator exception",
+    )
     p.add_argument("--formal", action="store_true")
     p.add_argument("--diagnostic-capture", action="store_true")
     p.add_argument(
@@ -41,6 +46,8 @@ def main():
     )
     p.add_argument("--inject-failure", choices=["simulation", "odometry"])
     args = p.parse_args()
+    if args.debug_throw and args.formal:
+        p.error("debugger runs are diagnostic, not formal timing evidence")
     if not 0 < args.rate <= 1:
         p.error("--rate must be in (0,1]")
     run = rd.resolve_run_directory(entrypoint="rail_sim", scenario="rail_tunnel_straight_v1")
@@ -98,6 +105,7 @@ def main():
                 "width_m": 6,
                 "height_m": 5,
                 "gauge_m": 1.435,
+                "anchor_layout": "nominal_alternating_2_3m_plus_0.3sin(1.7id)_v2",
                 "duration_s": args.duration,
                 "requested_rate": args.rate,
                 "seed": args.seed,
@@ -208,6 +216,22 @@ def main():
             "-p",
             f"capture:={str(args.capture).lower()}",
         ]
+        if args.debug_throw:
+            commands["odometry"] = [
+                "gdb",
+                "--batch",
+                "-ex",
+                "catch throw",
+                "-ex",
+                "run",
+                "-ex",
+                "bt 25",
+                "-ex",
+                "frame 2",
+                "-ex",
+                "info args",
+                "--args",
+            ] + commands["odometry"]
         commands["observer"] = [sys.executable, str(ROOT / "tools/observe.py")]
         for name in ["observer", "odometry", "simulation"]:
             f = open(run / f"runtime/{name}_console.log", "w")

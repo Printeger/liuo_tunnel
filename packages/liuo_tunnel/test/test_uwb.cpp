@@ -259,3 +259,30 @@ TEST(UwbFactors, GravityAlignmentDoesNotObservePositionOrYaw) {
   v.update(0, rotated);
   EXPECT_LT(f.unwhitenedError(v).norm(), 1e-12);
 }
+
+TEST(Smoother, DoglegAcceptsNewVariableAfterBatchBootstrap) {
+  using gtsam::symbol_shorthand::X;
+  gtsam::ISAM2Params params;
+  params.setOptimizationParams(gtsam::ISAM2DoglegParams());
+  params.findUnusedFactorSlots = true;
+  gtsam_points::IncrementalFixedLagSmootherExt smoother(10, params);
+  gtsam::NonlinearFactorGraph graph;
+  gtsam::Values initial;
+  gtsam::FixedLagSmoother::KeyTimestampMap stamps;
+  for (int i = 0; i < 60; i++) {
+    initial.insert(X(i), gtsam::Pose3(gtsam::Rot3(), {i * .1, 0, 0}));
+    stamps[X(i)] = i * .1;
+    if (i) graph.emplace_shared<gtsam::BetweenFactor<gtsam::Pose3>>(X(i - 1), X(i), gtsam::Pose3(gtsam::Rot3(), {.1, 0, 0}), gtsam::noiseModel::Isotropic::Sigma(6, .01));
+  }
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(0), gtsam::Pose3(), gtsam::noiseModel::Isotropic::Sigma(6, 1));
+  smoother.update(graph, initial, stamps);
+  smoother.calculateEstimate();
+  graph.resize(0);
+  initial.clear();
+  stamps.clear();
+  initial.insert(X(60), gtsam::Pose3(gtsam::Rot3(), {30, 5, 3}));
+  stamps[X(60)] = 6;
+  graph.emplace_shared<gtsam::BetweenFactor<gtsam::Pose3>>(X(59), X(60), gtsam::Pose3(gtsam::Rot3(), {.1, 0, 0}), gtsam::noiseModel::Isotropic::Sigma(6, .01));
+  smoother.update(graph, initial, stamps);
+  EXPECT_TRUE(smoother.calculateEstimate<gtsam::Pose3>(X(60)).matrix().allFinite());
+}
