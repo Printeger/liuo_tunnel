@@ -39,13 +39,32 @@ def evaluate(run):
         and abs(audit["imu_static_acc_z_mean"] - 9.80665) < 0.05,
         "static specific force",
     )
+    fault_profile = (run / "metadata/config/delivery.json").exists()
+    runtime = json.loads((run / "export/simulation/runtime.json").read_text())
+    check(
+        audit.get("duplicate_uwb", []) == runtime.get("duplicate_uwb", []),
+        "unexpected duplicate UWB identities",
+    )
+    if "delivered_sha256" in runtime:
+        check(
+            audit.get("raw_sha256") == runtime["delivered_sha256"],
+            "received input differs from published replay stream",
+        )
     frozen_path = run / "metadata/manifests/frozen_input.json"
     if frozen_path.exists():
         frozen = json.loads(frozen_path.read_text())
-        check(audit["counts"] == frozen["counts"], "frozen replay input counts differ")
-        check(
-            audit.get("raw_sha256") == frozen["raw_sha256"], "frozen replay input content differs"
-        )
+        for kind in ["imu", "cloud", "clock", "uwb"]:
+            if kind == "uwb" and fault_profile:
+                check("delivered_sha256" in runtime, "missing fault delivery hash audit")
+                continue
+            check(
+                audit["counts"][kind] == frozen["counts"][kind],
+                "frozen input counts differ: " + kind,
+            )
+            check(
+                audit["raw_sha256"][kind] == frozen["raw_sha256"][kind],
+                "frozen input content differs: " + kind,
+            )
     config = json.loads((run / "metadata/config/phase1.json").read_text())
     fused = config["uwb"]["mode"] == "fuse"
     trajectory = rows(run / "export/odometry/trajectory.csv")
@@ -198,6 +217,9 @@ def evaluate(run):
         "sim_time_latency_p95_s": quantile(latency, 0.95),
         "wall_end_to_end_p95_s": quantile(wall_latency, 0.95),
         "actual_input_hz": {k: v / runtime["wall_s"] for k, v in audit["counts"].items()},
+        "delivery_profile": fault_profile,
+        "delivered_input_verified": audit.get("raw_sha256") == runtime.get("delivered_sha256")
+        and audit["counts"] == runtime.get("published_counts"),
         "frozen_input_verified": frozen_path.exists()
         and audit.get("raw_sha256") == frozen["raw_sha256"]
         and audit["counts"] == frozen["counts"],

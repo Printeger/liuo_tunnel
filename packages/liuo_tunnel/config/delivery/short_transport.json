@@ -1,0 +1,9 @@
+{
+  "schema_version": "liuo_delivery_v1",
+  "begin_s": 6,
+  "end_s": 18,
+  "delay_cycle_ms": [25, 50],
+  "duplicate_every": 17,
+  "duplicate_delay_ms": 1,
+  "outages": [[10, 15]]
+}

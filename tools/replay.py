@@ -2,6 +2,10 @@
 """Replay a frozen source run at its original 1x delivery schedule; sole clock owner."""
 import argparse
 import json
+import hashlib
+import csv
+from delivery_schedule import DeliverySchedule
+from raw_identity import hash_message
 import os
 from pathlib import Path
 import resource
@@ -17,7 +21,11 @@ import rosbag2_py
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-run", type=Path, required=True)
+    parser.add_argument("--delivery-profile", type=Path)
     args = parser.parse_args()
+    scheduler = DeliverySchedule(
+        json.loads(args.delivery_profile.read_text()) if args.delivery_profile else None
+    )
     source = args.source_run.resolve()
     run = Path(os.environ["LIUO_RUN_DIR"])
     duration = json.loads((source / "export/simulation/runtime.json").read_text())["simulation_s"]
@@ -73,17 +81,41 @@ def main():
         rclpy.spin_once(node, timeout_sec=0.01)
     if not reader.has_next():
         raise RuntimeError("empty frozen input")
+    hashes = {k: hashlib.sha256() for k in counts}
+    duplicates = []
+
+    def records():
+        while reader.has_next():
+            yield reader.read_next()
+
     first_stamp = None
     start_ns = time.monotonic_ns()
     clock_session = 1
     last_clock = -1
-    with (run / "export/simulation/wall_clock.csv").open("w") as clock_log:
+    with (run / "export/simulation/wall_clock.csv").open("w") as clock_log, (
+        run / "export/simulation/delivery.csv"
+    ).open("w") as delivery_log:
+        delivery_csv = csv.writer(delivery_log)
+        delivery_csv.writerow(
+            [
+                "producer",
+                "session",
+                "sequence",
+                "measurement_stamp",
+                "source_elapsed_s",
+                "delivery_elapsed_s",
+                "action",
+            ]
+        )
         clock_log.write("session,stamp,scheduled_wall_ns,published_wall_ns\n")
-        while reader.has_next():
-            topic, data, record_ns = reader.read_next()
+        for topic, data, record_ns, delivery_ns, action in scheduler.events(records()):
             if first_stamp is None:
                 first_stamp = record_ns
-            deadline = start_ns + record_ns - first_stamp
+            if delivery_ns - first_stamp >= round(duration * 1e9):
+                raise RuntimeError(
+                    "delivery profile extends beyond frozen duration; shorten its window"
+                )
+            deadline = start_ns + delivery_ns - first_stamp
             while True:
                 remaining_ns = deadline - time.monotonic_ns()
                 if remaining_ns <= 0:
@@ -94,10 +126,27 @@ def main():
             if time.monotonic_ns() - deadline > 250_000_000:
                 raise RuntimeError("REPLAY_DEADLINE_MISSED: backlog >250ms")
             message = deserialize_message(data, types[topic])
-            publishers[topic].publish(message)
             kind = allowed[topic]
+            if kind == "uwb":
+                identity = [message.producer_id, message.session_id, message.sequence]
+                measurement_stamp = message.header.stamp.sec + message.header.stamp.nanosec * 1e-9
+                delivery_csv.writerow(
+                    identity
+                    + [
+                        measurement_stamp,
+                        (record_ns - first_stamp) * 1e-9,
+                        (delivery_ns - first_stamp) * 1e-9,
+                        action,
+                    ]
+                )
+                if action == "outage_drop":
+                    continue
+                if action == "duplicate":
+                    duplicates.append(identity)
+            publishers[topic].publish(message)
             if kind in counts:
                 counts[kind] += 1
+                hash_message(hashes[kind], kind, message)
             if kind == "clock":
                 stamp = message.clock.sec + message.clock.nanosec * 1e-9
                 if stamp < last_clock:
@@ -116,6 +165,9 @@ def main():
         "scan_model": "snapshot",
         "input_mode": "frozen_replay",
         "published_counts": counts,
+        "delivered_sha256": {k: h.hexdigest() for k, h in hashes.items()},
+        "duplicate_uwb": duplicates,
+        "delivery_queue_peak": scheduler.peak,
     }
     (run / "export/simulation/runtime.json").write_text(json.dumps(result, indent=2) + "\n")
     node.destroy_node()

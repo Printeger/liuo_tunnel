@@ -23,6 +23,9 @@ def digest(path):
 
 def main():
     p = argparse.ArgumentParser()
+    p.add_argument(
+        "--delivery-profile", type=Path, help="explicit frozen-replay UWB transport fault profile"
+    )
     p.add_argument("--duration", type=float, default=45)
     p.add_argument(
         "--rate",
@@ -49,6 +52,8 @@ def main():
     )
     p.add_argument("--inject-failure", choices=["simulation", "odometry"])
     args = p.parse_args()
+    if args.delivery_profile and not args.replay:
+        p.error("delivery profile requires --replay")
     if args.replay and (args.capture or args.rate != 1.0):
         p.error("frozen replay requires 1x and cannot recapture")
     if args.debug_throw and args.formal:
@@ -85,7 +90,11 @@ def main():
                 (source / "metadata/manifests/observation_audit.json").read_text()
             )
             source_runtime = json.loads((source / "export/simulation/runtime.json").read_text())
-            if source_manifest["lifecycle"] != "completed" or source_audit["violations"]:
+            if (
+                source_manifest["lifecycle"] != "completed"
+                or source_audit["violations"]
+                or source_audit.get("duplicate_uwb")
+            ):
                 raise RuntimeError("FROZEN_SOURCE_INVALID: incomplete lifecycle or raw violations")
             if source_audit["counts"] != source_runtime["published_counts"]:
                 raise RuntimeError("FROZEN_SOURCE_INVALID: source lost raw input")
@@ -276,6 +285,16 @@ def main():
                 frozen["source_run"],
             ]
             identity["frozen_input"] = frozen
+        if args.delivery_profile:
+            from delivery_schedule import DeliverySchedule
+
+            profile = json.loads(args.delivery_profile.read_text())
+            DeliverySchedule(profile)
+            profile_path = run / "metadata/config/delivery.json"
+            profile_path.write_text(json.dumps(profile, indent=2) + "\n")
+            rd.register_config_snapshot(run, profile_path)
+            commands["simulation"] += ["--delivery-profile", str(profile_path)]
+            identity["delivery_profile_sha256"] = digest(profile_path)
         if args.debug_throw:
             commands["odometry"] = [
                 "gdb",

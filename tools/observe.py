@@ -2,6 +2,7 @@
 """Independent runtime raw-message/graph audit; no estimator access to truth."""
 import json
 import hashlib
+from raw_identity import hash_message
 import time
 import os
 from pathlib import Path
@@ -36,6 +37,7 @@ class Observer(Node):
         self.first_clock = None
         self.last_clock = 0
         self.identities = set()
+        self.result["duplicate_uwb"] = []
         self.imu_log = open(Path(os.environ["LIUO_RUN_DIR"]) / "export/capture/imu.csv", "w")
         self.imu_log.write("stamp,ax,ay,az,wx,wy,wz\n")
         self.create_subscription(Imu, "/sensors/imu", self.imu, self.sensor_qos)
@@ -45,58 +47,7 @@ class Observer(Node):
         self.create_timer(1, self.graph)
 
     def hash_message(self, kind, m):
-        # Canonical semantic bytes avoid CDR alignment padding differences.
-        if kind == "clock":
-            data = [m.clock.sec, m.clock.nanosec]
-        else:
-            data = [m.header.stamp.sec, m.header.stamp.nanosec, m.header.frame_id]
-            if kind == "imu":
-                data += [
-                    m.orientation.x,
-                    m.orientation.y,
-                    m.orientation.z,
-                    m.orientation.w,
-                    m.angular_velocity.x,
-                    m.angular_velocity.y,
-                    m.angular_velocity.z,
-                    m.linear_acceleration.x,
-                    m.linear_acceleration.y,
-                    m.linear_acceleration.z,
-                    list(m.orientation_covariance),
-                    list(m.angular_velocity_covariance),
-                    list(m.linear_acceleration_covariance),
-                ]
-            elif kind == "uwb":
-                data += [
-                    m.producer_id,
-                    m.session_id,
-                    m.sequence,
-                    m.node_a_type,
-                    m.node_a_id,
-                    m.node_b_type,
-                    m.node_b_id,
-                    m.status,
-                    m.range_m,
-                    m.variance_m2,
-                    m.propagation_status,
-                ]
-            else:
-                data += [
-                    m.height,
-                    m.width,
-                    m.is_bigendian,
-                    m.point_step,
-                    m.row_step,
-                    m.is_dense,
-                    [(f.name, f.offset, f.datatype, f.count) for f in m.fields],
-                ]
-        encoded = json.dumps(data, separators=(",", ":"), allow_nan=True).encode()
-        self.hashes[kind].update(struct.pack("<Q", len(encoded)))
-        self.hashes[kind].update(encoded)
-        if kind == "cloud":
-            payload = bytes(m.data)
-            self.hashes[kind].update(struct.pack("<Q", len(payload)))
-            self.hashes[kind].update(payload)
+        hash_message(self.hashes[kind], kind, m)
 
     def reject(self, reason):
         if reason not in self.result["violations"]:
@@ -150,7 +101,7 @@ class Observer(Node):
         self.result["counts"]["uwb"] += 1
         identity = (m.producer_id, m.session_id, m.sequence)
         if identity in self.identities:
-            self.reject("duplicate UWB identity")
+            self.result["duplicate_uwb"].append(list(identity))
         self.identities.add(identity)
         if m.session_id not in self.result["sessions"]:
             self.result["sessions"].append(m.session_id)
