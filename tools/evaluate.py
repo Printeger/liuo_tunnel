@@ -299,7 +299,18 @@ def evaluate(run):
 
         covariance_summary = summarize(run, trajectory, truth, rows(covariance_path), fused)
     result = {
-        "scope": ("phase2_iteration_snapshot_" if fused else "phase1_snapshot_") + backend,
+        "scope": (
+            "phase2_iteration_snapshot_"
+            if config.get("schema_version") == "liuo_phase2_v1"
+            else "phase1_snapshot_"
+        )
+        + backend,
+        "estimator_mode": config["uwb"]["mode"],
+        "accuracy_acceptance_scope": (
+            "known_map_nominal_gates"
+            if fused
+            else "entrance_sanity_only; record_only_ablation_is_not_known_map_accuracy_acceptance"
+        ),
         "result": "FAIL" if failures else "PASS",
         "failures": failures,
         "metrics": metrics,
