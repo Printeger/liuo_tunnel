@@ -42,6 +42,45 @@ def sustained_return(records, end):
     return None
 
 
+def recovery_bins(records, decisions, begin, end):
+    """Compare online diagnostics with evaluation error; never feed truth back."""
+    bins = {}
+    for record in records:
+        if begin <= record["stamp"] < end:
+            index = int(record["stamp"] - begin)
+            bins.setdefault(index, {"trajectory": [], "innovations": []})["trajectory"].append(
+                record
+            )
+    for decision in decisions:
+        stamp = float(decision["measurement_stamp"])
+        if begin <= stamp < end and decision["reason"] == "ACCEPT_TA":
+            if decision["residual_class"] != "PRE_OPT_INNOVATION":
+                raise ValueError("unexpected accepted TA residual class")
+            value = float(decision["whitened"])
+            if not math.isfinite(value):
+                raise ValueError("nonfinite accepted TA innovation")
+            index = int(stamp - begin)
+            bins.setdefault(index, {"trajectory": [], "innovations": []})["innovations"].append(
+                value
+            )
+    result = []
+    for index, data in sorted(bins.items()):
+        values = data["innovations"]
+        result.append(
+            {
+                "seconds_after_restore": index,
+                "navigation": interval(data["trajectory"], begin + index, begin + index + 1),
+                "accepted_ta_count": len(values),
+                "measurement_sigma_normalized_innovation_rms": (
+                    math.sqrt(sum(value * value for value in values) / len(values))
+                    if values
+                    else None
+                ),
+            }
+        )
+    return result
+
+
 def audit(run):
     load = lambda name: json.loads((run / name).read_text())
 
@@ -64,6 +103,7 @@ def audit(run):
     trajectory = rows("export/odometry/trajectory.csv")
     truth = {round(float(r["stamp"]), 7): r for r in rows("export/simulation/truth.csv")}
     transitions = rows("export/odometry/status.csv")
+    decisions = rows("export/odometry/uwb.csv")
     start = float(rows("export/simulation/wall_clock.csv")[0]["stamp"])
     annotated = []
     for r in trajectory:
@@ -118,6 +158,9 @@ def audit(run):
         outages.append(
             {
                 "elapsed_interval_s": [lo, hi],
+                "recovery_one_second_bins": recovery_bins(
+                    annotated, decisions, end, min(end + 30, next_begin)
+                ),
                 "outage": interval(annotated, begin, end),
                 "after_restore_until_next_outage": interval(annotated, end, next_begin),
                 "recovery_deadline_stamp": deadline,
@@ -139,7 +182,7 @@ def audit(run):
             "exceedances": [f for f in report["failures"] if f in ACCURACY_FAILURES],
         },
         "outages": outages,
-        "interpretation": "Pressure errors and failures remain visible. One-second per-frame error band is descriptive, not a replacement for RMSE or a new acceptance gate. No trajectory alignment. TRACKING is operational, not a calibrated error guarantee.",
+        "interpretation": "Pressure errors and failures remain visible. One-second per-frame error band is descriptive, not a replacement for RMSE or a new acceptance gate. No trajectory alignment. TRACKING is operational, not a calibrated error guarantee. Innovation RMS uses measurement sigma only, not predictive covariance or a chi-square consistency test; small residuals do not prove accurate navigation.",
         "auditor_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     }
 

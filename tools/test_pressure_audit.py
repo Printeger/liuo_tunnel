@@ -1,5 +1,5 @@
 import unittest
-from pressure_audit import interval, sustained_return
+from pressure_audit import interval, sustained_return, recovery_bins
 
 
 class PressureEvidenceTest(unittest.TestCase):
@@ -26,3 +26,27 @@ class PressureEvidenceTest(unittest.TestCase):
         self.assertIsNone(sustained_return(gapped, 0))
         short.append(dict(stamp=1, error_m=0.4))
         self.assertIsNone(sustained_return(short, 0))
+
+    def test_small_residual_does_not_hide_large_position_error(self):
+        trajectory = [dict(stamp=10.1, error_m=5, axial_m=4, state="TRACKING")]
+        decisions = [
+            dict(
+                measurement_stamp="10.1",
+                reason="ACCEPT_TA",
+                residual_class="PRE_OPT_INNOVATION",
+                whitened="1",
+            )
+        ]
+        result = recovery_bins(trajectory, decisions, 10, 12)
+        self.assertEqual(result[0]["measurement_sigma_normalized_innovation_rms"], 1)
+        self.assertEqual(result[0]["navigation"]["position_rmse_m"], 5)
+        decisions[0]["reason"] = "DUPLICATE"
+        self.assertIsNone(
+            recovery_bins(trajectory, decisions, 10, 12)[0][
+                "measurement_sigma_normalized_innovation_rms"
+            ]
+        )
+        decisions[0]["reason"] = "ACCEPT_TA"
+        decisions[0]["whitened"] = "nan"
+        with self.assertRaises(ValueError):
+            recovery_bins(trajectory, decisions, 10, 12)
