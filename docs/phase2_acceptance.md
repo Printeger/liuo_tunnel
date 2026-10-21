@@ -1794,3 +1794,22 @@ OFF全程位置RMSE1274.404m、退化段1306.240m；其report PASS仅为入口
 S36输入机制更正（实施前）：surveyed短程使用--capture实际冻结20s输入，
 oracle用--replay同一捕获，避免S35独立session导致哈希不一致；不修改
 比较器、不忽略身份。仅增加小型短程包，不启动完整多seed采集。
+
+S36 **NOT_SUPPORTED**：surveyed 20261021T191059Z_012、oracle
+20261021T191138Z_679完成20s，同一捕获的4000 IMU/200 cloud/1275 UWB/
+4000 clock全部SHA、LIO参数、二进制核对通过。[9,13)各40帧，surveyed/
+oracle最大位置误差2.922115/1.885352m，最大相邻误差向量变化3.212260/
+0.862675m；oracle仍>1m，因此不支持仅surveyed处理导致早期失效。
+完整短程RMSE分别1.129859/0.629000m，均FAIL，不以oracle改善替代交付。
+分轴/速度/姿态/方差/状态见捕获run内export/analysis/s36_map_isolation.json，
+配对见matched_comparison.json。模拟地图与精确地图差异不证明实现有错。
+
+### 预登记 S37：早期失效对Dogleg路径的依赖
+
+使用S36原捕获、surveyed地图，唯一改变use_dogleg=false，回放完整20s；
+不改bootstrap LM、原始因子、投影、阈值或噪声。若[9,13)最大位置误差
+≤1m且最大相邻误差向量变化≤1m，支持优先检查Dogleg接受机制；否则不
+支持将Dogleg作为此失效的必要原因，不继续调信赖域/步长参数。运行崩溃
+则记该替代路径失败，不视为原路径正确。须核对全部原始输入SHA和二进制；
+求解器设置刻意不同，不将严格LIO设置不匹配隐藏。该诊断不替换部署设置，
+1m只用于复现信号，正式0.30m门槛保持。
