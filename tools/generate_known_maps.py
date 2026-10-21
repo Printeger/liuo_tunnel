@@ -6,7 +6,7 @@ from pathlib import Path
 import random
 
 
-def generate(directory):
+def generate(directory, survey_seed=67129):
     directory.mkdir(parents=True, exist_ok=True)
     base = {
         "schema_version": "liuo_known_map_v1",
@@ -37,7 +37,7 @@ def generate(directory):
     (directory / "oracle_map.json").write_text(json.dumps(base, indent=2) + "\n")
     # Survey error is independent of every raw sensor random stream, and contains
     # a common datum translation plus independent point measurement errors.
-    rng = random.Random(67129)
+    rng = random.Random(survey_seed)
     common = [rng.gauss(0, 0.01) for _ in range(3)]
     for anchor in base["anchors"]:
         anchor["mean_m"] = [
@@ -47,10 +47,12 @@ def generate(directory):
         map_id="rail_synthetic_survey_v3_four_corner_50m",
         mode="surveyed_map",
         provenance="SIMULATED_SURVEY_NOT_REAL_MEASUREMENTS",
-        survey_seed=67129,
+        survey_seed=survey_seed,
         common_datum_sigma_m=0.01,
         independent_sigma_m=0.02,
     )
+    if survey_seed != 67129:
+        base["map_id"] += f"_survey_seed_{survey_seed}"
     base["joint_covariance_m2"] = [
         [
             (0.01**2 if i % 3 == j % 3 else 0) + (0.02**2 if i == j else 0)
@@ -64,4 +66,6 @@ def generate(directory):
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("directory", type=Path)
-    generate(p.parse_args().directory)
+    p.add_argument("--survey-seed", type=int, default=67129)
+    args = p.parse_args()
+    generate(args.directory, args.survey_seed)
