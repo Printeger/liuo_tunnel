@@ -16,7 +16,7 @@ enum class RegularizationMethod { NONE, PLANE, NORMALIZED_MIN_EIG, FROBENIUS };
  */
 class CloudCovarianceEstimation {
 public:
-  CloudCovarianceEstimation(const int num_threads = 1, bool validate_planarity = true);
+  CloudCovarianceEstimation(const int num_threads = 1, bool validate_planarity = true, double tangent_variance = 1.0);
   ~CloudCovarianceEstimation();
 
   /**
@@ -60,6 +60,7 @@ public:
 
 private:
   const bool validate_planarity;
+  const double tangent_variance;
   const RegularizationMethod regularization_method;
   const int num_threads;
 };

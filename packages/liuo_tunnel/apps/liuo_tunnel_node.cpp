@@ -399,11 +399,12 @@ private:
       for (size_t j = 0; j < k; j++) neighbors[i * k + j] = ids[j];
     }
     auto cloud = std::make_shared<gtsam_points::PointCloudCPU>(points);
-    CloudCovarianceEstimation covariance(2, cfg.at("odometry").at("validate_covariance_planarity"));
+    const double tangent_variance = cfg.at("odometry").value("cloud_tangent_variance", 1.0);
+    CloudCovarianceEstimation covariance(2, cfg.at("odometry").at("validate_covariance_planarity"), tangent_variance);
     auto covariances = covariance.estimate(points, neighbors);
     size_t nonplanar = 0;
     for (const auto& c : covariances)
-      if (c.trace() > 2.9) nonplanar++;
+      if (c.trace() > 2.9 * tangent_variance) nonplanar++;
     cloud->add_covs(covariances);
     gtsam_points::PointCloud::Ptr match_cloud = cloud;
     gtsam_points::GaussianVoxelMap::Ptr voxel;
@@ -675,7 +676,7 @@ private:
     icp << session << ',' << t << ',' << points.size() << ',' << fraction << ',' << cost;
     for (int i = 0; i < 6; i++) icp << ',' << eigen[i];
     for (int i = 0; i < 6; i++) icp << ',' << weak[i];
-    icp << ",covariance_planarity_guard," << nonplanar << '\n';
+    icp << ",covariance_planarity_guard_tangent_variance=" << tangent_variance << "," << nonplanar << '\n';
     timing << session << ',' << t << ',' << ms(start, preprocessed) << ',' << ms(preprocessed, finish) << ',' << ms(start, finish) << ',' << now().seconds() - t << ','
            << imu->imu_data_in_queue().size() << ',' << clouds.size() << ',' << pred_x;
     for (int i = 0; i < 6; i++) timing << ',' << bias.vector()[i];

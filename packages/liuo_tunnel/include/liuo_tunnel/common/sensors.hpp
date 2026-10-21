@@ -22,6 +22,8 @@ inline nlohmann::json load_config(const std::string& path) {
     throw std::runtime_error("unsupported uwb baseline parameters");
   const auto& odometry = j.at("odometry");
   if (odometry.value("max_keyframes", 15) < 1 || odometry.value("max_keyframes", 15) > 100) throw std::runtime_error("max_keyframes must be in [1,100]");
+  double tangent_variance = odometry.value("cloud_tangent_variance", 1.0);
+  if (!std::isfinite(tangent_variance) || tangent_variance < 1 || tangent_variance > 100) throw std::runtime_error("cloud_tangent_variance must be in [1,100]");
   double threshold = odometry.value("relinearize_threshold", .05);
   if (!std::isfinite(threshold) || threshold <= 0) throw std::runtime_error("invalid relinearize_threshold");
   return j;

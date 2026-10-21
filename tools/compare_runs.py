@@ -27,6 +27,7 @@ def estimator_settings(config):
     odometry = dict(config["odometry"])
     for key, default in [
         ("max_keyframes", 15),
+        ("cloud_tangent_variance", 1.0),
         ("relinearize_threshold", 0.05),
         ("use_dogleg", False),
         ("factorization", "CHOLESKY"),

@@ -233,3 +233,38 @@ TEST(VgicpGPU, RawUwbPerturbationChangesSharedImuStatesAndLidarLinearization) {
   EXPECT_GT(linearization_change, 1e-5);
   std::cout << "single raw UWB +0.3m: dx=" << dx << " dv=" << dv << " db=" << db << " next VGICP augmented-information change=" << linearization_change << std::endl;
 }
+
+TEST(VgicpGPU, ExplicitTangentVarianceChangesActualFactorInformation) {
+  std::vector<Eigen::Vector4d> points;
+  for (int i = -15; i <= 15; i++)
+    for (int j = -15; j <= 15; j++) points.emplace_back(i * .13, j * .13, .173, 1);
+  Eigen::Matrix4d empirical = Eigen::Matrix4d::Zero();
+  empirical(0, 0) = .1;
+  empirical(1, 1) = .2;
+  empirical(2, 2) = 1e-7;
+  auto information = [&](double tangent) {
+    liuo_tunnel::CloudCovarianceEstimation estimator(1, true, tangent);
+    auto covariance = estimator.regularize(empirical);
+    EXPECT_NEAR(covariance(2, 2), .001, 1e-12);
+    auto cpu = std::make_shared<gtsam_points::PointCloudCPU>(points);
+    cpu->add_covs(std::vector<Eigen::Matrix4d>(points.size(), covariance));
+    auto source = gtsam_points::PointCloudGPU::clone(*cpu);
+    auto target = std::make_shared<gtsam_points::GaussianVoxelMapGPU>(.5);
+    target->insert(*source);
+    auto factor = gtsam::make_shared<liuo_tunnel::GaugeConsistentVGICPFactorGPU>(0, 1, target, source);
+    gtsam::Values values;
+    values.insert(0, gtsam::Pose3());
+    values.insert(1, gtsam::Pose3());
+    gtsam_points::NonlinearFactorSetGPU batch;
+    batch.add(factor);
+    batch.linearize(values);
+    gtsam::HessianFactor h(*factor->linearize(values));
+    return h.hessianBlockDiagonal().at(1).eval();
+  };
+  auto original = information(1), weakened = information(100);
+  EXPECT_NEAR(weakened(3, 3) / original(3, 3), .01, 1e-6);
+  EXPECT_NEAR(weakened(4, 4) / original(4, 4), .01, 1e-6);
+  EXPECT_NEAR(weakened(5, 5) / original(5, 5), 1.0, 1e-5);
+  EXPECT_THROW(liuo_tunnel::CloudCovarianceEstimation(1, true, 0), std::invalid_argument);
+  EXPECT_THROW(liuo_tunnel::CloudCovarianceEstimation(1, true, 101), std::invalid_argument);
+}

@@ -18,10 +18,13 @@
 
 namespace liuo_tunnel {
 
-CloudCovarianceEstimation::CloudCovarianceEstimation(const int num_threads, bool validate_planarity)
+CloudCovarianceEstimation::CloudCovarianceEstimation(const int num_threads, bool validate_planarity, double tangent_variance)
 : validate_planarity(validate_planarity),
+  tangent_variance(tangent_variance),
   regularization_method(RegularizationMethod::PLANE),
-  num_threads(num_threads) {}
+  num_threads(num_threads) {
+  if (!std::isfinite(tangent_variance) || tangent_variance < 1.0 || tangent_variance > 100.0) throw std::invalid_argument("cloud_tangent_variance must be in [1,100]");
+}
 
 CloudCovarianceEstimation::~CloudCovarianceEstimation() {}
 
@@ -193,7 +196,10 @@ Eigen::Matrix4d CloudCovarianceEstimation::regularize(const Eigen::Matrix4d& cov
         *eigenvectors = eig.eigenvectors();
       }
 
-      Eigen::Vector3d values(1e-3, 1.0, 1.0);
+      // Surface tangents do not identify corresponding physical points. The
+      // explicit regularization variance controls that weak information while
+      // retaining the supported normal variance and the original VGICP cost.
+      Eigen::Vector3d values(1e-3, tangent_variance, tangent_variance);
       // IAP's unconditional plane normalization fabricates a precise normal for
       // collinear scan rings and volumetric/corner neighborhoods. Such a normal
       // pinned the rail experiment near its start while IMU bias absorbed motion.
@@ -201,7 +207,7 @@ Eigen::Matrix4d CloudCovarianceEstimation::regularize(const Eigen::Matrix4d& cov
       // This changes the actual factor covariance, not a diagnostic-only gamma.
       const auto spectrum = eig.eigenvalues();
       if (validate_planarity && (spectrum[1] < 0.1 * spectrum[2] || spectrum[0] > 0.1 * spectrum[1])) {
-        values.setOnes();
+        values.setConstant(tangent_variance);
       }
       Eigen::Matrix4d c = Eigen::Matrix4d::Zero();
       c.block<3, 3>(0, 0) = eig.eigenvectors() * values.asDiagonal() * eig.eigenvectors().transpose();
