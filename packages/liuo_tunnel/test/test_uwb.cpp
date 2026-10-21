@@ -290,3 +290,26 @@ TEST(Smoother, DoglegAcceptsNewVariableAfterBatchBootstrap) {
   smoother.update(graph, initial, stamps);
   EXPECT_TRUE(smoother.calculateEstimate<gtsam::Pose3>(X(60)).matrix().allFinite());
 }
+
+#include <liuo_tunnel/common/state_covariance.hpp>
+#include <gtsam/nonlinear/LinearContainerFactor.h>
+#include <gtsam/linear/JacobianFactor.h>
+TEST(StateCovariance, JointMarginalPreservesCorrelatedPoseVelocity) {
+  using gtsam::symbol_shorthand::V;
+  using gtsam::symbol_shorthand::X;
+  liuo_tunnel::solver::IncrementalFixedLagSmootherExt smoother(10);
+  gtsam::Values initial;
+  initial.insert(X(0), gtsam::Pose3());
+  initial.insert(V(0), gtsam::Vector3::Zero().eval());
+  gtsam::Matrix root = gtsam::Matrix::Identity(9, 9);
+  root.block<3, 3>(0, 6) = .4 * gtsam::Matrix33::Identity();
+  root.block<3, 3>(3, 6) = -.2 * gtsam::Matrix33::Identity();
+  gtsam::JacobianFactor linear(X(0), root.leftCols(6), V(0), root.rightCols(3), gtsam::Vector::Zero(9), gtsam::noiseModel::Unit::Create(9));
+  gtsam::NonlinearFactorGraph graph;
+  graph.emplace_shared<gtsam::LinearContainerFactor>(linear, initial);
+  smoother.update(graph, initial, {{X(0), 1}, {V(0), 1}});
+  auto covariance = liuo_tunnel::joint_covariance(smoother.getISAM2(), X(0), V(0));
+  EXPECT_LT((covariance - (root.transpose() * root).inverse()).norm(), 1e-10);
+  EXPECT_GT((covariance.block<6, 3>(0, 6)).norm(), .1);
+  EXPECT_LT((covariance.topLeftCorner<6, 6>() - smoother.marginalCovariance(X(0))).norm(), 1e-10);
+}

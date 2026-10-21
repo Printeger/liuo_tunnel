@@ -29,3 +29,34 @@ TEST(Sensors, NonidentityExtrinsicsAndLeverArm) {
   EXPECT_NEAR(tag.y(), 21, 1e-10);
   EXPECT_NEAR(tag.z(), 4.2, 1e-10);
 }
+
+#include <liuo_tunnel/common/state_covariance.hpp>
+TEST(StateCovariance, BodyVelocityRightRetractAndCrossTerms) {
+  const gtsam::Pose3 pose(gtsam::Rot3::RzRyRx(.4, -.3, 1.2), {3, 2, 1});
+  const gtsam::Vector3 velocity(2, -3, 4);
+  const auto H = liuo_tunnel::body_velocity_jacobian(pose, velocity);
+  Eigen::Matrix<double, 3, 9> numerical;
+  for (int i = 0; i < 9; i++) {
+    gtsam::Vector6 d = gtsam::Vector6::Zero();
+    gtsam::Vector3 dv = gtsam::Vector3::Zero();
+    if (i < 6)
+      d[i] = 1e-6;
+    else
+      dv[i - 6] = 1e-6;
+    numerical.col(i) = (pose.retract(d).rotation().unrotate(velocity + dv) - pose.retract(-d).rotation().unrotate(velocity - dv)) / 2e-6;
+  }
+  EXPECT_LT((H - numerical).norm(), 1e-8);
+  Eigen::Matrix<double, 9, 9> root = Eigen::Matrix<double, 9, 9>::Identity();
+  root.block<3, 3>(6, 0) = .5 * gtsam::Matrix33::Identity();
+  auto covariance = (root * root.transpose()).eval();
+  auto transformed = (H * covariance * H.transpose()).eval();
+  auto numerical_covariance = (numerical * covariance * numerical.transpose()).eval();
+  EXPECT_LT((transformed - numerical_covariance).norm(), 1e-7);
+  covariance.block<6, 3>(0, 6).setZero();
+  covariance.block<3, 6>(6, 0).setZero();
+  EXPECT_GT((transformed - H * covariance * H.transpose()).norm(), .1);
+  gtsam::Matrix66 local = gtsam::Matrix66::Identity();
+  local.diagonal() << 1, 2, 3, 4, 5, 6;
+  auto parent = liuo_tunnel::parent_pose_covariance(pose, local);
+  EXPECT_LT((parent.topLeftCorner<3, 3>() - pose.rotation().matrix() * local.bottomRightCorner<3, 3>() * pose.rotation().matrix().transpose()).norm(), 1e-12);
+}

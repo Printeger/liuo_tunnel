@@ -11,6 +11,7 @@
 #include <liuo_tunnel/common/imu_integration.hpp>
 #include <liuo_tunnel/common/cloud_covariance_estimation.hpp>
 #include <liuo_tunnel/common/sensors.hpp>
+#include <liuo_tunnel/common/state_covariance.hpp>
 #include <liuo_tunnel/common/gauge_consistent_vgicp_gpu.hpp>
 #include <liuo_tunnel/uwb/known_map.hpp>
 #include <liuo_tunnel/uwb/measurement_queue.hpp>
@@ -68,6 +69,11 @@ public:
     logs.write_run_info({{"backend", backend + "_RAW_MULTIFRAME_VGICP"}, {"uwb", fuse ? "FUSED_RAW" : "RECORD_ONLY"}, {"gpu_device", gpu_name}});
     trajectory.open(logs.export_path("odometry/trajectory.csv"));
     trajectory << std::setprecision(16) << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id,publish_wall_ns\n";
+    covariance_log.open(logs.export_path("odometry/covariance.csv"));
+    covariance_log << std::setprecision(16) << "session,stamp";
+    for (int i = 0; i < 9; i++)
+      for (int j = 0; j < 9; j++) covariance_log << ",xv_" << i << "_" << j;
+    covariance_log << '\n';
     graph.open(logs.export_path("odometry/graph.csv"));
     graph << "session,stamp,X,V,B,A,imu_factors,lidar_factors,total_factors,marginalized,optimization_ms,reset,fallback,uwb_ta,uwb_aa,map_priors,uwb_queue\n";
     icp.open(logs.export_path("odometry/icp.csv"));
@@ -430,7 +436,10 @@ private:
     state = gtsam::NavState(smoother->calculateEstimate<gtsam::Pose3>(X(count)), smoother->calculateEstimate<gtsam::Vector3>(V(count)));
     bias = smoother->calculateEstimate<gtsam::imuBias::ConstantBias>(B(count));
     if (!state.pose().matrix().allFinite() || !state.velocity().allFinite()) throw std::runtime_error("nonfinite optimized state");
-    auto cov = smoother->marginalCovariance(X(count));
+    auto xv_cov = joint_covariance(smoother->getISAM2(), X(count), V(count));
+    gtsam::Matrix66 cov = xv_cov.topLeftCorner<6, 6>();
+    auto velocity_H = body_velocity_jacobian(state.pose(), state.velocity());
+    gtsam::Matrix33 body_velocity_cov = velocity_H * xv_cov * velocity_H.transpose();
     if (!cov.allFinite() || cov.diagonal().minCoeff() < 0) throw std::runtime_error("invalid pose covariance");
     double lag = cfg.at("odometry").at("lag_s");
     size_t retired = 0;
@@ -481,21 +490,24 @@ private:
     out.pose.pose.orientation.z = q.z();
     out.pose.pose.orientation.w = q.w();
     // ROS pose covariance uses [translation, rotation], GTSAM right perturbation [rotation, translation]. Rotate both blocks into parent frame.
-    Eigen::Matrix<double, 6, 6> transform = Eigen::Matrix<double, 6, 6>::Zero();
-    transform.block<3, 3>(0, 3) = state.pose().rotation().matrix();
-    transform.block<3, 3>(3, 0) = state.pose().rotation().matrix();
-    auto ros_cov = (transform * cov * transform.transpose()).eval();
+    auto ros_cov = parent_pose_covariance(state.pose(), cov);
     for (int i = 0; i < 6; i++)
       for (int j = 0; j < 6; j++) out.pose.covariance[i * 6 + j] = ros_cov(i, j);
     auto body_v = state.pose().rotation().unrotate(v);
     out.twist.twist.linear.x = body_v.x();
     out.twist.twist.linear.y = body_v.y();
     out.twist.twist.linear.z = body_v.z();
+    for (int i = 0; i < 3; i++)
+      for (int j = 0; j < 3; j++) out.twist.covariance[i * 6 + j] = body_velocity_cov(i, j);
     pub->publish(out);
     auto publish_wall_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
     status(mode, fuse ? (t - last_uwb > .3 ? "UWB_ABSENT_LIO_CONTINUES" : "JOINT_LIDAR_IMU_UWB") : "LIDAR_INFORMATION_DIAGNOSTIC_NO_DOWNWEIGHTING", t);
     trajectory << session << ',' << t << ',' << now().seconds() << ',' << p.x() << ',' << p.y() << ',' << p.z() << ',' << q.x() << ',' << q.y() << ',' << q.z() << ',' << q.w()
                << ',' << v.x() << ',' << v.y() << ',' << v.z() << ",1," << mode << "," << (fuse ? map.id : "none") << "," << publish_wall_ns << "\n";
+    covariance_log << session << ',' << t;
+    for (int i = 0; i < 9; i++)
+      for (int j = 0; j < 9; j++) covariance_log << ',' << xv_cov(i, j);
+    covariance_log << '\n';
     size_t anchors = fuse && map.surveyed() ? map.ids.size() : 0;
     size_t active = (smoother->timestamps().size() - anchors) / 3;
     graph << session << ',' << t << ',' << active << ',' << active << ',' << active << ',' << anchors << ',' << (count ? 1 : 0) << ',' << lidar.size() << ','
@@ -536,7 +548,7 @@ private:
   bool initialized = false;
   double first_imu = -1, latest_imu = -1, last_cloud = -1;
   Eigen::Vector3d sum_a, sum_w;
-  std::ofstream trajectory, graph, icp, uwb, timing;
+  std::ofstream trajectory, graph, icp, uwb, timing, covariance_log;
   std::shared_ptr<spdlog::logger> logger;
   std::string last_status;
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub;

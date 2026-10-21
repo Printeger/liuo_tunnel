@@ -181,6 +181,12 @@ def evaluate(run):
         )
         # Campaign acceptance also requires long-run paired trials, outages and all seeds.
         check(False, "phase2 long-run/paired-campaign acceptance not yet implemented")
+    covariance_summary = None
+    covariance_path = run / "export/odometry/covariance.csv"
+    if covariance_path.exists():
+        from covariance_analysis import summarize
+
+        covariance_summary = summarize(run, trajectory, truth, rows(covariance_path), fused)
     result = {
         "scope": ("phase2_iteration_snapshot_" if fused else "phase1_snapshot_") + backend,
         "result": "FAIL" if failures else "PASS",
@@ -198,6 +204,7 @@ def evaluate(run):
         "max_vehicle_states": max((int(r["X"]) for r in graph), default=0),
         "simulation_runtime": runtime,
         "raw_counts": audit["counts"],
+        "covariance_diagnostics": covariance_summary,
         "sessions": len(est_sessions),
         "gpu": ("FAIL" if failures else "PASS") if backend == "gpu" else "NOT_VALIDATED",
         "rolling_deskew": "NOT_VALIDATED",
