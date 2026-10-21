@@ -65,3 +65,8 @@ The bounded scheduler fails on overflow. `delivery.csv` records actions; the
 report separately checks unchanged sensor hashes, actual delivered UWB hashes,
 unique graph ingestion and LIO continuity/recovery. These transport checks do
 not replace accuracy, latency or state-credibility acceptance.
+
+Optional offline geometry analysis (NumPy/SciPy):
+`python3 tools/range_geometry_analysis.py log/<oracle_capture_run_id>`.
+This explicitly assumes exact relative truth motion to probe range ambiguity;
+it is isolated from the estimator and is not an online accuracy result.
