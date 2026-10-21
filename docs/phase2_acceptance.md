@@ -378,3 +378,26 @@ oracle退化段轴向P95/max为0.03967/0.19897 m；全程返回独立审计PASS�
 位置NEES均值37.568、95%椭球覆盖率6.751%，仍明确报告局部后验过度自信。
 两个run的原报告都保留campaign未完成的FAIL项；这组单seed双地图数值和
 全程审计通过不替代最终版本seeds 0–9、OFF及故障/生命周期验证。
+
+## 状态分类和生产失败/重置验证
+
+`fb5e096` 增加拒绝/缺失、弱后验/LOST及故障阶段分类，状态转换CSV、诊断拒绝
+计数和失败JSON保留原始原因；不改变图因子、阈值或传感器噪声。独立构建及
+56组件/22 Python测试通过（`log/phase2-status-{build,tests}.txt`）。
+
+| 故障输入 | run | 生产结果 |
+|---|---|---|
+| 地图 valid=false | 20261021T124436Z_264 | 退出1、failed、MAP_INVALID |
+| 地图 frame=ecef | 20261021T124454Z_668 | 退出1、failed、MAP_INVALID，原始坐标冲突细节保留 |
+| 地图/tag 杆臂冲突 | 20261021T124457Z_154 | 退出1、failed、MAP_INVALID，细节MAP_EXTRINSIC_CONFLICT |
+| 缺失 tag 外参 | 20261021T124459Z_617 | 退出1、failed、EXTRINSIC_INVALID |
+
+以上是预期拒绝测试，原始run仍标failed，不把它们伪装成导航成功。
+每个 `runtime/odometry_failure.json` 和 owner manifest 均已检查。
+
+`20261021T124506Z_220`：45 s GPU surveyed，在22 s显式重置时钟。两会话分别
+记录INITIALIZING→联合初始化→TRACKING；基站49、地图先验1、无fallback，
+reset计数仅随声明会话增加。物理测量身份没有重复入图；每会话拒绝计数重新
+开始，旧pending观测记录CLOCK_RESET。9000 IMU/clock、450 cloud、11248 UWB
+发布/观察数量一致；RMSE0.13336 m、处理P95 44.739 ms。独立证据在
+`export/analysis/reset_audit.json`，仍保留阶段campaign未完成项。
