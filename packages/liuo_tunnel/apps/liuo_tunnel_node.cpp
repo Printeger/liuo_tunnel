@@ -88,7 +88,7 @@ public:
                << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id,publish_wall_ns,state_reason,wx,wy,wz,twist_interval_s,postfit_ta_stamp,postfit_"
                   "ta_count,postfit_ta_squared_sum,postfit_ta_limit,failed_recovery_stamp\n";
     bootstrap_log.open(logs.profiling_path("bootstrap.csv"));
-    bootstrap_log << std::setprecision(16) << "session,iteration,total_error,cost_change,lambda,solve_success,elapsed_s,ta_error,translation_gradient_norm,x0,y0,z0\n";
+    bootstrap_log << std::setprecision(16) << "session,iteration,total_error,cost_change,lambda,solve_success,elapsed_s,ta_error,translation_gradient_norm,x0,y0,z0,event\n";
     covariance_log.open(logs.export_path("odometry/covariance.csv"));
     covariance_log << std::setprecision(16) << "session,stamp";
     for (int i = 0; i < 9; i++)
@@ -566,7 +566,7 @@ private:
       gtsam_points::LevenbergMarquardtExtParams params;
       params.maxIterations = cfg.at("uwb").value("bootstrap_max_iterations", 30);
       params.relativeErrorTol = cfg.at("uwb").value("bootstrap_relative_error_tolerance", 1e-5);
-      params.callback = [this](const auto& progress, const gtsam::Values& values) {
+      auto write_bootstrap_state = [this](const gtsam::Values& values, const char* event) {
         double ta_error = 0;
         gtsam::Vector3 gradient = gtsam::Vector3::Zero();
         for (const auto& factor : bootstrap_factors) {
@@ -583,10 +583,18 @@ private:
           ta_error += range->error(values);
         }
         auto p = values.at<gtsam::Pose3>(X(0)).translation();
-        bootstrap_log << session << ',' << progress.iterations << ',' << progress.error << ',' << progress.cost_change << ',' << progress.lambda << ',' << progress.solve_success
-                      << ',' << progress.elapsed_time << ',' << ta_error << ',' << gradient.norm() << ',' << p.x() << ',' << p.y() << ',' << p.z() << '\n';
+        bootstrap_log << ta_error << ',' << gradient.norm() << ',' << p.x() << ',' << p.y() << ',' << p.z() << ',' << event << '\n';
       };
-      auto optimized = gtsam_points::LevenbergMarquardtOptimizerExt(bootstrap_factors, bootstrap_values, params).optimize();
+      params.callback = [&](const auto& progress, const gtsam::Values& values) {
+        bootstrap_log << session << ',' << progress.iterations << ',' << progress.error << ',' << progress.cost_change << ',' << progress.lambda << ',' << progress.solve_success
+                      << ',' << progress.elapsed_time << ',';
+        write_bootstrap_state(values, "iteration");
+      };
+      params.status_msg_callback = [this](const std::string& message) { logger->info("bootstrap optimizer: {}", message); };
+      gtsam_points::LevenbergMarquardtOptimizerExt optimizer(bootstrap_factors, bootstrap_values, params);
+      auto optimized = optimizer.optimize();
+      bootstrap_log << session << ',' << optimizer.iterations() << ',' << optimizer.error() << ",," << optimizer.lambda() << ",,,";
+      write_bootstrap_state(optimized, "returned");
       // Transfer the original factors and their joint optimized values exactly
       // once. No marginal-map + reused-observation double counting.
       smoother->update(bootstrap_factors, optimized, bootstrap_times);

@@ -265,3 +265,12 @@ nonlinear evaluation, creating a factor-of-two mismatch in mixed-graph trial
 costs. Historical CSVs are not rewritten. Compare costs only with their bound
 source revision; this correction changes neither the linearized information nor
 sensor noise. CPU cost conventions are not certified by this GPU test.
+
+`profiling/bootstrap.csv` appends `event` (`iteration` or `returned`). The
+`returned` row evaluates TA error and common vehicle-translation gradient on the
+actual optimizer return value before transfer to iSAM2. Its total_error is the
+optimizer's stored objective; cost_change, solve_success and elapsed_s are empty
+because those describe a trial/iteration, not an exit certificate. This row is
+not evidence of stationarity in all directions. Upstream optimizer status text,
+when emitted, is retained in the odometry module log; absence is not an inferred
+termination reason. Historical rows without event remain iteration callbacks.
