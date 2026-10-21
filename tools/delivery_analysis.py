@@ -71,6 +71,24 @@ def analyze(profile, delivery, decisions, trajectory, graph, clock, runtime):
         affected = sum(fault["anchor_id"] in endpoints for endpoints in selected)
         if not affected:
             failures.append("anchor outage had no affected observations")
+        recovery = []
+        continued = 0
+        for decision in accepted:
+            if decision["reason"] != "ACCEPT_TA" or identity(decision) not in original:
+                continue
+            delivered = original[identity(decision)]
+            endpoints = {int(delivered[k]) for k in ["a", "b"] if int(delivered[k + "_type"]) == 1}
+            elapsed = float(delivered["source_elapsed_s"])
+            if fault["begin_s"] <= elapsed < fault["end_s"] and fault["anchor_id"] not in endpoints:
+                continued += 1
+            if elapsed >= fault["end_s"] and fault["anchor_id"] in endpoints:
+                recovery.append(
+                    (int(decision["decision_wall_ns"]) - start_wall) * 1e-9 - fault["end_s"]
+                )
+        if not continued:
+            failures.append("no other-anchor TA accepted during single-anchor outage")
+        if not recovery:
+            failures.append("failed anchor TA never restored after single-anchor outage")
         anchor_outages.append(
             {
                 "anchor_id": fault["anchor_id"],
@@ -78,6 +96,8 @@ def analyze(profile, delivery, decisions, trajectory, graph, clock, runtime):
                 "end_s": fault["end_s"],
                 "affected_observations": affected,
                 "other_link_observations": len(selected) - affected,
+                "other_anchor_ta_accepted_during_outage": continued,
+                "failed_anchor_first_ta_recovery_wall_s": min(recovery) if recovery else None,
             }
         )
 

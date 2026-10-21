@@ -123,11 +123,14 @@ def audit(run):
             }
         )
     outages = []
-    for i, (lo, hi) in enumerate(profile["outages"]):
+    declared_outages = profile.get("outages", [])
+    if not declared_outages and not profile.get("anchor_outages"):
+        failures.append("no declared outage pressure interval")
+    for i, (lo, hi) in enumerate(declared_outages):
         begin, end = start + lo, start + hi
         next_begin = (
-            start + profile["outages"][i + 1][0]
-            if i + 1 < len(profile["outages"])
+            start + declared_outages[i + 1][0]
+            if i + 1 < len(declared_outages)
             else annotated[-1]["stamp"] + 0.1
         )
         interior = [r for r in annotated if begin + 0.5 <= r["stamp"] < end]
@@ -182,6 +185,19 @@ def audit(run):
             "exceedances": [f for f in report["failures"] if f in ACCURACY_FAILURES],
         },
         "outages": outages,
+        "anchor_outage_navigation": [
+            {
+                "anchor_id": fault["anchor_id"],
+                "elapsed_interval_s": [fault["begin_s"], fault["end_s"]],
+                "during_outage": interval(
+                    annotated, start + fault["begin_s"], start + fault["end_s"]
+                ),
+                "first_10s_after_restore": interval(
+                    annotated, start + fault["end_s"], start + fault["end_s"] + 10
+                ),
+            }
+            for fault in profile.get("anchor_outages", [])
+        ],
         "interpretation": "Pressure errors and failures remain visible. One-second per-frame error band is descriptive, not a replacement for RMSE or a new acceptance gate. No trajectory alignment. TRACKING is operational, not a calibrated error guarantee. Innovation RMS uses measurement sigma only, not predictive covariance or a chi-square consistency test; small residuals do not prove accurate navigation.",
         "auditor_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     }

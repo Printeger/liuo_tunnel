@@ -159,3 +159,9 @@ partial triplets are rejected. Disk preflight and 5 s reserve monitoring preserv
 `INSUFFICIENT_EVIDENCE_SPACE` / `DISK_RESERVE_BELOW_2_GIB` reasons; the campaign
 signals only its own Popen owner and waits for owner finalization. No run cleanup
 is implied. The original failed campaign remains separate evidence.
+
+Single-anchor fault audits also require other-anchor TA ingestion during the
+fault and restored TA ingestion from the failed anchor afterward. Restoration
+latency is reported, without imposing an invented per-link latency gate.
+Pressure navigation reports preserve outage and first-10-second recovery errors
+and states separately; a single-anchor loss does not imply all UWB is absent.

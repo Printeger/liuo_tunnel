@@ -79,7 +79,29 @@ class DeliveryAnalysisTest(unittest.TestCase):
             )
 
         data[1] += [link(4, 7, "anchor_outage_drop"), link(5, 8, "original")]
-        self.assertEqual(analyze(*data)["result"], "PASS")
+        restored = link(6, 7, "original")
+        restored["source_elapsed_s"] = "8.1"
+        data[1].insert(0, restored)
+        for sequence, wall in [(5, "7200000000"), (6, "8200000000")]:
+            data[2].append(
+                dict(
+                    producer="1",
+                    session="10",
+                    sequence=str(sequence),
+                    reason="ACCEPT_TA",
+                    decision_wall_ns=wall,
+                )
+            )
+        result = analyze(*data)
+        self.assertEqual(result["result"], "PASS")
+        self.assertAlmostEqual(
+            result["anchor_outages"][0]["failed_anchor_first_ta_recovery_wall_s"], 0.2
+        )
+        restored_decision = data[2].pop()
+        self.assertIn(
+            "failed anchor TA never restored after single-anchor outage", analyze(*data)["failures"]
+        )
+        data[2].append(restored_decision)
         data[1][-1]["action"] = "anchor_outage_drop"
         self.assertIn(
             "anchor outage incorrectly dropped unrelated link", analyze(*data)["failures"]
