@@ -28,6 +28,10 @@
 #include <gtsam_points/optimizers/dogleg_optimizer_ext_impl.hpp>
 #include <gtsam_points/optimizers/linearization_hook.hpp>
 
+#include <liuo_tunnel/util/run_log_manager.hpp>
+#include <nlohmann/json.hpp>
+#include <fstream>
+#include <iomanip>
 #include <algorithm>
 #include <map>
 #include <utility>
@@ -42,6 +46,46 @@ template class BayesTree<ISAM2Clique>;
 }  // namespace gtsam
 
 namespace liuo_tunnel::solver {
+namespace {
+// Capture only the failing elimination clique, then rethrow the original error.
+// No fallback, damping, altered ordering, or changed normal operation.
+gtsam::GaussianFactorGraph::Eliminate capture_elimination_failure(const gtsam::GaussianFactorGraph::Eliminate& eliminate) {
+  return [eliminate](const gtsam::GaussianFactorGraph& graph, const gtsam::Ordering& frontals) {
+    try {
+      return eliminate(graph, frontals);
+    } catch (...) {
+      try {
+        auto* logs = RunLogManager::get_if_initialized();
+        if (logs) {
+          auto dimensions = graph.getKeyDimMap();
+          gtsam::Ordering order = frontals;
+          for (const auto& entry : dimensions)
+            if (std::find(order.begin(), order.end(), entry.first) == order.end()) order.push_back(entry.first);
+          nlohmann::json keys = nlohmann::json::array();
+          size_t total = 0;
+          for (auto key : order) {
+            keys.push_back({{"key", gtsam::DefaultKeyFormatter(key)}, {"dimension", dimensions.at(key)}});
+            total += dimensions.at(key);
+          }
+          nlohmann::json metadata = {{"keys", keys}, {"frontal_keys", frontals.size()}, {"dimension", total}, {"matrix_saved", total <= 512}};
+          std::ofstream(logs->profiling_path("elimination_failure.json")) << metadata.dump(2) << std::endl;
+          if (total <= 512) {
+            const auto H = graph.augmentedHessian(order);
+            std::ofstream output(logs->profiling_path("elimination_failure.csv"));
+            output << std::setprecision(17);
+            for (int i = 0; i < H.rows(); ++i) {
+              for (int j = 0; j < H.cols(); ++j) output << (j ? "," : "") << H(i, j);
+              output << '\n';
+            }
+          }
+        }
+      } catch (...) { /* Diagnostics must never replace the original exception. */
+      }
+      throw;
+    }
+  };
+}
+}  // namespace
 using gtsam_points::DoglegOptimizerImplExt;
 
 /* ************************************************************************* */
@@ -72,8 +116,7 @@ bool ISAM2Ext::equals(const ISAM2Ext& other, double tol) const {
 }
 
 /* ************************************************************************* */
-GaussianFactorGraph
-ISAM2Ext::relinearizeAffectedFactors(const ISAM2UpdateParams& updateParams, const FastList<Key>& affectedKeys, const KeySet& relinKeys) {
+GaussianFactorGraph ISAM2Ext::relinearizeAffectedFactors(const ISAM2UpdateParams& updateParams, const FastList<Key>& affectedKeys, const KeySet& relinKeys) {
   gttic(relinearizeAffectedFactors);
   FactorIndexSet candidates = UpdateImpl::GetAffectedFactors(affectedKeys, variableIndex_);
 
@@ -172,8 +215,7 @@ void ISAM2Ext::recalculate(const ISAM2UpdateParams& updateParams, const KeySet& 
     // because path to root included
     gttic(affectedKeys);
     FastList<Key> affectedKeys;
-    for (const auto& conditional : affectedBayesNet)
-      affectedKeys.insert(affectedKeys.end(), conditional->beginFrontals(), conditional->endFrontals());
+    for (const auto& conditional : affectedBayesNet) affectedKeys.insert(affectedKeys.end(), conditional->beginFrontals(), conditional->endFrontals());
     gttoc(affectedKeys);
 
     KeySet affectedKeysSet;
@@ -244,7 +286,7 @@ void ISAM2Ext::recalculateBatch(const ISAM2UpdateParams& updateParams, KeySet* a
 
   gttic(eliminate);
   ISAM2BayesTree::shared_ptr bayesTree =
-    ISAM2JunctionTree(GaussianEliminationTree(*linearized, affectedFactorsVarIndex, order)).eliminate(params_.getEliminationFunction()).first;
+    ISAM2JunctionTree(GaussianEliminationTree(*linearized, affectedFactorsVarIndex, order)).eliminate(capture_elimination_failure(params_.getEliminationFunction())).first;
   gttoc(eliminate);
 
   gttic(insert);
@@ -357,7 +399,7 @@ void ISAM2Ext::recalculateIncremental(
 
   // Do elimination
   GaussianEliminationTree etree(factors, affectedFactorsVarIndex, ordering);
-  auto bayesTree = ISAM2JunctionTree(etree).eliminate(params_.getEliminationFunction()).first;
+  auto bayesTree = ISAM2JunctionTree(etree).eliminate(capture_elimination_failure(params_.getEliminationFunction())).first;
   gttoc(reorder_and_eliminate);
 
   gttic(reassemble);
@@ -502,8 +544,7 @@ ISAM2ResultExt ISAM2Ext::update(const NonlinearFactorGraph& newFactors, const Va
   result.delta = delta_.norm();
   result.gpu_evaluation_count = linearization_hook->evaluation_count();
   result.gpu_linearization_count = linearization_hook->linearization_count();
-  result.elapsed_time =
-    std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - optimization_start_time).count() / 1e9;
+  result.elapsed_time = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - optimization_start_time).count() / 1e9;
 
   result.num_factors = this->nonlinearFactors_.size();
   result.num_values = this->theta_.size();
@@ -657,12 +698,7 @@ void ISAM2Ext::marginalizeLeaves(const FastList<Key>& leafKeysList, FactorIndice
         auto cg = clique->conditional();
         const KeySet cliqueFrontals(cg->beginFrontals(), cg->endFrontals());
         KeyVector cliqueFrontalsToEliminate;
-        std::set_intersection(
-          cliqueFrontals.begin(),
-          cliqueFrontals.end(),
-          leafKeys.begin(),
-          leafKeys.end(),
-          std::back_inserter(cliqueFrontalsToEliminate));
+        std::set_intersection(cliqueFrontals.begin(), cliqueFrontals.end(), leafKeys.begin(), leafKeys.end(), std::back_inserter(cliqueFrontalsToEliminate));
         auto eliminationResult1 = params_.getEliminationFunction()(graph, Ordering(cliqueFrontalsToEliminate));
 
         // Add the resulting marginal
@@ -794,22 +830,11 @@ void ISAM2Ext::updateDelta(bool forceFullSolve) const {
     linearization_hook->error(theta_);
 
     double error0 = nonlinearFactors_.error(theta_);
-    DoglegOptimizerImplExt::TrustRegionAdaptationMode adaptationMode =
-      static_cast<DoglegOptimizerImplExt::TrustRegionAdaptationMode>(doglegParams.adaptationMode);
+    DoglegOptimizerImplExt::TrustRegionAdaptationMode adaptationMode = static_cast<DoglegOptimizerImplExt::TrustRegionAdaptationMode>(doglegParams.adaptationMode);
 
     // Compute dogleg point
     DoglegOptimizerImplExt::IterationResult doglegResult(
-      DoglegOptimizerImplExt::Iterate(
-        *doglegDelta_,
-        adaptationMode,
-        dx_u,
-        deltaNewton_,
-        *this,
-        nonlinearFactors_,
-        *linearization_hook,
-        theta_,
-        error0,
-        doglegParams.verbose));
+      DoglegOptimizerImplExt::Iterate(*doglegDelta_, adaptationMode, dx_u, deltaNewton_, *this, nonlinearFactors_, *linearization_hook, theta_, error0, doglegParams.verbose));
     gttoc(Dogleg_Iterate);
 
     gttic(Copy_dx_d);
