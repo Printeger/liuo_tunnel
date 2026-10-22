@@ -1,0 +1,1929 @@
+{
+  "scope": "representative phase two evidence, not deployment certification",
+  "runs": {
+    "init200": {
+      "run": "20261022T045159Z_885",
+      "report": {
+        "scope": "phase2_iteration_snapshot_gpu",
+        "estimator_mode": "fuse",
+        "accuracy_acceptance_scope": "phase2_accuracy_reference_only",
+        "result": "PASS",
+        "failures": [],
+        "accuracy_reference_exceedances": [
+          "known-map position RMSE >0.30m"
+        ],
+        "result_scope": "single_run_contracts_not_system_effectiveness",
+        "stage_acceptance": "NOT_ASSESSED",
+        "evaluation_policy": "representative_phase2_2026_10_22",
+        "metrics": {
+          "entrance": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "transition": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "degenerate": {
+            "samples": 78,
+            "position_rmse_m": 0.3735779551644366,
+            "axial_p95_m": 0.044049714889212055,
+            "axial_max_m": 0.046531346854095545
+          }
+        },
+        "position_rmse_m": 0.3735779551644366,
+        "optimized_output_observed": true,
+        "attitude_p95_deg": 0.17054888807561314,
+        "processing_p95_ms": 63.4346,
+        "sim_time_latency_p95_s": 0.065,
+        "wall_end_to_end_p95_s": 0.06897618500000001,
+        "actual_input_hz": {
+          "imu": 199.98958717216314,
+          "cloud": 9.999479358608157,
+          "uwb": 63.746680911127,
+          "clock": 199.98958717216314
+        },
+        "delivery_profile": false,
+        "delivered_input_verified": true,
+        "frozen_input_verified": true,
+        "max_vehicle_states": 101,
+        "simulation_runtime": {
+          "simulation_s": 20.0,
+          "input_prepare_s": 0.001185047,
+          "startup_buffer_records": 5,
+          "startup_buffer_bytes": 408294,
+          "wall_s": 20.001041337,
+          "real_time_factor": 0.9999479358608158,
+          "peak_rss_kib": 81200,
+          "scan_model": "snapshot",
+          "input_mode": "frozen_replay",
+          "published_counts": {
+            "imu": 4000,
+            "cloud": 200,
+            "uwb": 1275,
+            "clock": 4000
+          },
+          "delivery_queue_peak": 1
+        },
+        "delivery_audit": null,
+        "raw_counts": {
+          "imu": 4000,
+          "cloud": 200,
+          "uwb": 1275,
+          "clock": 4000
+        },
+        "covariance_diagnostics": {
+          "samples": 78,
+          "position_nees_mean_3d": 5.161635411255547,
+          "joint_nees_mean_9d": 36.6322056745628,
+          "position_95pct_ellipsoid_coverage": 0.9487179487179487,
+          "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Uses recorded truth orientation; legacy captures use identity."
+        },
+        "sessions": 1,
+        "gpu": "PASS",
+        "rolling_deskew": "NOT_VALIDATED",
+        "accuracy_thresholds": "Reference targets only; exceedances do not block phase two. PASS is not effectiveness or stage acceptance."
+      },
+      "source": {
+        "git_commit": "db1c1ad1cae8663730f5faa76bbeb2ab671f63a7",
+        "git_worktree_clean": true
+      },
+      "odometry_binary_sha256": "eed821190c1d9e0be911799a5aa2ea384451d2a1abc691586e475422929159f2",
+      "first_output_stamp": 13.2,
+      "initialization_sensor_elapsed_s": 12.2,
+      "post_bootstrap_expected_epochs": 78,
+      "published_epochs": 78,
+      "valid_tracking_or_degraded_epochs": 78,
+      "post_bootstrap_valid_availability": 1.0,
+      "all_input_epochs": 200,
+      "whole_input_output_fraction": 0.39,
+      "max_output_gap_s": 0.10000000000000142,
+      "state_reasons": {
+        "POSITION_POSTERIOR_WEAK": 78
+      },
+      "rss_peak_kib": 306344,
+      "device_used_peak_bytes": 1293811712,
+      "sha256": {
+        "metadata/config/phase1.json": "03fec708780b375f096c594f60a3feebaf7af37b881bf1b95740bc53c4a05683",
+        "metadata/config/map.json": "68eb6929c3268a0087e390840f47091659f9e50d9eca5cb9b94af9ecffc118c5",
+        "export/analysis/report.json": "80ee143ddf7753a62aff53686aac4bfd0b9bfc4549694dfc3d04753f61c3569c",
+        "export/odometry/trajectory.csv": "33b30753a42cb4f3183824a7dd20d05c194591d824ddfa0e4e342637dff34fe9",
+        "profiling/bootstrap_branches.csv": "2cab89c2e6f09a610004917140c212671abb0f10581ce96ef286c037e27d8514"
+      }
+    },
+    "init1000": {
+      "run": "20261022T051133Z_448",
+      "report": {
+        "scope": "phase2_iteration_snapshot_gpu",
+        "estimator_mode": "fuse",
+        "accuracy_acceptance_scope": "phase2_accuracy_reference_only",
+        "result": "PASS",
+        "failures": [],
+        "accuracy_reference_exceedances": [
+          "known-map position RMSE >0.30m"
+        ],
+        "result_scope": "single_run_contracts_not_system_effectiveness",
+        "stage_acceptance": "NOT_ASSESSED",
+        "evaluation_policy": "representative_phase2_2026_10_22",
+        "metrics": {
+          "entrance": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "transition": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "degenerate": {
+            "samples": 65,
+            "position_rmse_m": 0.30641013317228977,
+            "axial_p95_m": 0.09742256073309363,
+            "axial_max_m": 0.10225844657406924
+          }
+        },
+        "position_rmse_m": 0.30641013317228977,
+        "optimized_output_observed": true,
+        "attitude_p95_deg": 0.34986177466715895,
+        "processing_p95_ms": 54.5749,
+        "sim_time_latency_p95_s": 0.06,
+        "wall_end_to_end_p95_s": 0.060959936000000006,
+        "actual_input_hz": {
+          "imu": 199.98957957295477,
+          "cloud": 9.999478978647739,
+          "uwb": 82.99567552277622,
+          "clock": 199.98957957295477
+        },
+        "delivery_profile": false,
+        "delivered_input_verified": true,
+        "frozen_input_verified": true,
+        "max_vehicle_states": 101,
+        "simulation_runtime": {
+          "simulation_s": 20.0,
+          "input_prepare_s": 0.001222149,
+          "startup_buffer_records": 5,
+          "startup_buffer_bytes": 408294,
+          "wall_s": 20.001042097000003,
+          "real_time_factor": 0.9999478978647738,
+          "peak_rss_kib": 81492,
+          "scan_model": "snapshot",
+          "input_mode": "frozen_replay",
+          "published_counts": {
+            "imu": 4000,
+            "cloud": 200,
+            "uwb": 1660,
+            "clock": 4000
+          },
+          "delivery_queue_peak": 1
+        },
+        "delivery_audit": null,
+        "raw_counts": {
+          "imu": 4000,
+          "cloud": 200,
+          "uwb": 1660,
+          "clock": 4000
+        },
+        "covariance_diagnostics": {
+          "samples": 65,
+          "position_nees_mean_3d": 21.188605786117357,
+          "joint_nees_mean_9d": 140.5516383595847,
+          "position_95pct_ellipsoid_coverage": 0.0,
+          "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Uses recorded truth orientation; legacy captures use identity."
+        },
+        "sessions": 1,
+        "gpu": "PASS",
+        "rolling_deskew": "NOT_VALIDATED",
+        "accuracy_thresholds": "Reference targets only; exceedances do not block phase two. PASS is not effectiveness or stage acceptance."
+      },
+      "source": {
+        "git_commit": "db1c1ad1cae8663730f5faa76bbeb2ab671f63a7",
+        "git_worktree_clean": true
+      },
+      "odometry_binary_sha256": "eed821190c1d9e0be911799a5aa2ea384451d2a1abc691586e475422929159f2",
+      "first_output_stamp": 14.5,
+      "initialization_sensor_elapsed_s": 13.5,
+      "post_bootstrap_expected_epochs": 65,
+      "published_epochs": 65,
+      "valid_tracking_or_degraded_epochs": 65,
+      "post_bootstrap_valid_availability": 1.0,
+      "all_input_epochs": 200,
+      "whole_input_output_fraction": 0.325,
+      "max_output_gap_s": 0.10000000000000142,
+      "state_reasons": {
+        "POSITION_POSTERIOR_WEAK": 65
+      },
+      "rss_peak_kib": 294112,
+      "device_used_peak_bytes": 1291386880,
+      "sha256": {
+        "metadata/config/phase1.json": "03fec708780b375f096c594f60a3feebaf7af37b881bf1b95740bc53c4a05683",
+        "metadata/config/map.json": "68eb6929c3268a0087e390840f47091659f9e50d9eca5cb9b94af9ecffc118c5",
+        "export/analysis/report.json": "0a2ffbb09cd25a65d29465af2409ccbc073cf7bfd826b211eb53f3ef66d47a48",
+        "export/odometry/trajectory.csv": "065c736d9b0d3aab47a94adffb4dd511174cd99c148eda3dcf9d235051dfa100",
+        "profiling/bootstrap_branches.csv": "a450caf6cf68c96ca77b8d18da3cfff4de2670ca761352d195ec43e4203c305c"
+      }
+    },
+    "init1800": {
+      "run": "20261022T051204Z_138",
+      "report": {
+        "scope": "phase2_iteration_snapshot_gpu",
+        "estimator_mode": "fuse",
+        "accuracy_acceptance_scope": "phase2_accuracy_reference_only",
+        "result": "PASS",
+        "failures": [],
+        "accuracy_reference_exceedances": [
+          "known-map position RMSE >0.30m"
+        ],
+        "result_scope": "single_run_contracts_not_system_effectiveness",
+        "stage_acceptance": "NOT_ASSESSED",
+        "evaluation_policy": "representative_phase2_2026_10_22",
+        "metrics": {
+          "entrance": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "transition": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "degenerate": {
+            "samples": 82,
+            "position_rmse_m": 0.3394313549491568,
+            "axial_p95_m": 0.05368592104105119,
+            "axial_max_m": 0.05867756418501813
+          }
+        },
+        "position_rmse_m": 0.3394313549491568,
+        "optimized_output_observed": true,
+        "attitude_p95_deg": 0.1286849576823923,
+        "processing_p95_ms": 52.1277,
+        "sim_time_latency_p95_s": 0.055,
+        "wall_end_to_end_p95_s": 0.057791602000000004,
+        "actual_input_hz": {
+          "imu": 199.98955247578232,
+          "cloud": 9.999477623789117,
+          "uwb": 82.99566427744966,
+          "clock": 199.98955247578232
+        },
+        "delivery_profile": false,
+        "delivered_input_verified": true,
+        "frozen_input_verified": true,
+        "max_vehicle_states": 101,
+        "simulation_runtime": {
+          "simulation_s": 20.0,
+          "input_prepare_s": 0.0012362100000000002,
+          "startup_buffer_records": 5,
+          "startup_buffer_bytes": 408014,
+          "wall_s": 20.001044807,
+          "real_time_factor": 0.9999477623789116,
+          "peak_rss_kib": 81500,
+          "scan_model": "snapshot",
+          "input_mode": "frozen_replay",
+          "published_counts": {
+            "imu": 4000,
+            "cloud": 200,
+            "uwb": 1660,
+            "clock": 4000
+          },
+          "delivery_queue_peak": 1
+        },
+        "delivery_audit": null,
+        "raw_counts": {
+          "imu": 4000,
+          "cloud": 200,
+          "uwb": 1660,
+          "clock": 4000
+        },
+        "covariance_diagnostics": {
+          "samples": 82,
+          "position_nees_mean_3d": 7.429043708667319,
+          "joint_nees_mean_9d": 37.04488523318054,
+          "position_95pct_ellipsoid_coverage": 0.5121951219512195,
+          "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Uses recorded truth orientation; legacy captures use identity."
+        },
+        "sessions": 1,
+        "gpu": "PASS",
+        "rolling_deskew": "NOT_VALIDATED",
+        "accuracy_thresholds": "Reference targets only; exceedances do not block phase two. PASS is not effectiveness or stage acceptance."
+      },
+      "source": {
+        "git_commit": "db1c1ad1cae8663730f5faa76bbeb2ab671f63a7",
+        "git_worktree_clean": true
+      },
+      "odometry_binary_sha256": "eed821190c1d9e0be911799a5aa2ea384451d2a1abc691586e475422929159f2",
+      "first_output_stamp": 12.8,
+      "initialization_sensor_elapsed_s": 11.8,
+      "post_bootstrap_expected_epochs": 82,
+      "published_epochs": 82,
+      "valid_tracking_or_degraded_epochs": 82,
+      "post_bootstrap_valid_availability": 1.0,
+      "all_input_epochs": 200,
+      "whole_input_output_fraction": 0.41,
+      "max_output_gap_s": 0.10000000000000142,
+      "state_reasons": {
+        "POSITION_POSTERIOR_WEAK": 82
+      },
+      "rss_peak_kib": 284212,
+      "device_used_peak_bytes": 1258815488,
+      "sha256": {
+        "metadata/config/phase1.json": "03fec708780b375f096c594f60a3feebaf7af37b881bf1b95740bc53c4a05683",
+        "metadata/config/map.json": "68eb6929c3268a0087e390840f47091659f9e50d9eca5cb9b94af9ecffc118c5",
+        "export/analysis/report.json": "028f4cec081523331aa6ffd7a6acf190c0d63fe7f1ef49760fd75301d784a77c",
+        "export/odometry/trajectory.csv": "98ff9c32217942fcd3b782312e2d553efdf58a87f148d3e4e249608d78138b94",
+        "profiling/bootstrap_branches.csv": "2a4800e478abf2ff9a34c9d3a534780eb79d5eb689ade6bed522ddf30f526af7"
+      }
+    },
+    "on": {
+      "run": "20261022T045242Z_581",
+      "report": {
+        "scope": "phase2_iteration_snapshot_gpu",
+        "estimator_mode": "fuse",
+        "accuracy_acceptance_scope": "phase2_accuracy_reference_only",
+        "result": "PASS",
+        "failures": [],
+        "accuracy_reference_exceedances": [
+          "known-map position RMSE >0.30m"
+        ],
+        "result_scope": "single_run_contracts_not_system_effectiveness",
+        "stage_acceptance": "NOT_ASSESSED",
+        "evaluation_policy": "representative_phase2_2026_10_22",
+        "metrics": {
+          "entrance": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "transition": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "degenerate": {
+            "samples": 4876,
+            "position_rmse_m": 1.034312880481015,
+            "axial_p95_m": 0.06425204453307742,
+            "axial_max_m": 0.11116363602900492
+          }
+        },
+        "position_rmse_m": 1.034312880481015,
+        "optimized_output_observed": true,
+        "attitude_p95_deg": 0.612052210302853,
+        "processing_p95_ms": 35.3985,
+        "sim_time_latency_p95_s": 0.04,
+        "wall_end_to_end_p95_s": 0.041450486,
+        "actual_input_hz": {
+          "imu": 199.9995566717827,
+          "cloud": 9.999977833589135,
+          "uwb": 77.69382778028742,
+          "clock": 199.9995566717827
+        },
+        "delivery_profile": false,
+        "delivered_input_verified": true,
+        "frozen_input_verified": true,
+        "max_vehicle_states": 101,
+        "simulation_runtime": {
+          "simulation_s": 500.0,
+          "input_prepare_s": 0.001235589,
+          "startup_buffer_records": 5,
+          "startup_buffer_bytes": 408294,
+          "wall_s": 500.00110832300004,
+          "real_time_factor": 0.9999977833589134,
+          "peak_rss_kib": 83436,
+          "scan_model": "snapshot",
+          "input_mode": "frozen_replay",
+          "published_counts": {
+            "imu": 100000,
+            "cloud": 5000,
+            "uwb": 38847,
+            "clock": 100000
+          },
+          "delivery_queue_peak": 1
+        },
+        "delivery_audit": null,
+        "raw_counts": {
+          "imu": 100000,
+          "cloud": 5000,
+          "uwb": 38847,
+          "clock": 100000
+        },
+        "covariance_diagnostics": {
+          "samples": 4876,
+          "position_nees_mean_3d": 44.4818281845795,
+          "joint_nees_mean_9d": 120.805416097854,
+          "position_95pct_ellipsoid_coverage": 0.06111566858080394,
+          "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Uses recorded truth orientation; legacy captures use identity."
+        },
+        "sessions": 1,
+        "gpu": "PASS",
+        "rolling_deskew": "NOT_VALIDATED",
+        "accuracy_thresholds": "Reference targets only; exceedances do not block phase two. PASS is not effectiveness or stage acceptance."
+      },
+      "source": {
+        "git_commit": "db1c1ad1cae8663730f5faa76bbeb2ab671f63a7",
+        "git_worktree_clean": true
+      },
+      "odometry_binary_sha256": "eed821190c1d9e0be911799a5aa2ea384451d2a1abc691586e475422929159f2",
+      "first_output_stamp": 13.4,
+      "initialization_sensor_elapsed_s": 12.4,
+      "post_bootstrap_expected_epochs": 4876,
+      "published_epochs": 4876,
+      "valid_tracking_or_degraded_epochs": 4868,
+      "post_bootstrap_valid_availability": 0.9983593109105825,
+      "all_input_epochs": 5000,
+      "whole_input_output_fraction": 0.9752,
+      "max_output_gap_s": 0.10000000000002274,
+      "state_reasons": {
+        "POSITION_POSTERIOR_WEAK": 78,
+        "UWB_POSITION_GEOMETRY_WEAK": 432,
+        "UWB_POSTFIT_INCONSISTENT": 8,
+        "UWB_RECOVERY_UNVERIFIED": 4358
+      },
+      "rss_peak_kib": 352096,
+      "device_used_peak_bytes": 1295056896,
+      "sha256": {
+        "metadata/config/phase1.json": "03fec708780b375f096c594f60a3feebaf7af37b881bf1b95740bc53c4a05683",
+        "metadata/config/map.json": "68eb6929c3268a0087e390840f47091659f9e50d9eca5cb9b94af9ecffc118c5",
+        "export/analysis/report.json": "a4e0df5d7d90bea6e4642f5fa0295020009e7d277acf41abbaa865a3950246a2",
+        "export/odometry/trajectory.csv": "196b4dff51f52b5d173157c3ba32e06b917032b37d05d5f55dfdaf1f978dbbf3",
+        "profiling/bootstrap_branches.csv": "34e3b510ec1ec10d94bb93f5b13712d4778ce2def1f17631f5b96bba30c9832f"
+      }
+    },
+    "off": {
+      "run": "20261022T050251Z_143",
+      "report": {
+        "scope": "phase2_iteration_snapshot_gpu",
+        "estimator_mode": "record_only",
+        "accuracy_acceptance_scope": "phase2_accuracy_reference_only",
+        "result": "PASS",
+        "failures": [],
+        "accuracy_reference_exceedances": [],
+        "result_scope": "single_run_contracts_not_system_effectiveness",
+        "stage_acceptance": "NOT_ASSESSED",
+        "evaluation_policy": "representative_phase2_2026_10_22",
+        "metrics": {
+          "entrance": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "transition": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "degenerate": {
+            "samples": 4979,
+            "position_rmse_m": 2509.633602466343,
+            "axial_p95_m": 3824.997983993138,
+            "axial_max_m": 4070.381583067328
+          }
+        },
+        "position_rmse_m": 2509.633602466343,
+        "optimized_output_observed": true,
+        "attitude_p95_deg": 4.8046437412442105,
+        "processing_p95_ms": 33.1836,
+        "sim_time_latency_p95_s": 0.035,
+        "wall_end_to_end_p95_s": 0.039075203,
+        "actual_input_hz": {
+          "imu": 199.9996772605208,
+          "cloud": 9.99998386302604,
+          "uwb": 77.69387462539451,
+          "clock": 199.9996772605208
+        },
+        "delivery_profile": false,
+        "delivered_input_verified": true,
+        "frozen_input_verified": true,
+        "max_vehicle_states": 101,
+        "simulation_runtime": {
+          "simulation_s": 500.0,
+          "input_prepare_s": 0.001210158,
+          "startup_buffer_records": 5,
+          "startup_buffer_bytes": 408294,
+          "wall_s": 500.00080685,
+          "real_time_factor": 0.9999983863026041,
+          "peak_rss_kib": 83248,
+          "scan_model": "snapshot",
+          "input_mode": "frozen_replay",
+          "published_counts": {
+            "imu": 100000,
+            "cloud": 5000,
+            "uwb": 38847,
+            "clock": 100000
+          },
+          "delivery_queue_peak": 1
+        },
+        "delivery_audit": null,
+        "raw_counts": {
+          "imu": 100000,
+          "cloud": 5000,
+          "uwb": 38847,
+          "clock": 100000
+        },
+        "covariance_diagnostics": {
+          "samples": 4979,
+          "position_nees_mean_3d": 14887.311716897764,
+          "joint_nees_mean_9d": 71099.83669342865,
+          "position_95pct_ellipsoid_coverage": 0.01948182365936935,
+          "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Uses recorded truth orientation; legacy captures use identity."
+        },
+        "sessions": 1,
+        "gpu": "PASS",
+        "rolling_deskew": "NOT_VALIDATED",
+        "accuracy_thresholds": "Reference targets only; exceedances do not block phase two. PASS is not effectiveness or stage acceptance."
+      },
+      "source": {
+        "git_commit": "db1c1ad1cae8663730f5faa76bbeb2ab671f63a7",
+        "git_worktree_clean": true
+      },
+      "odometry_binary_sha256": "eed821190c1d9e0be911799a5aa2ea384451d2a1abc691586e475422929159f2",
+      "first_output_stamp": 3.1,
+      "initialization_sensor_elapsed_s": 2.1,
+      "post_bootstrap_expected_epochs": 4979,
+      "published_epochs": 4979,
+      "valid_tracking_or_degraded_epochs": 4979,
+      "post_bootstrap_valid_availability": 1.0,
+      "all_input_epochs": 5000,
+      "whole_input_output_fraction": 0.9958,
+      "max_output_gap_s": 0.10000000000002274,
+      "state_reasons": {
+        "LIDAR_INFORMATION_DIAGNOSTIC_NO_DOWNWEIGHTING": 4979
+      },
+      "rss_peak_kib": 311664,
+      "device_used_peak_bytes": 1261830144,
+      "sha256": {
+        "metadata/config/phase1.json": "6034f5c08adf5e0264b8aba7c2ecb5a00da6751bc35fb3cbdf5c6e2391cb785d",
+        "export/analysis/report.json": "fd966ecf3ca33fdedbe6e9d9c6c65af97efa2fbbde27ccd947e15999ff2b8455",
+        "export/odometry/trajectory.csv": "5484cc8d77d17a5d7ca8f8b1c1c9de4f4815e0cdd4683dad60595d3ff8e81d5b"
+      }
+    },
+    "outages": {
+      "run": "20261022T051246Z_145",
+      "report": {
+        "scope": "phase2_iteration_snapshot_gpu",
+        "estimator_mode": "fuse",
+        "accuracy_acceptance_scope": "phase2_accuracy_reference_only",
+        "result": "PASS",
+        "failures": [],
+        "accuracy_reference_exceedances": [
+          "known-map position RMSE >0.30m",
+          "known-map axial max >1.0m"
+        ],
+        "result_scope": "single_run_contracts_not_system_effectiveness",
+        "stage_acceptance": "NOT_ASSESSED",
+        "evaluation_policy": "representative_phase2_2026_10_22",
+        "metrics": {
+          "entrance": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "transition": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "degenerate": {
+            "samples": 4882,
+            "position_rmse_m": 1.647042673957999,
+            "axial_p95_m": 0.09312456676502734,
+            "axial_max_m": 14.686646490398175
+          }
+        },
+        "position_rmse_m": 1.647042673957999,
+        "optimized_output_observed": true,
+        "attitude_p95_deg": 0.6364980770406509,
+        "processing_p95_ms": 35.1879,
+        "sim_time_latency_p95_s": 0.04,
+        "wall_end_to_end_p95_s": 0.041436873000000006,
+        "actual_input_hz": {
+          "imu": 199.9996406362457,
+          "cloud": 9.999982031812285,
+          "uwb": 74.12386681260539,
+          "clock": 199.9996406362457
+        },
+        "delivery_profile": true,
+        "delivered_input_verified": true,
+        "frozen_input_verified": false,
+        "max_vehicle_states": 101,
+        "simulation_runtime": {
+          "simulation_s": 500.0,
+          "input_prepare_s": 0.0013078760000000001,
+          "startup_buffer_records": 5,
+          "startup_buffer_bytes": 408294,
+          "wall_s": 500.00089841100004,
+          "real_time_factor": 0.9999982031812285,
+          "peak_rss_kib": 83656,
+          "scan_model": "snapshot",
+          "input_mode": "frozen_replay",
+          "published_counts": {
+            "imu": 100000,
+            "cloud": 5000,
+            "uwb": 37062,
+            "clock": 100000
+          },
+          "delivery_queue_peak": 1
+        },
+        "delivery_audit": {
+          "result": "PASS",
+          "failures": [],
+          "declared_actions": {
+            "original": 37062,
+            "outage_drop": 1785
+          },
+          "duplicate_rejections": 0,
+          "expired_delayed_rejections": 0,
+          "delivery_queue_peak": 1,
+          "outages": [
+            {
+              "begin_s": 20,
+              "end_s": 25,
+              "interior_online_frames": 45,
+              "fresh_ta_recovery_wall_s": 0.11672525400000211
+            },
+            {
+              "begin_s": 40,
+              "end_s": 60,
+              "interior_online_frames": 195,
+              "fresh_ta_recovery_wall_s": 0.11696058400000453
+            }
+          ],
+          "anchor_outages": [],
+          "nlos_bias": null,
+          "scope": "transport/unique ingestion/LIO continuity only; navigation accuracy and covariance evaluated separately"
+        },
+        "raw_counts": {
+          "imu": 100000,
+          "cloud": 5000,
+          "uwb": 37062,
+          "clock": 100000
+        },
+        "covariance_diagnostics": {
+          "samples": 4882,
+          "position_nees_mean_3d": 47.03983721051643,
+          "joint_nees_mean_9d": 122.26003669655532,
+          "position_95pct_ellipsoid_coverage": 0.040352314625153624,
+          "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Uses recorded truth orientation; legacy captures use identity."
+        },
+        "sessions": 1,
+        "gpu": "PASS",
+        "rolling_deskew": "NOT_VALIDATED",
+        "accuracy_thresholds": "Reference targets only; exceedances do not block phase two. PASS is not effectiveness or stage acceptance."
+      },
+      "source": {
+        "git_commit": "db1c1ad1cae8663730f5faa76bbeb2ab671f63a7",
+        "git_worktree_clean": true
+      },
+      "odometry_binary_sha256": "eed821190c1d9e0be911799a5aa2ea384451d2a1abc691586e475422929159f2",
+      "first_output_stamp": 12.8,
+      "initialization_sensor_elapsed_s": 11.8,
+      "post_bootstrap_expected_epochs": 4882,
+      "published_epochs": 4882,
+      "valid_tracking_or_degraded_epochs": 4874,
+      "post_bootstrap_valid_availability": 0.9983613273248668,
+      "all_input_epochs": 5000,
+      "whole_input_output_fraction": 0.9764,
+      "max_output_gap_s": 0.10000000000002274,
+      "state_reasons": {
+        "POSITION_POSTERIOR_WEAK": 89,
+        "UWB_ABSENT_LIO_CONTINUES": 246,
+        "UWB_RECOVERING_WINDOW": 129,
+        "UWB_RECOVERY_UNVERIFIED": 4410,
+        "UWB_POSTFIT_INCONSISTENT": 8
+      },
+      "rss_peak_kib": 355328,
+      "device_used_peak_bytes": 1294073856,
+      "sha256": {
+        "metadata/config/phase1.json": "03fec708780b375f096c594f60a3feebaf7af37b881bf1b95740bc53c4a05683",
+        "metadata/config/map.json": "68eb6929c3268a0087e390840f47091659f9e50d9eca5cb9b94af9ecffc118c5",
+        "export/analysis/report.json": "983b05ca56008358f6ef3533ab2d80cc24345e873c564ea31f14d64d54a2d3be",
+        "export/odometry/trajectory.csv": "0a57273d81bd17d27cf914ca6eaa82b309750d12ad901d453de39938cb37963b",
+        "profiling/bootstrap_branches.csv": "a1df3e305f7f532a7fc3abd0d21bc2a5fdba3399c34b4b80e6521373831f8e87"
+      }
+    }
+  },
+  "normal_pair": {
+    "scope": "matched_online_stamps_snapshot_only",
+    "auditor_sha256": "dcb88ca846262bf500b4d2c057a352ffd3ccd25a68a19b955add31b5078efc90",
+    "input_content_verified": true,
+    "lio_settings_matched": true,
+    "odometry_binary_matched": true,
+    "fused_uwb_settings_matched": true,
+    "controlled_estimator_comparison": true,
+    "settings_scope": "Raw input equality alone does not establish a mode-only comparison; estimator settings and binary are audited separately.",
+    "raw_sha256": {
+      "imu": "678f8caa529212efec2a78964f61914a466560abebafb476761678243212812f",
+      "cloud": "b34ab706ef94137c7b85186b2bd6fe58aa8562d76171118d2c9c1846f01dffc4",
+      "uwb": "c7c71df287d69c8dc033b86dd0d00e3e1fe6af1ba8d7f9b6232a192906222954",
+      "clock": "60345bbd60f1e2a342a4d41892c0d81d86554c6d6f9afa229c2661e1e2d859c6"
+    },
+    "counts": {
+      "imu": 100000,
+      "cloud": 5000,
+      "uwb": 38847,
+      "clock": 100000
+    },
+    "common_samples": 4876,
+    "common_first": [
+      0,
+      13.4
+    ],
+    "common_last": [
+      0,
+      500.9
+    ],
+    "alignment": "ON map frame; OFF evaluation-only initial translation/yaw datum, no fitted trajectory transform",
+    "results": [
+      {
+        "run_id": "20261022T045242Z_581",
+        "mode": "fuse",
+        "map_id": "rail_synthetic_survey_v5_high_first_four_corner_400m",
+        "common_position_rmse_m": 1.034312880481015,
+        "common_axial_p95_m": 0.06425204453307742,
+        "common_axial_max_m": 0.11116363602900492,
+        "common_attitude_p95_deg": 0.612052210302853,
+        "processing_p95_ms": 35.3985,
+        "wall_end_to_end_p95_s": 0.041450486,
+        "run_result": "PASS",
+        "failures": []
+      },
+      {
+        "run_id": "20261022T050251Z_143",
+        "mode": "record_only",
+        "map_id": null,
+        "common_position_rmse_m": 2536.0016707064387,
+        "common_axial_p95_m": 3827.513160207049,
+        "common_axial_max_m": 4070.381583067328,
+        "common_attitude_p95_deg": 4.842804720438279,
+        "processing_p95_ms": 33.1836,
+        "wall_end_to_end_p95_s": 0.039075203,
+        "run_result": "PASS",
+        "failures": []
+      }
+    ]
+  },
+  "normal_axes_and_segments": [
+    {
+      "run": "20261022T045242Z_581",
+      "fuse": true,
+      "samples": 4876,
+      "segments": [
+        {
+          "truth_x_interval_m": [
+            200,
+            600
+          ],
+          "samples": 826,
+          "position_rmse_xyz_m": [
+            0.0360146757826332,
+            0.04738489595175769,
+            0.5765150382213421
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            600,
+            1200
+          ],
+          "samples": 1350,
+          "position_rmse_xyz_m": [
+            0.03629563096804156,
+            0.0333596919803428,
+            1.0760162064836356
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            1200,
+            1800
+          ],
+          "samples": 1350,
+          "position_rmse_xyz_m": [
+            0.05029806958276105,
+            0.06190837479028976,
+            1.3005082242196981
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            1800,
+            2351
+          ],
+          "samples": 1350,
+          "position_rmse_xyz_m": [
+            0.036630305804885105,
+            0.03643945492378259,
+            0.893222902754411
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            300,
+            2300
+          ],
+          "samples": 4450,
+          "position_rmse_xyz_m": [
+            0.041505440060100485,
+            0.046821447530929615,
+            1.0347983909880072
+          ]
+        }
+      ],
+      "position_rmse_xyz_m": [
+        0.04069883710870244,
+        0.04601347898331703,
+        1.0324870455065214
+      ],
+      "velocity_rmse_xyz_mps": [
+        0.027269838463832036,
+        0.004975698447830598,
+        0.0320472861859213
+      ],
+      "maximum_abs_error_xyz_m": [
+        0.11116363602900492,
+        0.0911078534326028,
+        2.8339874412744672
+      ],
+      "maximum_interframe_displacement_xyz_m": [
+        0.5162629780229508,
+        0.010958618136299638,
+        0.21819878249723879
+      ],
+      "rss_max_kib": 352096,
+      "device_max_bytes": 1295056896,
+      "report": {
+        "scope": "phase2_iteration_snapshot_gpu",
+        "estimator_mode": "fuse",
+        "accuracy_acceptance_scope": "phase2_accuracy_reference_only",
+        "result": "PASS",
+        "failures": [],
+        "accuracy_reference_exceedances": [
+          "known-map position RMSE >0.30m"
+        ],
+        "result_scope": "single_run_contracts_not_system_effectiveness",
+        "stage_acceptance": "NOT_ASSESSED",
+        "evaluation_policy": "representative_phase2_2026_10_22",
+        "metrics": {
+          "entrance": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "transition": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "degenerate": {
+            "samples": 4876,
+            "position_rmse_m": 1.034312880481015,
+            "axial_p95_m": 0.06425204453307742,
+            "axial_max_m": 0.11116363602900492
+          }
+        },
+        "position_rmse_m": 1.034312880481015,
+        "optimized_output_observed": true,
+        "attitude_p95_deg": 0.612052210302853,
+        "processing_p95_ms": 35.3985,
+        "sim_time_latency_p95_s": 0.04,
+        "wall_end_to_end_p95_s": 0.041450486,
+        "actual_input_hz": {
+          "imu": 199.9995566717827,
+          "cloud": 9.999977833589135,
+          "uwb": 77.69382778028742,
+          "clock": 199.9995566717827
+        },
+        "delivery_profile": false,
+        "delivered_input_verified": true,
+        "frozen_input_verified": true,
+        "max_vehicle_states": 101,
+        "simulation_runtime": {
+          "simulation_s": 500.0,
+          "input_prepare_s": 0.001235589,
+          "startup_buffer_records": 5,
+          "startup_buffer_bytes": 408294,
+          "wall_s": 500.00110832300004,
+          "real_time_factor": 0.9999977833589134,
+          "peak_rss_kib": 83436,
+          "scan_model": "snapshot",
+          "input_mode": "frozen_replay",
+          "published_counts": {
+            "imu": 100000,
+            "cloud": 5000,
+            "uwb": 38847,
+            "clock": 100000
+          },
+          "delivery_queue_peak": 1
+        },
+        "delivery_audit": null,
+        "raw_counts": {
+          "imu": 100000,
+          "cloud": 5000,
+          "uwb": 38847,
+          "clock": 100000
+        },
+        "covariance_diagnostics": {
+          "samples": 4876,
+          "position_nees_mean_3d": 44.4818281845795,
+          "joint_nees_mean_9d": 120.805416097854,
+          "position_95pct_ellipsoid_coverage": 0.06111566858080394,
+          "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Uses recorded truth orientation; legacy captures use identity."
+        },
+        "sessions": 1,
+        "gpu": "PASS",
+        "rolling_deskew": "NOT_VALIDATED",
+        "accuracy_thresholds": "Reference targets only; exceedances do not block phase two. PASS is not effectiveness or stage acceptance."
+      }
+    },
+    {
+      "run": "20261022T050251Z_143",
+      "fuse": false,
+      "samples": 4876,
+      "segments": [
+        {
+          "truth_x_interval_m": [
+            200,
+            600
+          ],
+          "samples": 826,
+          "position_rmse_xyz_m": [
+            268.359669909305,
+            1.4460044715773224,
+            1.9068751865734581
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            600,
+            1200
+          ],
+          "samples": 1350,
+          "position_rmse_xyz_m": [
+            1683.7249356712462,
+            24.293915071794373,
+            3.032399557864578
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            1200,
+            1800
+          ],
+          "samples": 1350,
+          "position_rmse_xyz_m": [
+            2586.071814250247,
+            35.80936960635354,
+            4.338367576098015
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            1800,
+            2351
+          ],
+          "samples": 1350,
+          "position_rmse_xyz_m": [
+            3695.5965899273824,
+            49.19423443693024,
+            19.99876118477195
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            300,
+            2300
+          ],
+          "samples": 4450,
+          "position_rmse_xyz_m": [
+            2509.2203574891087,
+            35.483032412054435,
+            10.502051644126132
+          ]
+        }
+      ],
+      "position_rmse_xyz_m": [
+        2535.7437851280374,
+        34.479331699672954,
+        10.91355560423616
+      ],
+      "velocity_rmse_xyz_mps": [
+        11.1957049515361,
+        0.4212039207654363,
+        0.4551476287583195
+      ],
+      "maximum_abs_error_xyz_m": [
+        4070.381583067328,
+        73.92477651548502,
+        245.3700826188121
+      ],
+      "maximum_interframe_displacement_xyz_m": [
+        789.02629627632,
+        33.18601146103512,
+        248.60278934146032
+      ],
+      "rss_max_kib": 311664,
+      "device_max_bytes": 1261830144,
+      "report": {
+        "scope": "phase2_iteration_snapshot_gpu",
+        "estimator_mode": "record_only",
+        "accuracy_acceptance_scope": "phase2_accuracy_reference_only",
+        "result": "PASS",
+        "failures": [],
+        "accuracy_reference_exceedances": [],
+        "result_scope": "single_run_contracts_not_system_effectiveness",
+        "stage_acceptance": "NOT_ASSESSED",
+        "evaluation_policy": "representative_phase2_2026_10_22",
+        "metrics": {
+          "entrance": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "transition": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "degenerate": {
+            "samples": 4979,
+            "position_rmse_m": 2509.633602466343,
+            "axial_p95_m": 3824.997983993138,
+            "axial_max_m": 4070.381583067328
+          }
+        },
+        "position_rmse_m": 2509.633602466343,
+        "optimized_output_observed": true,
+        "attitude_p95_deg": 4.8046437412442105,
+        "processing_p95_ms": 33.1836,
+        "sim_time_latency_p95_s": 0.035,
+        "wall_end_to_end_p95_s": 0.039075203,
+        "actual_input_hz": {
+          "imu": 199.9996772605208,
+          "cloud": 9.99998386302604,
+          "uwb": 77.69387462539451,
+          "clock": 199.9996772605208
+        },
+        "delivery_profile": false,
+        "delivered_input_verified": true,
+        "frozen_input_verified": true,
+        "max_vehicle_states": 101,
+        "simulation_runtime": {
+          "simulation_s": 500.0,
+          "input_prepare_s": 0.001210158,
+          "startup_buffer_records": 5,
+          "startup_buffer_bytes": 408294,
+          "wall_s": 500.00080685,
+          "real_time_factor": 0.9999983863026041,
+          "peak_rss_kib": 83248,
+          "scan_model": "snapshot",
+          "input_mode": "frozen_replay",
+          "published_counts": {
+            "imu": 100000,
+            "cloud": 5000,
+            "uwb": 38847,
+            "clock": 100000
+          },
+          "delivery_queue_peak": 1
+        },
+        "delivery_audit": null,
+        "raw_counts": {
+          "imu": 100000,
+          "cloud": 5000,
+          "uwb": 38847,
+          "clock": 100000
+        },
+        "covariance_diagnostics": {
+          "samples": 4979,
+          "position_nees_mean_3d": 14887.311716897764,
+          "joint_nees_mean_9d": 71099.83669342865,
+          "position_95pct_ellipsoid_coverage": 0.01948182365936935,
+          "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Uses recorded truth orientation; legacy captures use identity."
+        },
+        "sessions": 1,
+        "gpu": "PASS",
+        "rolling_deskew": "NOT_VALIDATED",
+        "accuracy_thresholds": "Reference targets only; exceedances do not block phase two. PASS is not effectiveness or stage acceptance."
+      }
+    }
+  ],
+  "outage_intervals": [
+    {
+      "measurement_interval_s": [
+        21,
+        26
+      ],
+      "samples": 50,
+      "position_rmse_xyz_m": [
+        0.22575899042365952,
+        0.05177815878476757,
+        0.2144005665255904
+      ],
+      "maximum_abs_position_error_xyz_m": [
+        0.46697193811769466,
+        0.05274589189911116,
+        0.27280038798016726
+      ],
+      "last_velocity_error_xyz_mps": [
+        -0.17724371636923575,
+        -0.001885639439302808,
+        0.03407981914057906
+      ]
+    },
+    {
+      "measurement_interval_s": [
+        41,
+        61
+      ],
+      "samples": 200,
+      "position_rmse_xyz_m": [
+        5.9782371194812765,
+        0.055512069736416814,
+        0.5769320694033185
+      ],
+      "maximum_abs_position_error_xyz_m": [
+        14.449341841375372,
+        0.059312637727677,
+        1.0735099356341642
+      ],
+      "last_velocity_error_xyz_mps": [
+        -1.80280183759095,
+        -0.005354838795124111,
+        0.06349580314520124
+      ]
+    }
+  ],
+  "pressure_contract": {
+    "scope": "handbook_8_1_pressure_behavior_not_nominal_accuracy_or_stage_acceptance",
+    "contract_result": "PASS",
+    "contract_failures": [],
+    "original_report_result": "PASS",
+    "original_report_failures": [],
+    "nominal_accuracy_comparison": {
+      "result": "FAIL",
+      "scope": "reference_targets_only_not_phase2_acceptance",
+      "exceedances": [
+        "known-map axial max >1.0m",
+        "known-map position RMSE >0.30m"
+      ]
+    },
+    "outages": [
+      {
+        "elapsed_interval_s": [
+          20,
+          25
+        ],
+        "recovery_one_second_bins": [
+          {
+            "seconds_after_restore": 0,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.29048193366461333,
+              "position_max_m": 0.5050902140080265,
+              "axial_max_m": 0.4846585463346855,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 57,
+            "measurement_sigma_normalized_innovation_rms": 1.8187047814156605
+          },
+          {
+            "seconds_after_restore": 1,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.18512356759553866,
+              "position_max_m": 0.24340711561666725,
+              "axial_max_m": 0.043222647414722815,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 58,
+            "measurement_sigma_normalized_innovation_rms": 1.2060530548579025
+          },
+          {
+            "seconds_after_restore": 2,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.0907142171153025,
+              "position_max_m": 0.17105266522955967,
+              "axial_max_m": 0.05694626381779244,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 59,
+            "measurement_sigma_normalized_innovation_rms": 1.0423203804559604
+          },
+          {
+            "seconds_after_restore": 3,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.09084905995888719,
+              "position_max_m": 0.11364410243790209,
+              "axial_max_m": 0.0716948156248236,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 57,
+            "measurement_sigma_normalized_innovation_rms": 1.0296855728701106
+          },
+          {
+            "seconds_after_restore": 4,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.1420024132064842,
+              "position_max_m": 0.18321730223797972,
+              "axial_max_m": 0.07029183284760165,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 57,
+            "measurement_sigma_normalized_innovation_rms": 1.1725812821067818
+          },
+          {
+            "seconds_after_restore": 5,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.10930910916865122,
+              "position_max_m": 0.13972512094138428,
+              "axial_max_m": 0.05022713712219229,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 57,
+            "measurement_sigma_normalized_innovation_rms": 1.0637415843395717
+          },
+          {
+            "seconds_after_restore": 6,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.10599550064256233,
+              "position_max_m": 0.15926422797284978,
+              "axial_max_m": 0.043915856913486095,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 59,
+            "measurement_sigma_normalized_innovation_rms": 1.0941687060462815
+          },
+          {
+            "seconds_after_restore": 7,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.20989817572057504,
+              "position_max_m": 0.25220814877565395,
+              "axial_max_m": 0.04961952735840214,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 58,
+            "measurement_sigma_normalized_innovation_rms": 0.8513241645897232
+          },
+          {
+            "seconds_after_restore": 8,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.22599590533239974,
+              "position_max_m": 0.25487026080671177,
+              "axial_max_m": 0.05335279773680668,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 57,
+            "measurement_sigma_normalized_innovation_rms": 1.1200702135404756
+          },
+          {
+            "seconds_after_restore": 9,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.11822584780736486,
+              "position_max_m": 0.1697022045577088,
+              "axial_max_m": 0.04263011943089623,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 57,
+            "measurement_sigma_normalized_innovation_rms": 0.9112703803441516
+          },
+          {
+            "seconds_after_restore": 10,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.10240758680103952,
+              "position_max_m": 0.12648762833807134,
+              "axial_max_m": 0.03676928419531578,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 58,
+            "measurement_sigma_normalized_innovation_rms": 1.1044444460860832
+          },
+          {
+            "seconds_after_restore": 11,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.07480866844867538,
+              "position_max_m": 0.0938423355725487,
+              "axial_max_m": 0.05406971096510915,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 59,
+            "measurement_sigma_normalized_innovation_rms": 1.0398271326707305
+          },
+          {
+            "seconds_after_restore": 12,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.07882645701197837,
+              "position_max_m": 0.08411628769266097,
+              "axial_max_m": 0.06123491165271844,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 57,
+            "measurement_sigma_normalized_innovation_rms": 1.1090553522764444
+          },
+          {
+            "seconds_after_restore": 13,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.11784335679400718,
+              "position_max_m": 0.1482987485614467,
+              "axial_max_m": 0.064288734897616,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 57,
+            "measurement_sigma_normalized_innovation_rms": 1.0732125182468286
+          },
+          {
+            "seconds_after_restore": 14,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.0953544333315306,
+              "position_max_m": 0.14756311080103401,
+              "axial_max_m": 0.06998968276877804,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 57,
+            "measurement_sigma_normalized_innovation_rms": 1.0677251077305903
+          }
+        ],
+        "outage": {
+          "samples": 50,
+          "position_rmse_m": 0.3156195532769551,
+          "position_max_m": 0.488972961121307,
+          "axial_max_m": 0.46697193811769466,
+          "states": {
+            "DEGRADED": 50
+          }
+        },
+        "after_restore_until_next_outage": {
+          "samples": 150,
+          "position_rmse_m": 0.14896685381338276,
+          "position_max_m": 0.5050902140080265,
+          "axial_max_m": 0.4846585463346855,
+          "states": {
+            "DEGRADED": 150
+          }
+        },
+        "recovery_deadline_stamp": 36.1,
+        "first_tracking_after_restore_s": null,
+        "position_error_at_first_tracking_m": null,
+        "sustained_1s_position_0_30m_band_return_s": 0.10000000000000142
+      },
+      {
+        "elapsed_interval_s": [
+          40,
+          60
+        ],
+        "recovery_one_second_bins": [
+          {
+            "seconds_after_restore": 0,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 4.68303373377194,
+              "position_max_m": 14.726476068322107,
+              "axial_max_m": 14.686646490398175,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 76,
+            "measurement_sigma_normalized_innovation_rms": 47.84924444735269
+          },
+          {
+            "seconds_after_restore": 1,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.45712784519271354,
+              "position_max_m": 0.48458185174959606,
+              "axial_max_m": 0.049649195510426125,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 77,
+            "measurement_sigma_normalized_innovation_rms": 1.164330953362129
+          },
+          {
+            "seconds_after_restore": 2,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.5231972708511256,
+              "position_max_m": 0.5871019662377507,
+              "axial_max_m": 0.06851863180298778,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 77,
+            "measurement_sigma_normalized_innovation_rms": 1.2243068831010084
+          },
+          {
+            "seconds_after_restore": 3,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.5795840381560229,
+              "position_max_m": 0.6292887723097615,
+              "axial_max_m": 0.059995202194386366,
+              "states": {
+                "DEGRADED": 9,
+                "LOST": 1
+              }
+            },
+            "accepted_ta_count": 78,
+            "measurement_sigma_normalized_innovation_rms": 1.2289809767038662
+          },
+          {
+            "seconds_after_restore": 4,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.6061299488379253,
+              "position_max_m": 0.6360500151114522,
+              "axial_max_m": 0.04860788086750745,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 76,
+            "measurement_sigma_normalized_innovation_rms": 1.1569353302944756
+          },
+          {
+            "seconds_after_restore": 5,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.6470245728508308,
+              "position_max_m": 0.6613522706568974,
+              "axial_max_m": 0.03902400822857999,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 77,
+            "measurement_sigma_normalized_innovation_rms": 1.1017702136447154
+          },
+          {
+            "seconds_after_restore": 6,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.6570842785032678,
+              "position_max_m": 0.6805677612086222,
+              "axial_max_m": 0.03202386497571297,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 76,
+            "measurement_sigma_normalized_innovation_rms": 1.2262879934078965
+          },
+          {
+            "seconds_after_restore": 7,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.6525071218364418,
+              "position_max_m": 0.6640828623660829,
+              "axial_max_m": 0.04568543360437616,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 78,
+            "measurement_sigma_normalized_innovation_rms": 1.049284750541192
+          },
+          {
+            "seconds_after_restore": 8,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.6489112610891739,
+              "position_max_m": 0.6610074911459971,
+              "axial_max_m": 0.04721019174320418,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 77,
+            "measurement_sigma_normalized_innovation_rms": 1.1344253327303342
+          },
+          {
+            "seconds_after_restore": 9,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.6800175815587688,
+              "position_max_m": 0.7087592350742139,
+              "axial_max_m": 0.04039033760142274,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 76,
+            "measurement_sigma_normalized_innovation_rms": 1.0265545783417989
+          },
+          {
+            "seconds_after_restore": 10,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.7401890770259435,
+              "position_max_m": 0.7663337710018688,
+              "axial_max_m": 0.04674312486298504,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 77,
+            "measurement_sigma_normalized_innovation_rms": 0.9743638853099618
+          },
+          {
+            "seconds_after_restore": 11,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.783722688841209,
+              "position_max_m": 0.7942046099292771,
+              "axial_max_m": 0.049489672292395426,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 77,
+            "measurement_sigma_normalized_innovation_rms": 1.167198205240011
+          },
+          {
+            "seconds_after_restore": 12,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.8170069189643889,
+              "position_max_m": 0.8549067442328138,
+              "axial_max_m": 0.041768239124110096,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 78,
+            "measurement_sigma_normalized_innovation_rms": 1.2051591605099836
+          },
+          {
+            "seconds_after_restore": 13,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.8977264900047379,
+              "position_max_m": 0.942713904740281,
+              "axial_max_m": 0.04216816761709197,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 76,
+            "measurement_sigma_normalized_innovation_rms": 1.02249200131009
+          },
+          {
+            "seconds_after_restore": 14,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.9463212636275757,
+              "position_max_m": 0.9584148432025926,
+              "axial_max_m": 0.04876232422884641,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 77,
+            "measurement_sigma_normalized_innovation_rms": 0.9155768709117058
+          },
+          {
+            "seconds_after_restore": 15,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 0.9693389694503025,
+              "position_max_m": 0.9877220962218092,
+              "axial_max_m": 0.04844848748825825,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 76,
+            "measurement_sigma_normalized_innovation_rms": 1.171234395099892
+          },
+          {
+            "seconds_after_restore": 16,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 1.023303239304286,
+              "position_max_m": 1.0615168910666446,
+              "axial_max_m": 0.03589096509040246,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 78,
+            "measurement_sigma_normalized_innovation_rms": 1.0860850052177144
+          },
+          {
+            "seconds_after_restore": 17,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 1.0927996849791182,
+              "position_max_m": 1.1109094067447758,
+              "axial_max_m": 0.052236745393770434,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 77,
+            "measurement_sigma_normalized_innovation_rms": 0.9995619286996295
+          },
+          {
+            "seconds_after_restore": 18,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 1.1161235854801839,
+              "position_max_m": 1.1236761165520832,
+              "axial_max_m": 0.05089308336596332,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 76,
+            "measurement_sigma_normalized_innovation_rms": 0.998179432397985
+          },
+          {
+            "seconds_after_restore": 19,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 1.1459944903469457,
+              "position_max_m": 1.1658709242903396,
+              "axial_max_m": 0.04453234803781925,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 77,
+            "measurement_sigma_normalized_innovation_rms": 1.0714030256585911
+          },
+          {
+            "seconds_after_restore": 20,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 1.1869420969757538,
+              "position_max_m": 1.2022952771790423,
+              "axial_max_m": 0.039457848667439066,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 77,
+            "measurement_sigma_normalized_innovation_rms": 1.1080087350952288
+          },
+          {
+            "seconds_after_restore": 21,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 1.2315838630162792,
+              "position_max_m": 1.251796132352866,
+              "axial_max_m": 0.025204132629824016,
+              "states": {
+                "DEGRADED": 9,
+                "LOST": 1
+              }
+            },
+            "accepted_ta_count": 78,
+            "measurement_sigma_normalized_innovation_rms": 1.2041998039670958
+          },
+          {
+            "seconds_after_restore": 22,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 1.285644750431212,
+              "position_max_m": 1.3215103957178447,
+              "axial_max_m": 0.027487416827739253,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 76,
+            "measurement_sigma_normalized_innovation_rms": 0.8900495145498929
+          },
+          {
+            "seconds_after_restore": 23,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 1.3529448551754846,
+              "position_max_m": 1.3732363572320696,
+              "axial_max_m": 0.042641722629582546,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 77,
+            "measurement_sigma_normalized_innovation_rms": 1.1744097720411704
+          },
+          {
+            "seconds_after_restore": 24,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 1.4023287821229222,
+              "position_max_m": 1.4173221430143068,
+              "axial_max_m": 0.05300425206246473,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 76,
+            "measurement_sigma_normalized_innovation_rms": 1.0829431973123098
+          },
+          {
+            "seconds_after_restore": 25,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 1.4189991600625371,
+              "position_max_m": 1.4271507968143078,
+              "axial_max_m": 0.059725976351387544,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 78,
+            "measurement_sigma_normalized_innovation_rms": 1.1419821981112428
+          },
+          {
+            "seconds_after_restore": 26,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 1.4567559823700966,
+              "position_max_m": 1.4772569465479655,
+              "axial_max_m": 0.05210536262802634,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 77,
+            "measurement_sigma_normalized_innovation_rms": 1.0233949081095637
+          },
+          {
+            "seconds_after_restore": 27,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 1.4828096200393255,
+              "position_max_m": 1.4931635350499282,
+              "axial_max_m": 0.022507453345156136,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 76,
+            "measurement_sigma_normalized_innovation_rms": 0.9751692043717958
+          },
+          {
+            "seconds_after_restore": 28,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 1.5018064014587067,
+              "position_max_m": 1.5067592506875362,
+              "axial_max_m": 0.02863463770211183,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 77,
+            "measurement_sigma_normalized_innovation_rms": 0.9355628903252533
+          },
+          {
+            "seconds_after_restore": 29,
+            "navigation": {
+              "samples": 10,
+              "position_rmse_m": 1.5319986941474733,
+              "position_max_m": 1.55070160336767,
+              "axial_max_m": 0.03683272068781207,
+              "states": {
+                "DEGRADED": 10
+              }
+            },
+            "accepted_ta_count": 77,
+            "measurement_sigma_normalized_innovation_rms": 0.8602208199991989
+          }
+        ],
+        "outage": {
+          "samples": 200,
+          "position_rmse_m": 6.006267664643011,
+          "position_max_m": 14.489255343163993,
+          "axial_max_m": 14.449341841375372,
+          "states": {
+            "DEGRADED": 200
+          }
+        },
+        "after_restore_until_next_outage": {
+          "samples": 4400,
+          "position_rmse_m": 1.1684640098634085,
+          "position_max_m": 14.726476068322107,
+          "axial_max_m": 14.686646490398175,
+          "states": {
+            "DEGRADED": 4392,
+            "LOST": 8
+          }
+        },
+        "recovery_deadline_stamp": 71.1,
+        "first_tracking_after_restore_s": null,
+        "position_error_at_first_tracking_m": null,
+        "sustained_1s_position_0_30m_band_return_s": 84.30000000000001
+      }
+    ],
+    "output_coverage": {
+      "expected_epochs": 4920,
+      "valid_epochs": 4874,
+      "availability": 0.990650406504065,
+      "states": {
+        "TRACKING": 0,
+        "DEGRADED": 4874,
+        "LOST": 8,
+        "INITIALIZING": 0,
+        "MISSING": 38,
+        "INVALID": 0
+      },
+      "duplicate_epochs": 0,
+      "unexpected_epochs": 0,
+      "initialization_sensor_s": 8.0,
+      "definition": "finite unit-quaternion/cov_valid TRACKING or DEGRADED output at each 10 Hz epoch; DEGRADED is not an accuracy claim"
+    },
+    "nlos_navigation": null,
+    "anchor_outage_navigation": [],
+    "interpretation": "Pressure errors and failures remain visible. One-second per-frame error band is descriptive, not a replacement for RMSE or a new acceptance gate. No trajectory alignment. TRACKING is operational, not a calibrated error guarantee. Innovation RMS uses measurement sigma only, not predictive covariance or a chi-square consistency test; small residuals do not prove accurate navigation.",
+    "auditor_sha256": "5d5c0b3a2cd6b5dfcdc5dd67cf156919ef253ce6e690b33b03477dd429e796ea"
+  },
+  "covariance_limit": "local linearized posterior is overconfident; not a calibrated global confidence certificate",
+  "failure_preserved": "20261022T050121Z_605: first /clock publication missed 250 ms deadline, no sensor/odometry output; one unchanged controlled rerun completed; root cause not established",
+  "completion_integrity_audit": {
+    "result": "PASS",
+    "successful_runs": 6,
+    "same_odometry_binary": true,
+    "all_recorded_artifact_hashes_checked": true,
+    "estimator_truth_subscription_absent": true,
+    "input_contract_violations": false,
+    "gpu_validated": true,
+    "rolling_not_validated": true,
+    "post_bootstrap_availability_at_least_99pct": true,
+    "maximum_output_gap_at_most_0_100001s": true,
+    "joint_covariance_finite_symmetric_positive": true,
+    "minimum_joint_eigenvalue_by_run_label": {
+      "init200": 5.006571576576812e-08,
+      "init1000": 5.361227260759648e-08,
+      "init1800": 5.478673311727404e-08,
+      "on": 4.634082765291959e-08,
+      "outages": 4.5743876682821584e-08
+    },
+    "maximum_covariance_asymmetry": 1.1102230246251565e-16,
+    "scope": "integrity/output checks only; overconfidence remains disclosed; no runtime stage_acceptance rewritten"
+  }
+}

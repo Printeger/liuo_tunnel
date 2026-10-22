@@ -1,10 +1,12 @@
 # LIUO Tunnel
 
-第二阶段先验证方案有效性：0.30 m及其他位置/姿态精度数字仅作参考，十种子、完整故障矩阵和严格统计达标后移。新运行报告分别列出实际检查失败与`accuracy_reference_exceedances`；单次PASS不等于阶段完成，仍需代表性初始化、同输入全程ON/OFF和断流状态证据。单次调查失败不结束整个Goal，历史FAIL保留。
+第二阶段按用户修订范围完成，结论仅为**代表性仿真范围内系统完成且验证有效**。使用原始GPU VGICP、IMU和UWB同图紧耦合；三个内部起点、冻结输入全程ON/OFF及5s/20s断流已有证据。正式配置、命令、run路径与限制见[交付报告](docs/phase2_representative_results.md)，历史失败见[逐轮记录](docs/phase2_acceptance.md)。
 
-部署与初始化以 [2026-10-22 用户确认合同](docs/spec/deployment_initialization_contract.md) 为准：支持任意隧道内部位置启动及无人机平台；已知外参、静止启动、基站墙侧/有符号横向偏距可用，基站高度与首次前后顺序待估，粗高度仅作初值。没有固定发车区、机器人高度或精确绝对航向。该需求尚未全部实现，阶段二仍未验收。
+正常融合位置RMSE1.034m，高度仍弱；20秒断流仍有明显速度/位置漂移，尚不能认证恢复。局部协方差过度自信未解决。0.30m等数值保留为参考目标，未放宽噪声或伪造信息。单次PASS不是阶段或部署认证；未验证任意启动、完整无人机、真实Mid-360/rolling、十种子及全面部署。
 
-Independent ROS 2 Jazzy GPU LiDAR–IMU project. Phase one is accepted under the snapshot scope; phase two is in development and **not accepted**. The current known-map path adds raw UWB factors to the same GPU VGICP/IMU fixed-lag graph. See [phase-two results](docs/phase2_acceptance.md) for failures and remaining gates. The original phase-one 0.603× bottleneck has been repaired and short live runs reach 1×; this does not establish long-run fused accuracy or campaign acceptance.
+部署条件以[用户确认合同](docs/spec/deployment_initialization_contract.md)为准：没有固定起点/高度/航向；已知外参和静止启动可用。当前为已知不确定地图实验，未知基站自标定属于未实施的第三阶段。Independent ROS 2 Jazzy project; phase one and representative phase two use the documented GPU snapshot scope.
+
+以下为基础构建及历史工具入口；当前第二阶段请使用交付报告中的冻结配置与原包命令。
 
 ```bash
 cd /home/dev/code/ws_tunnel/src/liuo_tunnel
@@ -161,7 +163,7 @@ seed 0 始终保留为代表性完整输入；其余 seed 的已完成复用组�
 0/400/800/1200/1600/2000/2400 m；任意闭区间 1 km 最多 3 个。墙侧/高度
 按 handbook 5.1 的四角循环生成仿真，不能作为首次自标定的高度或顺序输入。旧 49 基站结果仅作诊断，不能用于
 部署验收。当前只允许单 seed 代表性调查，`run_campaign.py` 拒绝多 seed；
-尚未完成稀疏完整路线 ON/OFF 与断流机制验证，不启动十种子 campaign。
+当前已完成代表性稀疏全程ON/OFF与断流行为验证，见交付报告；十种子campaign仍未启动。
 
 运行 owner 的 `--wall-timeout` 默认 max(120, duration/rate*1.5+60) 秒；
 `--no-progress-timeout` 默认 30 秒，分别监测仿真时钟日志和估计器处理日志
