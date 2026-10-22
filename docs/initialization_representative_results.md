@@ -124,3 +124,20 @@ export LIUO_RUN_ROOT="$PWD/log"
 
 
 最终冻结版本db1c1ad重新验证三个既有内部输入：200m/1000m/1800m分别为20261022T045159Z_885、20261022T051133Z_448、20261022T051204Z_138，均完成且全部DEGRADED，严格原始输入核对通过。完整最新证据与第二阶段范围结论见[交付报告](phase2_representative_results.md)；以上旧失败及N12问题原样保留，不能拿历史局限替代当前结果。
+
+## 本轮范围核对与实物证据复核（HEAD fe76950）
+
+用户再次限定本轮为第二阶段几何关联与有限多候选初始化。实际工作区已有上述生产实现和成功短程验证，而非只有旧失败；本轮不重新开发，不推进第三阶段地图接口，也不追加全程/断流。当前代码核对确认已知地图模式仍使用实际墙点云、有符号安装资料、四候选原始图求解及同向分离门控；第三阶段 self_calibrate 分支不用于此结论。
+
+本轮实际执行了初始化相关目标构建和21项候选测试，均PASS：
+
+```bash
+cmake --build build/liuo_tunnel --target liuo_tunnel_node test_initialization_candidates -j2
+./build/liuo_tunnel/test_initialization_candidates
+```
+
+日志：`log/initialization-scope-current-build.txt`、`log/initialization-scope-current-tests.txt`。这是限定目标构建，不是全项目构建通过。开始时已有未提交的calibrated_map.hpp、test_calibrated_map.cpp和CMake测试注册；其此前全项目构建失败记录保留在`log/phase3-map-interface-build.txt`。未修改、暂存或提交这些范围外文件。运行器要求干净工作树，故没有绕过检查执行计划中的当前HEAD短包回放；不把既有运行标成当前二进制新运行。
+
+重新读取N11三个run的真实文件并计算SHA256，与initialization_latest_evidence.json逐项核对：分支CSV、报告、冻结配置、地图全部匹配；各自源MCAP及metadata.yaml也与frozen_input.json匹配。结果在`log/initialization-scope-evidence-recheck.json`。三个run各有stamp9和11两批完整四候选；实际轨迹分别80/65/82帧，全部DEGRADED。1800m分支原始CSV确认stamp11两个同向解z0=1.991449505874375/1.991449518867504，反向代价约106674.119，同向约87075.987；不是仅据旧报告或程序退出码作判断。
+
+当前有限范围结论仍为：已有实现及身份完整的代表性GPU证据支持本轮结束条件1，合法盆地保留、原错误高位分支未移交。此次新增的是当前组件回归和原始证据复核，没有新增传感器运行。没有注册到地图的地面/顶板高度，因此不宣称墙面本身完成竖直内外判定；高度后验过度自信、任意起点完整性、当前HEAD的GPU运行回归均未在本轮认证。现有Goal存储为第三阶段active，与本轮限定任务不同；本次不标记其complete，也不以本轮结果重新认证整个第二阶段。
