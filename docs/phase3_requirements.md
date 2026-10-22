@@ -1,6 +1,6 @@
 # 第三阶段任务需求：未知基站自标定与独立地图复用
 
-日期：2026-10-22（北京时间）。状态：需求已记录，尚未实施或验收。
+日期：2026-10-22（北京时间）。状态：持续开发中，局部自标定与独立短程复用已有实测，阶段尚未验收；证据见phase3_representative_results.md。
 本需求依据用户确认的下一阶段范围，覆盖 [handbook](development_handbook.md) 中原第三阶段的完整矩阵、rolling 和全面验收要求。启动文本见 [第三阶段 Goal prompt](phase3_goal_prompt.md)。
 
 ## 1. 目标与基线
