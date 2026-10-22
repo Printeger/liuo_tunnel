@@ -1,0 +1,195 @@
+{
+  "scope": "N13 same raw input, combined continuous-wall and equivalent coordinate implementation; not final ON/OFF or stage acceptance",
+  "runs": [
+    {
+      "run": "20261022T041540Z_602",
+      "source": {
+        "git_commit": "2e8f424920465bf89126952a158a228de530d8e5",
+        "git_worktree_clean": true
+      },
+      "comparison_interval": [
+        13,
+        500.9
+      ],
+      "samples": 4880,
+      "position_rmse_xyz_m": [
+        0.04525468851988677,
+        1.0794811094686476,
+        4.109125536407017
+      ],
+      "velocity_rmse_xyz_mps": [
+        0.027906724697587645,
+        0.02116932912983734,
+        0.04478150918099162
+      ],
+      "maximum_abs_error_xyz_m": [
+        0.0995761947669962,
+        4.187197777794799,
+        7.904171050854221
+      ],
+      "state_reasons": {
+        "DEGRADED:POSITION_POSTERIOR_WEAK": 102,
+        "TRACKING:JOINT_LIDAR_IMU_UWB": 4765,
+        "LOST:UWB_POSTFIT_INCONSISTENT": 13
+      },
+      "segments": [
+        {
+          "truth_x_interval_m": [
+            200,
+            600
+          ],
+          "samples": 830,
+          "rmse_xyz_m": [
+            0.03724111624812939,
+            0.23210779363264414,
+            0.7623031029767239
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            600,
+            1200
+          ],
+          "samples": 1350,
+          "rmse_xyz_m": [
+            0.038799474655869894,
+            0.47393365508720614,
+            1.584794980078381
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            1200,
+            1800
+          ],
+          "samples": 1350,
+          "rmse_xyz_m": [
+            0.05998778629150304,
+            1.0343840335646393,
+            3.9320742864947635
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            1800,
+            2351
+          ],
+          "samples": 1350,
+          "rmse_xyz_m": [
+            0.038032516161808985,
+            1.6984061608542589,
+            6.534965689786848
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            300,
+            2300
+          ],
+          "samples": 4450,
+          "rmse_xyz_m": [
+            0.046419466676709424,
+            0.970653102064925,
+            4.172236983689918
+          ]
+        }
+      ],
+      "report_sha256": "116ec2667286ed1808d46b92af9729d0726f1684bdbfa144809de61f934f7328"
+    },
+    {
+      "run": "20261022T043848Z_336",
+      "source": {
+        "git_commit": "4d97ba38d13e7108e97ad4536077adb69928a978",
+        "git_worktree_clean": true
+      },
+      "comparison_interval": [
+        13,
+        500.9
+      ],
+      "samples": 4880,
+      "position_rmse_xyz_m": [
+        0.04068658120272824,
+        0.04493441280638511,
+        1.0318624662182432
+      ],
+      "velocity_rmse_xyz_mps": [
+        0.02721026566332057,
+        0.005305320917210479,
+        0.03196087065655838
+      ],
+      "maximum_abs_error_xyz_m": [
+        0.11214019585395363,
+        0.0915038707837872,
+        2.867708637780159
+      ],
+      "state_reasons": {
+        "DEGRADED:POSITION_POSTERIOR_WEAK": 83,
+        "TRACKING:JOINT_LIDAR_IMU_UWB": 4789,
+        "LOST:UWB_POSTFIT_INCONSISTENT": 8
+      },
+      "segments": [
+        {
+          "truth_x_interval_m": [
+            200,
+            600
+          ],
+          "samples": 830,
+          "rmse_xyz_m": [
+            0.03566216612949934,
+            0.04723754656591334,
+            0.5767291873907915
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            600,
+            1200
+          ],
+          "samples": 1350,
+          "rmse_xyz_m": [
+            0.03632226395866468,
+            0.03331835567294783,
+            1.06890205670109
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            1200,
+            1800
+          ],
+          "samples": 1350,
+          "rmse_xyz_m": [
+            0.05031685150535154,
+            0.06214736571609871,
+            1.3055937649728102
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            1800,
+            2351
+          ],
+          "samples": 1350,
+          "rmse_xyz_m": [
+            0.036755258426895386,
+            0.030893055990371135,
+            0.8928685195682404
+          ]
+        },
+        {
+          "truth_x_interval_m": [
+            300,
+            2300
+          ],
+          "samples": 4450,
+          "rmse_xyz_m": [
+            0.04155644104020271,
+            0.04560323784346834,
+            1.0335709066478564
+          ]
+        }
+      ],
+      "report_sha256": "759ce56ccfe3d0e983b5e0c856b2f2f78c4f4f6da7ee6fece78509254fb42b5f"
+    }
+  ]
+}
