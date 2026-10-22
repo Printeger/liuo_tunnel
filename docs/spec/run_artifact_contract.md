@@ -28,6 +28,18 @@ Phase-one UWB is `RECORD_ONLY`: no associated graph keys, residual, innovation o
 
 Build/test tooling uses ignored `log/build`, `log/test` and `log/tooling` directories, which are not runtime runs and are ineligible for retention. Test-created temporary directories are automatically cleaned. Frozen failure evidence remains unchanged; later reports must explicitly supersede an incorrect historical interpretation instead of rewriting it.
 
+Phase-two evaluation policy (user revision 2026-10-22): numerical position,
+axial and attitude target exceedances, including the entrance sanity target,
+are recorded in `accuracy_reference_exceedances`, not run-blocking failures.
+The deferred full campaign does not inject an unconditional failure. Data,
+graph, finite-output, timing and resource checks remain applicable. A new
+report's PASS and the owner's corresponding acceptance flag mean only that
+single-run checks passed (`result_scope`); `stage_acceptance=NOT_ASSESSED`
+explicitly excludes system effectiveness or phase completion. Those require
+representative initialization, frozen full-route ON/OFF and outage evidence.
+Pressure and long-run summaries preserve reference exceedances. Legacy
+reports keep their original verdicts and are never silently rewritten.
+
 Phase-two frozen input: `export/capture/raw` contains the original MCAP messages,
 including measurement identities and clock resets, with a monotonic playback
 schedule. `metadata/manifests/captured_inputs.json` binds file SHA256;

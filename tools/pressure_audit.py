@@ -18,6 +18,19 @@ ACCURACY_FAILURES = {
 PENDING = "phase2 long-run/paired-campaign acceptance not yet implemented"
 
 
+def accuracy_comparison(report):
+    # Support immutable legacy reports and the revised reference-only schema.
+    exceedances = sorted(
+        {f for f in report["failures"] if f in ACCURACY_FAILURES}
+        | set(report.get("accuracy_reference_exceedances", []))
+    )
+    return {
+        "result": "FAIL" if exceedances else "PASS",
+        "scope": "reference_targets_only_not_phase2_acceptance",
+        "exceedances": exceedances,
+    }
+
+
 def interval(records, begin, end):
     selected = [r for r in records if begin <= r["stamp"] < end]
     if not selected:
@@ -202,10 +215,7 @@ def audit(run):
         "contract_failures": failures,
         "original_report_result": report["result"],
         "original_report_failures": report["failures"],
-        "nominal_accuracy_comparison": {
-            "result": "FAIL" if any(f in ACCURACY_FAILURES for f in report["failures"]) else "PASS",
-            "exceedances": [f for f in report["failures"] if f in ACCURACY_FAILURES],
-        },
+        "nominal_accuracy_comparison": accuracy_comparison(report),
         "outages": outages,
         "output_coverage": coverage,
         "nlos_navigation": (

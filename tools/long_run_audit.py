@@ -194,8 +194,8 @@ def audit(run, require_return=False):
     pending = "phase2 long-run/paired-campaign acceptance not yet implemented"
     other_failures = [x for x in report["failures"] if x != pending]
     check(not other_failures, "per-run failures: " + repr(other_failures))
-    # A known pending campaign marker is reported separately, never interpreted
-    # as stage acceptance. All physical/accuracy failures above remain failures.
+    # Preserve legacy failures. Revised reports separate reference accuracy
+    # exceedances; neither this continuity audit nor a run PASS certifies a stage.
     truth = read_rows(run / "export/simulation/truth.csv")
     trajectory = read_rows(run / "export/odometry/trajectory.csv")
     graph = read_rows(run / "export/odometry/graph.csv")
@@ -273,6 +273,8 @@ def audit(run, require_return=False):
         "result": "FAIL" if failures else "PASS",
         "failures": failures,
         "campaign_still_pending": pending in report["failures"],
+        "stage_acceptance": "NOT_ASSESSED",
+        "accuracy_reference_exceedances": report.get("accuracy_reference_exceedances", []),
         "continuity": continuity_result,
         "route": route,
         "attitude_distributions": attitude_distributions(trajectory),

@@ -1,5 +1,7 @@
 # LIUO Tunnel
 
+第二阶段先验证方案有效性：0.30 m及其他位置/姿态精度数字仅作参考，十种子、完整故障矩阵和严格统计达标后移。新运行报告分别列出实际检查失败与`accuracy_reference_exceedances`；单次PASS不等于阶段完成，仍需代表性初始化、同输入全程ON/OFF和断流状态证据。单次调查失败不结束整个Goal，历史FAIL保留。
+
 部署与初始化以 [2026-10-22 用户确认合同](docs/spec/deployment_initialization_contract.md) 为准：支持任意隧道内部位置启动及无人机平台；已知外参、静止启动、基站墙侧/有符号横向偏距可用，基站高度与首次前后顺序待估，粗高度仅作初值。没有固定发车区、机器人高度或精确绝对航向。该需求尚未全部实现，阶段二仍未验收。
 
 Independent ROS 2 Jazzy GPU LiDAR–IMU project. Phase one is accepted under the snapshot scope; phase two is in development and **not accepted**. The current known-map path adds raw UWB factors to the same GPU VGICP/IMU fixed-lag graph. See [phase-two results](docs/phase2_acceptance.md) for failures and remaining gates. The original phase-one 0.603× bottleneck has been repaired and short live runs reach 1×; this does not establish long-run fused accuracy or campaign acceptance.
