@@ -117,3 +117,20 @@ TEST(Uwb, DeploymentAtMostThreeAnchorsInEveryClosedKilometre) {
     EXPECT_LE(count, 3);
   }
 }
+
+TEST(Physics, InternalStartAndIndependentBodyHeading) {
+  for (double yaw : {0., M_PI / 2, M_PI}) {
+    const Eigen::Vector3d start(1000, .8, 2);
+    auto stationary = initialized_motion(2, false, start, yaw);
+    EXPECT_LT((stationary.p - start).norm(), 1e-12);
+    EXPECT_LT(stationary.v.norm(), 1e-12);
+    auto m = initialized_motion(9, false, start, yaw);
+    auto before = initialized_motion(9 - 1e-5, false, start, yaw);
+    auto after = initialized_motion(9 + 1e-5, false, start, yaw);
+    EXPECT_LT((m.v - (after.p - before.p) / 2e-5).norm(), 1e-7);
+    EXPECT_LT((m.a - (after.v - before.v) / 2e-5).norm(), 1e-7);
+    EXPECT_LT((m.R * specific_force(m) + Eigen::Vector3d(0, 0, -9.80665) - m.a).norm(), 1e-12);
+    EXPECT_NEAR(Eigen::AngleAxisd(m.R).angle(), std::abs(yaw), 1e-12);
+    EXPECT_LT(m.omega.norm(), 1e-12);
+  }
+}

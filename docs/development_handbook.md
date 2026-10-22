@@ -498,3 +498,7 @@ bag 回放使用独立 `tunnel_replay.launch.py`：只启动估计器及唯一 b
 - [原始 idea](../../../docs/idea.md)、[demo 最新诊断](../../demo/docs/consistency/report.md)：研究动机、地图不确定性和模型失配证据；不直接继承其中的绝对精度承诺。
 - [GTSAM Pose3 官方文档](https://borglab.github.io/gtsam/pose3/)：Pose3 表示三维姿态与位置；实际因子扰动和协方差转换仍以锁定版本的源码与数值测试为准。
 - [gtsam_points 官方仓库](https://github.com/koide3/gtsam_points)：点云因子与优化器依赖的源码入口；不以不断变化的上游 HEAD 代替版本锁定。
+
+### 当前执行切片（用户授权，2026-10-22）
+
+本轮仅完成几何关联与有限候选初始化的实现及固定seed少量内部起点验证；全程ON/OFF、断流行为留待初始化代表性证据明确之后安排，不在本轮启动。安装横向资料采用显式来源/误差/共同直线参考的模拟输入，不承诺现场已有同等精度或注册地面高度。有限候选实现及证据见phase2_acceptance.md N5–N7；历史几何调查保留并标明后续实现。第二阶段仍未完成。

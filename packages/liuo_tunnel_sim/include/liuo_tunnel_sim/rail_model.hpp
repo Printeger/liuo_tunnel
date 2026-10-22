@@ -77,6 +77,14 @@ inline Motion rail_motion(double seconds, bool return_trip = false) {
   m.a.x() = -m.a.x();
   return m;
 }
+// Simulation-only representative starts; translation follows the existing world axis.
+// Body yaw is independent of travel direction (no nonholonomic assumption).
+inline Motion initialized_motion(double seconds, bool return_trip, const Eigen::Vector3d& start, double yaw) {
+  auto m = rail_motion(seconds, return_trip);
+  m.p += start - Eigen::Vector3d(0, 0, 1.2);
+  m.R = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+  return m;
+}
 // Adapted physical definition from quadToIapImuMsg, IAP quadrotor_simulator_so3.cpp @ fbccae168.
 inline Eigen::Vector3d specific_force(const Motion& m) {
   return m.R.transpose() * (m.a - Eigen::Vector3d(0, 0, -9.80665));

@@ -28,6 +28,9 @@ class CovarianceAnalysis(unittest.TestCase):
             result = summarize(Path(directory), [state], [truth], [cov], True)
             self.assertAlmostEqual(result["joint_nees_mean_9d"], math.pi**2 / 4 + 4)
             self.assertAlmostEqual(result["position_nees_mean_3d"], 0)
+            truth.update({k: state[k] for k in ["qx", "qy", "qz", "qw"]})
+            result = summarize(Path(directory), [state], [truth], [cov], True)
+            self.assertAlmostEqual(result["joint_nees_mean_9d"], 4)
             cov["xv_0_0"] = "-1"
             with self.assertRaises(Exception):
                 summarize(Path(directory), [state], [truth], [cov], True)

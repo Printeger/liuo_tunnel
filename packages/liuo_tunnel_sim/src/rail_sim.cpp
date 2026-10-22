@@ -28,6 +28,9 @@ public:
     if (!std::isfinite(rate) || rate <= 0 || rate > 1) throw std::runtime_error("rate must be in (0,1]; explicit reference playback only");
     reset_at = declare_parameter<double>("reset_at_s", -1);
     return_trip = declare_parameter<bool>("return_trip", false);
+    start = {declare_parameter<double>("start_x", 0), declare_parameter<double>("start_y", 0), declare_parameter<double>("start_z", 1.2)};
+    start_yaw = declare_parameter<double>("start_yaw", 0);
+    if (!start.allFinite() || !std::isfinite(start_yaw)) throw std::runtime_error("nonfinite simulation start");
     T_BL = liuo_tunnel::lidar_extrinsic(cfg);
     tag = liuo_tunnel::vector3(cfg.at("sensors").at("T_BU_translation"));
     session = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -51,7 +54,7 @@ public:
     wall_clock.open(logs.export_path("simulation/wall_clock.csv"));
     wall_clock << std::setprecision(16) << "session,stamp,scheduled_wall_ns,published_wall_ns\n";
     truth.open(logs.export_path("simulation/truth.csv"));
-    truth << std::setprecision(16) << "session,stamp,x,y,z,vx,vy,vz,available_ta_count,available_ta_ids\n";
+    truth << std::setprecision(16) << "session,stamp,x,y,z,vx,vy,vz,available_ta_count,available_ta_ids,qx,qy,qz,qw\n";
     uwblog.open(logs.export_path("simulation/uwb.csv"));
     uwblog << std::setprecision(16) << "session,sequence,stamp,a_type,a,b,true_range,range,variance\n";
     scheduling.open(logs.export_path("simulation/scheduling.csv"));
@@ -150,7 +153,7 @@ private:
       logger->warn("explicit simulation clock reset session={}", session);
     }
     double t = ticks * .005, ros_t = 1 + t;
-    auto m = rail_motion(t, return_trip);
+    auto m = initialized_motion(t, return_trip, start, start_yaw);
     rosgraph_msgs::msg::Clock clock;
     clock.clock = stamp(ros_t);
     capture(clock, "/clock");
@@ -239,8 +242,15 @@ private:
       odom.pose.pose.position.x = m.p.x();
       odom.pose.pose.position.y = m.p.y();
       odom.pose.pose.position.z = m.p.z();
-      odom.pose.pose.orientation.w = 1;
-      odom.twist.twist.linear.x = m.v.x();
+      const Eigen::Quaterniond rotation(m.R);
+      odom.pose.pose.orientation.x = rotation.x();
+      odom.pose.pose.orientation.y = rotation.y();
+      odom.pose.pose.orientation.z = rotation.z();
+      odom.pose.pose.orientation.w = rotation.w();
+      const Eigen::Vector3d body_velocity = m.R.transpose() * m.v;
+      odom.twist.twist.linear.x = body_velocity.x();
+      odom.twist.twist.linear.y = body_velocity.y();
+      odom.twist.twist.linear.z = body_velocity.z();
       capture(odom, "/sim/truth/odom");
       truth_pub->publish(odom);
       // Evaluation-only visibility: true 3-D range and the same physical LOS gate.
@@ -254,7 +264,7 @@ private:
         available_ids += std::to_string(i);
       }
       truth << session << ',' << ros_t << ',' << m.p.x() << ',' << m.p.y() << ',' << m.p.z() << ',' << m.v.x() << ',' << m.v.y() << ',' << m.v.z() << ',' << available_ta << ','
-            << available_ids << '\n';
+            << available_ids << ',' << rotation.x() << ',' << rotation.y() << ',' << rotation.z() << ',' << rotation.w() << '\n';
       timing << ros_t << ',' << scan.stats.render_latency_ms << ',' << scan.stats.dda_voxel_visits << ',' << scan.hits.size() << ',' << world_points << '\n';
     }
     if (ticks % 200 == 0) {
@@ -277,7 +287,7 @@ private:
     uint64_t samples;
   };
   void schedule(double t) {
-    auto m = rail_motion(t, return_trip);
+    auto m = initialized_motion(t, return_trip, start, start_yaw);
     Eigen::Vector3d tag_w = liuo_tunnel::tag_in_world(m.p, m.R, tag);
     // 9 TA-priority slots, then 1 AA-priority slot; oldest deadline within class.
     // The other class can use an otherwise idle slot. Never exceed 250 exchanges/s.
@@ -334,7 +344,8 @@ private:
   std::chrono::steady_clock::time_point startup = std::chrono::steady_clock::now(), simulation_started;
   nlohmann::json cfg;
   int seed = 0, loaded = -100;
-  double duration = 45, reset_at = -1, rate = 1;
+  double duration = 45, reset_at = -1, rate = 1, start_yaw = 0;
+  Eigen::Vector3d start{0, 0, 1.2};
   bool reset_done = false, return_trip = false;
   uint64_t ticks = 0, total_ticks = 0, exchange = 0, session = 1, sequence = 0;
   size_t world_points = 0;

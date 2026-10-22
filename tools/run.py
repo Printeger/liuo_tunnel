@@ -35,9 +35,18 @@ def watchdog_failure(elapsed, wall_budget, idle_seconds, idle_budget):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument(
-        "--delivery-profile", type=Path, help="explicit frozen-replay UWB transport fault profile"
+        "--delivery-profile",
+        type=Path,
+        help="explicit frozen-replay UWB transport fault profile",
     )
     p.add_argument("--duration", type=float, default=45)
+    p.add_argument(
+        "--sim-start",
+        type=float,
+        nargs=4,
+        metavar=("X", "Y", "Z", "YAW"),
+        help="simulation-only initial position [m] and body yaw [rad]; never estimator input",
+    )
     p.add_argument(
         "--wall-timeout",
         type=float,
@@ -65,7 +74,9 @@ def main():
     p.add_argument("--config", type=Path, default=ROOT / "packages/liuo_tunnel/config/phase1.json")
     p.add_argument("--map", type=Path, help="external oracle_map or surveyed_map JSON")
     p.add_argument(
-        "--replay", type=Path, help="completed source run with verified original MCAP capture"
+        "--replay",
+        type=Path,
+        help="completed source run with verified original MCAP capture",
     )
     p.add_argument(
         "--debug-throw",
@@ -75,7 +86,9 @@ def main():
     p.add_argument("--formal", action="store_true")
     p.add_argument("--diagnostic-capture", action="store_true")
     p.add_argument(
-        "--capture", action="store_true", help="freeze all original sensor messages once in MCAP"
+        "--capture",
+        action="store_true",
+        help="freeze all original sensor messages once in MCAP",
     )
     p.add_argument("--inject-failure", choices=["simulation", "odometry"])
     args = p.parse_args()
@@ -89,6 +102,16 @@ def main():
         p.error("delivery profile requires --replay")
     if args.replay and (args.capture or args.rate != 1.0):
         p.error("frozen replay requires 1x and cannot recapture")
+    if args.sim_start is not None:
+        if args.replay or args.return_trip or not all(math.isfinite(v) for v in args.sim_start):
+            p.error("--sim-start requires finite live outbound simulation parameters")
+        if not (
+            0 <= args.sim_start[0] <= 2300
+            and abs(args.sim_start[1]) < 2
+            and 0.3 < args.sim_start[2] < 4.5
+            and 0 < args.duration <= 20
+        ):
+            p.error("representative starts require interior positions and duration <=20s")
     if args.return_trip and args.replay:
         p.error("--return-trip changes live simulation only; replay preserves its source motion")
     if args.debug_throw and args.formal:
@@ -166,7 +189,8 @@ def main():
             manifest.update(retention_class="protected", retained_input_run_ids=[source.name])
             rd._atomic_write_json(manifest_path, manifest)
             shutil.copyfile(
-                source / "export/simulation/truth.csv", run / "export/simulation/truth.csv"
+                source / "export/simulation/truth.csv",
+                run / "export/simulation/truth.csv",
             )
         selected_backend = effective_config["odometry"]["backend"]
         map_path = None
@@ -218,7 +242,8 @@ def main():
                 "scan_model": "snapshot",
                 "reset_at_s": args.reset_at,
                 "return_trip": args.return_trip,
-                "motion": "outbound_and_reverse_return" if args.return_trip else "outbound",
+                "motion": ("outbound_and_reverse_return" if args.return_trip else "outbound"),
+                "simulation_start_xyz_yaw": args.sim_start or [0, 0, 1.2, 0],
                 "clock_start_s": 1,
                 "dt_s": 0.005,
                 "exchange_dt_s": 0.004,
@@ -253,7 +278,12 @@ def main():
             "binaries": {},
             "environment": {
                 k: env.get(k)
-                for k in ["AMENT_PREFIX_PATH", "LD_LIBRARY_PATH", "ROS_DOMAIN_ID", "ROS_LOG_DIR"]
+                for k in [
+                    "AMENT_PREFIX_PATH",
+                    "LD_LIBRARY_PATH",
+                    "ROS_DOMAIN_ID",
+                    "ROS_LOG_DIR",
+                ]
             },
             "commands": {},
         }
@@ -328,6 +358,9 @@ def main():
             "-p",
             f"capture:={str(args.capture).lower()}",
         ]
+        if args.sim_start is not None:
+            for key, value in zip(["start_x", "start_y", "start_z", "start_yaw"], args.sim_start):
+                commands["simulation"] += ["-p", f"{key}:={value}"]
         if frozen is not None:
             commands["simulation"] = [
                 sys.executable,
@@ -359,7 +392,11 @@ def main():
             f = open(run / f"runtime/{name}_console.log", "w")
             handles.append(f)
             children[name] = subprocess.Popen(
-                commands[name], env=env, stdout=f, stderr=subprocess.STDOUT, start_new_session=True
+                commands[name],
+                env=env,
+                stdout=f,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
             )
             identity["commands"][name] = commands[name]
             if name != "simulation":
@@ -397,7 +434,11 @@ def main():
                     maps = Path(f"/proc/{child.pid}/maps").read_text()
                     if "/iap/" in maps or "/ws_iap/" in maps:
                         raise RuntimeError("forbidden loaded runtime library")
-                    runtime[name] = {"pid": child.pid, "run_dir": str(run), "maps": maps}
+                    runtime[name] = {
+                        "pid": child.pid,
+                        "run_dir": str(run),
+                        "maps": maps,
+                    }
                 rd.write_subordinate_manifest(run, "runtime_identity", runtime)
                 runtime_saved = True
             if args.inject_failure and not injected and time.monotonic() - start > 5:
@@ -467,7 +508,10 @@ def main():
             rd.write_subordinate_manifest(
                 run,
                 "input_failure",
-                {"reason": failure, "exit_codes": {k: v.returncode for k, v in children.items()}},
+                {
+                    "reason": failure,
+                    "exit_codes": {k: v.returncode for k, v in children.items()},
+                },
             )
         rd.finalize_run(run, lifecycle=lifecycle)
     if lifecycle == "completed":
@@ -477,7 +521,9 @@ def main():
             )
         except subprocess.TimeoutExpired:
             rd.write_subordinate_manifest(
-                run, "evaluation_failure", {"reason": "EVALUATION_WALL_TIMEOUT", "timeout_s": 120}
+                run,
+                "evaluation_failure",
+                {"reason": "EVALUATION_WALL_TIMEOUT", "timeout_s": 120},
             )
             result = subprocess.CompletedProcess([], 1)
         manifest_path = run / "metadata/run_manifest.json"

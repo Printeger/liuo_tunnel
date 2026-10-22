@@ -222,7 +222,12 @@ def evaluate(run, output_dir=None):
         )
         sections[name].append((e, abs(dx)))
         errors.append(e)
-        attitude.append(math.degrees(2 * math.acos(min(1, abs(float(r["qw"]))))))
+        # Old capture schema has identity truth; new starts record full orientation.
+        dot = sum(
+            float(r[k]) * float(q.get(k, 1 if k == "qw" else 0))
+            for k in ["qx", "qy", "qz", "qw"]
+        )
+        attitude.append(math.degrees(2 * math.acos(min(1, abs(dot)))))
     metrics = {}
     for name, data in sections.items():
         metrics[name] = {

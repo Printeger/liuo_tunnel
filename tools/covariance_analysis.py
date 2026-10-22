@@ -31,10 +31,17 @@ def summarize(run, trajectory, truth, covariance, fused):
                 [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
             ]
         )
-        norm = np.linalg.norm(q[:3])
-        # Straight-world truth rotation is identity. Right-local Log(R_est^-1).
-        rot = -q[:3] * (2 * math.atan2(norm, q[3]) / norm if norm > 1e-12 else 2)
         reference = truth[key]
+        # Right-local Log(R_est^-1 R_truth); old captures had identity truth.
+        qt = np.array(
+            [float(reference.get(k, 1 if k == "qw" else 0)) for k in ["qx", "qy", "qz", "qw"]]
+        )
+        qt /= np.linalg.norm(qt)
+        delta = np.r_[q[3] * qt[:3] - qt[3] * q[:3] - np.cross(q[:3], qt[:3]), q @ qt]
+        if delta[3] < 0:
+            delta *= -1
+        norm = np.linalg.norm(delta[:3])
+        rot = delta[:3] * (2 * math.atan2(norm, delta[3]) / norm if norm > 1e-12 else 2)
         p = np.array([float(reference[k]) - float(state[k]) for k in ["x", "y", "z"]])
         if not fused:
             p[2] -= 1.2
@@ -74,5 +81,5 @@ def summarize(run, trajectory, truth, covariance, fused):
         "position_95pct_ellipsoid_coverage": float(
             np.mean([d["position_nees_3d"] <= 7.814727903 for d in diagnostics])
         ),
-        "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Straight-world identity truth rotation only.",
+        "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Uses recorded truth orientation; legacy captures use identity.",
     }
