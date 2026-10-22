@@ -1,6 +1,10 @@
 #pragma once
 #include <liuo_tunnel/uwb/lateral_initialization.hpp>
 namespace liuo_tunnel {
+// Disjoint ownership before voxelization: reserved points never enter VGICP.
+inline bool dedicated_wall_point(bool enabled, size_t raw_index) {
+  return enabled && raw_index % 4 == 0;
+}
 struct BodyWallObservation {
   gtsam::Vector3 normal;
   gtsam::Point3 center;

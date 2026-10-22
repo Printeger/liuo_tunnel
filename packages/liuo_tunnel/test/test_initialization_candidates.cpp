@@ -400,3 +400,16 @@ TEST(InitializationCandidates, SteppedOptimizerMatchesWholeSolveAndTermination) 
     EXPECT_EQ(stepped.iterations(), original.iterations());
   }
 }
+
+TEST(InitializationCandidates, ContinuousWallPointOwnershipIsDisjointAndBounded) {
+  size_t dedicated = 0, vgicp = 0;
+  for (size_t i = 0; i < 20339; ++i) {
+    EXPECT_FALSE(dedicated_wall_point(false, i));
+    if (dedicated_wall_point(true, i))
+      ++dedicated;
+    else
+      ++vgicp;
+  }
+  EXPECT_EQ(dedicated, 5085);
+  EXPECT_EQ(dedicated + vgicp, 20339);
+}

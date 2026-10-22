@@ -598,14 +598,21 @@ private:
     auto start = std::chrono::steady_clock::now();
     if (m.header.frame_id != "lidar" || m.is_bigendian) throw std::runtime_error("pointcloud frame/endian contract");
     std::vector<Eigen::Vector4d> points;
+    const bool ongoing_walls = bootstrapped && fuse && body_walls && cfg.at("uwb").value("continuous_installation_walls", false) && count % 10 == 0;
+    std::vector<gtsam::Vector3> wall_points;
+    size_t raw_index = 0;
     std::set<std::tuple<int, int, int>> occupied;
     double leaf = cfg.at("odometry").at("downsample_m");
     sensor_msgs::PointCloud2ConstIterator<float> x(m, "x"), y(m, "y"), z(m, "z"), dt(m, "time"), intensity(m, "intensity");
-    for (; x != x.end(); ++x, ++y, ++z, ++dt, ++intensity) {
+    for (; x != x.end(); ++x, ++y, ++z, ++dt, ++intensity, ++raw_index) {
       if (*dt != 0) throw std::runtime_error("nonzero per-point time with snapshot model; rolling not implemented");
       Eigen::Vector3d q(*x, *y, *z);
       if (!q.allFinite()) continue;
       q = T_BL * q;
+      if (dedicated_wall_point(ongoing_walls, raw_index)) {
+        wall_points.push_back(q);
+        continue;
+      }
       auto key = std::make_tuple(int(std::floor(q.x() / leaf)), int(std::floor(q.y() / leaf)), int(std::floor(q.z() / leaf)));
       if (occupied.insert(key).second) points.emplace_back(q.x(), q.y(), q.z(), 1);
     }
@@ -763,6 +770,26 @@ private:
         lidar.add(f);
         factors.add(f);
       }
+    }
+    if (ongoing_walls) {
+      failure_context = "CONTINUOUS_WALL_OBSERVATION_FAILED";
+      const auto observation = body_wall_observation(wall_points, state.pose().rotation(), cfg.at("sensors").at("sigma_lidar_range"));
+      gtsam::Point3 origin = gtsam::Point3::Zero();
+      for (const auto& point : map.means) origin += point;
+      origin /= map.means.size();
+      factors.emplace_shared<WallReferenceFactor>(X(count), gtsam::Symbol('l', 0), observation.normal, observation.center, observation.covariance, origin);
+      std::ofstream evidence(RunLogManager::instance().profiling_path("continuous_walls.jsonl"), std::ios::app);
+      evidence.exceptions(std::ios::failbit | std::ios::badbit);
+      evidence << nlohmann::json({{"session", session},
+                                  {"stamp", t},
+                                  {"reserved_points", wall_points.size()},
+                                  {"vgicp_points", points.size()},
+                                  {"body_normal", {observation.normal.x(), observation.normal.y(), observation.normal.z()}},
+                                  {"body_center", {observation.center.x(), observation.center.y(), observation.center.z()}},
+                                  {"covariance", {{observation.covariance(0, 0), observation.covariance(0, 1)}, {observation.covariance(1, 0), observation.covariance(1, 1)}}},
+                                  {"used_by_vgicp", false}})
+                    .dump()
+               << '\n';
     }
     failure_context = "GRAPH_BUILD_FAILED";
     double pred_x = state.position().x();
