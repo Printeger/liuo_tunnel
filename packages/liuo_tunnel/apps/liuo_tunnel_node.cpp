@@ -362,9 +362,18 @@ private:
         return std::nullopt;
       }
       const auto seeds = pose_seeds_from_tags(tags.tags, bootstrap_values.at<gtsam::Pose3>(X(0)).rotation(), tag);
+      gtsam::NonlinearFactorGraph reference_graph;
+      for (const auto& factor : bootstrap_factors) reference_graph.push_back(factor->clone());
+      // This is a numerical reference trajectory, NOT a certified branch and
+      // never a new pose observation. Every mirror/yaw seed is still tested.
+      gtsam_points::LevenbergMarquardtOptimizerExt reference_optimizer(reference_graph, bootstrap_values, params);
+      const auto reference = reference_optimizer.optimize();
+      const auto reference_pose = reference.at<gtsam::Pose3>(X(0));
+      branch_log << session << ',' << t << ",-1," << reference_optimizer.error() << ',' << reference_pose.x() << ',' << reference_pose.y() << ',' << reference_pose.z() << ','
+                 << reference_pose.rotation().yaw() << ",REFERENCE_ONLY\n";
       std::vector<gtsam::Values> proposals;
       for (size_t seed_id = 0; seed_id < seeds.size(); ++seed_id) {
-        auto initial = transform_bootstrap_seed(bootstrap_values, X(0), seeds[seed_id]);
+        auto initial = transform_bootstrap_seed(reference, X(0), seeds[seed_id]);
         auto proposal = precondition_bootstrap(bootstrap_factors, initial);
         const auto pose = proposal.values.at<gtsam::Pose3>(X(0));
         branch_log << session << ',' << t << ',' << seed_id << ',' << proposal.cost << ',' << pose.x() << ',' << pose.y() << ',' << pose.z() << ',' << pose.rotation().yaw()
