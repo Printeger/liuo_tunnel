@@ -133,7 +133,7 @@ public:
     covariance_log << '\n';
     graph.open(logs.export_path("odometry/graph.csv"));
     graph << "session,stamp,X,V,B,A,imu_factors,lidar_factors,total_factors,marginalized,optimization_ms,reset,fallback,uwb_ta,uwb_aa,map_priors,uwb_queue,aa_summary_factors,aa_"
-             "accumulated_measurements\n";
+             "accumulated_measurements,joint_map_priors,installation_observation_factors\n";
     icp.open(logs.export_path("odometry/icp.csv"));
     icp
       << "session,stamp,points,inlier_fraction,cost,eig0,eig1,eig2,eig3,eig4,eig5,weak_rx,weak_ry,weak_rz,weak_tx,weak_ty,weak_tz,weighting,nonplanar_covariances,surface_eig0,"
@@ -422,7 +422,7 @@ private:
         status("INITIALIZING", "INSUFFICIENT_SEED_GEOMETRY", t);
         return std::nullopt;
       }
-      const auto tags = intersect_range_seeds(selected, reuse_map);
+      const auto tags = intersect_range_seeds(selected, reuse_map || cfg.at("uwb").value("nonintersecting_seed_proposals", false));
       logger->info("bootstrap seed strategy={} proposals={}", tags.reason, tags.tags.size());
       if (tags.tags.empty()) {
         status("INITIALIZING", tags.reason, t);
@@ -646,7 +646,7 @@ private:
       if (std::find(map.ids.begin(), map.ids.end(), id) == map.ids.end())
         missing.push_back({{"id", id}, {"reason", "NOT_JOINTLY_INITIALIZED"}});
     auto& logs = RunLogManager::instance();
-    std::ifstream identity_file(logs.run_dir() / "metadata/manifests/input_identity.json");
+    std::ifstream identity_file(logs.run_dir() / "metadata/manifests/map_source_identity.json");
     if (!identity_file) throw std::runtime_error("MAP_EXPORT_INPUT_IDENTITY_MISSING");
     const auto identity = nlohmann::json::parse(identity_file);
     nlohmann::json document = {
@@ -1522,10 +1522,20 @@ private:
       status("INITIALIZING", "WAIT_SECOND_POSE_FOR_TWIST", t);
     }
     size_t anchors = fuse && variable_anchors() ? map.ids.size() : 0;
+    size_t joint_map_priors = 0, surveyed_priors = 0, installation_observations = 0;
+    for (const auto& factor : smoother->getFactors()) {
+      if (!factor) continue;
+      joint_map_priors += dynamic_cast<const CalibratedMapPrior*>(factor.get()) != nullptr;
+      surveyed_priors += dynamic_cast<const SurveyedMapPrior*>(factor.get()) != nullptr;
+      installation_observations += dynamic_cast<const InstallationOffsetFactor*>(factor.get()) != nullptr;
+    }
+    if (reuse_map && (joint_map_priors != 1 || surveyed_priors != 0 || installation_observations != 0))
+      throw std::runtime_error("REUSE_MAP_INFORMATION_LIFECYCLE_VIOLATION");
     size_t active = (smoother->timestamps().size() - anchors) / 3;
     graph << session << ',' << t << ',' << active << ',' << active << ',' << active << ',' << anchors << ',' << (count ? 1 : 0) << ',' << lidar.size() << ','
           << smoother->getFactors().nrFactors() << ',' << retired << ',' << ms(preprocessed, finish) << ',' << (session - 1) << ",0," << new_ta << ',' << new_aa << ','
-          << (anchors ? 1 : 0) << ',' << range_queue.size() << ',' << aa_summaries.size() << ',' << aa_measurements << "\n";
+          << (joint_map_priors + surveyed_priors) << ',' << range_queue.size() << ',' << aa_summaries.size() << ',' << aa_measurements
+          << ',' << joint_map_priors << ',' << installation_observations << "\n";
     icp << session << ',' << t << ',' << points.size() << ',' << fraction << ',' << cost;
     for (int i = 0; i < 6; i++) icp << ',' << eigen[i];
     for (int i = 0; i < 6; i++) icp << ',' << weak[i];

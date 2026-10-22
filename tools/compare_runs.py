@@ -7,7 +7,7 @@ import json
 import math
 from pathlib import Path
 import statistics
-from evaluation_frames import world_estimates
+from evaluation_frames import world_estimates, run_world_estimates
 
 
 def load(path):
@@ -73,7 +73,7 @@ def compare(runs, strict_estimator_settings=False):
         truth = keyed(truth_rows)
         config = load(run / "metadata/config/phase1.json")
         fused = config["uwb"]["mode"] == "fuse"
-        trajectory = keyed(world_estimates(list(trajectory.values()), truth_rows, fused))
+        trajectory = keyed(run_world_estimates(run, list(trajectory.values()), truth_rows, config["uwb"]["mode"]))
         error, axial, attitude = [], [], []
         for key in sorted(common):
             p, q = trajectory[key], truth[key]

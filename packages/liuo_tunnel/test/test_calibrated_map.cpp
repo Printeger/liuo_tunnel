@@ -8,7 +8,7 @@ nlohmann::json sample() {
   auto j = nlohmann::json{{"schema_version", "liuo_joint_map_v1"}, {"frame", "map"}, {"anchor_units", "m"},
     {"reference_units", {"mrad", "m"}}, {"reference_origin_m", {0,0,0}}, {"status", "PROVISIONAL_INITIALIZED"},
     {"unresolved_branches", nlohmann::json::array()}, {"sensor_identity", {{"test", 1}}}, {"map_id", "test"}, {"coordinate_gauge", "local"},
-    {"source_run", "test_run"}, {"approximation", "joint Gaussian"}, {"source_identity", {{"hash", "fixture"}}},
+    {"source_run", "test_run"}, {"approximation", "joint Gaussian"}, {"source_identity", {{"schema_version", "liuo_map_source_identity_v1"}, {"config_sha256", "fixture"}}},
     {"installation_provenance", {{"already_absorbed", true}}}, {"not_initialized", nlohmann::json::array()}, {"estimated_vehicle_bounds_m", {{0,0,0},{40,1,2}}},
     {"anchors", {{{"id", 91}, {"mean_m", {0,2,3}}}, {{"id", 4}, {"mean_m", {200,-2,4}}}, {{"id", 8}, {"mean_m", {400,2,1}}}}},
     {"reference_mean", {1570.0, .1}}};
@@ -44,6 +44,8 @@ TEST(CalibratedMap, RejectsAmbiguityCorruptionAndExtrinsicMismatch) {
   j=sample();j["joint_covariance"][0][0]=-1;
   EXPECT_THROW(CalibratedMap::parse(j,{{"test",1}}),std::invalid_argument);
   EXPECT_THROW(CalibratedMap::parse(sample(),{{"test",2}}),std::invalid_argument);
+  j=sample();j["source_identity"]["commands"]={"simulation", "--sim-start"};
+  EXPECT_THROW(CalibratedMap::parse(j,{{"test",1}}),std::invalid_argument);
   j=sample();j["anchors"][1]["id"]=91;
   EXPECT_THROW(CalibratedMap::parse(j,{{"test",1}}),std::invalid_argument);
 }

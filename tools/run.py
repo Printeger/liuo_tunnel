@@ -435,6 +435,18 @@ def main():
             if name != "simulation":
                 time.sleep(1)
         rd.write_subordinate_manifest(run, "input_identity", identity)
+        # Estimator-readable provenance must not include simulator coordinates,
+        # commands, motion, boundaries or the full frozen-input scenario.
+        safe_map_provenance = {
+            "schema_version": "liuo_map_source_identity_v1",
+            "source": json.loads((run / "metadata/run_manifest.json").read_text())["source"],
+            "config_sha256": identity["config_sha256"],
+            "binary_sha256": {name: item["sha256"] for name, item in identity["binaries"].items()},
+            "frozen_raw_sha256": identity.get("frozen_input", {}).get("raw_sha256", {}),
+            "frozen_capture_sha256": identity.get("frozen_input", {}).get("capture_sha256", {}),
+            "installation_sha256": identity.get("installation_sha256"),
+        }
+        rd.write_subordinate_manifest(run, "map_source_identity", safe_map_provenance)
         start = time.monotonic()
         wall_budget = args.wall_timeout or max(120, args.duration / args.rate * 1.5 + 60)
         progress = {

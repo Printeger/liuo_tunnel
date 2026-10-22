@@ -40,6 +40,11 @@ struct CalibratedMap {
     if (!j.at("source_identity").is_object() || j.at("source_identity").empty() || !j.at("installation_provenance").is_object() ||
         !j.at("not_initialized").is_array() || !j.at("estimated_vehicle_bounds_m").is_array())
       throw std::invalid_argument("CALIBRATED_MAP_MISSING_SCOPE");
+    const std::set<std::string> source_fields{"schema_version", "source", "config_sha256", "binary_sha256", "frozen_raw_sha256", "frozen_capture_sha256", "installation_sha256"};
+    const auto& identity = j.at("source_identity");
+    if (identity.at("schema_version") != "liuo_map_source_identity_v1") throw std::invalid_argument("MAP_SOURCE_IDENTITY_SCHEMA");
+    for (const auto& field : identity.items())
+      if (!source_fields.count(field.key())) throw std::invalid_argument("MAP_SOURCE_IDENTITY_FORBIDDEN_FIELD");
     CalibratedMap m;
     m.document = j;
     std::set<uint32_t> seen;

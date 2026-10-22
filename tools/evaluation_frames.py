@@ -52,3 +52,43 @@ def world_estimates(trajectory, truth, fused):
 def local_truth(truth, fused):
     """Reference in the estimator frame for the original joint covariance."""
     return truth if fused else _transform(truth, truth, True)
+
+
+def map_evaluation_datum(run):
+    """Offline only: use the original calibration run's declared simulation datum.
+
+    Never use the reuse run's true start or fit any trajectory transformation.
+    Requires retained provenance; missing source evidence is an error.
+    """
+    import json
+    from pathlib import Path
+
+    config = json.loads((run / "metadata/config/phase1.json").read_text())
+    mode = config["uwb"]["mode"]
+    if mode == "self_calibrate":
+        source = run
+    elif mode == "reuse_map":
+        document = json.loads((run / "metadata/config/map.json").read_text())
+        source = Path(document["source_run"])
+    else:
+        raise ValueError("map datum only applies to calibrated-map modes")
+    original = json.loads((source / "metadata/config/phase1.json").read_text())
+    if original["uwb"]["mode"] != "self_calibrate":
+        raise ValueError("map source is not a self-calibration run")
+    scenario = json.loads((source / "metadata/config/scenario.json").read_text())
+    datum = scenario["simulation_start_xyz_yaw"]
+    if len(datum) != 4 or not all(math.isfinite(v) for v in datum):
+        raise ValueError("invalid declared first-run datum")
+    x, y, z, yaw = datum
+    return dict(session="datum", x=x, y=y, z=z, vx=0, vy=0, vz=0,
+                qx=0, qy=0, qz=math.sin(yaw / 2), qw=math.cos(yaw / 2))
+
+
+def run_world_estimates(run, trajectory, truth, mode):
+    if mode in ("self_calibrate", "reuse_map"):
+        return _transform(trajectory, [map_evaluation_datum(run)], False)
+    return world_estimates(trajectory, truth, mode == "fuse")
+
+
+def map_local_truth(run, truth):
+    return _transform(truth, [map_evaluation_datum(run)], True)

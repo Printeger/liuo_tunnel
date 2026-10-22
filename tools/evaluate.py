@@ -7,7 +7,7 @@ import math
 from pathlib import Path
 import statistics
 import sys
-from evaluation_frames import world_estimates
+from evaluation_frames import world_estimates, run_world_estimates, map_local_truth
 
 
 ACCURACY_REFERENCE_FAILURES = {
@@ -54,7 +54,7 @@ def raw_lidar_graph_present(graph, config):
     # connects the current cloud to recent states plus retained keyframes.
     # Two distinct targets already connect three poses with raw factors; unlike
     # a registered-pose prior, the historical pose keys remain in those factors.
-    phase2 = config.get("schema_version") == "liuo_phase2_v1"
+    phase2 = config.get("schema_version") in ("liuo_phase2_v1", "liuo_phase3_v1")
     required_edges = 2 if phase2 else 3
     multiple = any(
         int(r["X"]) >= required_edges + 1 and int(r["lidar_factors"]) >= required_edges
@@ -118,10 +118,10 @@ def evaluate(run, output_dir=None):
                 "frozen input content differs: " + kind,
             )
     config = json.loads((run / "metadata/config/phase1.json").read_text())
-    if config.get("schema_version") == "liuo_phase3_v1":
-        raise RuntimeError("PHASE3_EVALUATION_PENDING: fixed first-run gauge and map lifecycle checks are not implemented; refusing phase1/phase2 fallback")
-    phase2 = config.get("schema_version") == "liuo_phase2_v1"
-    fused = config["uwb"]["mode"] == "fuse"
+    phase3 = config.get("schema_version") == "liuo_phase3_v1"
+    phase2 = phase3 or config.get("schema_version") == "liuo_phase2_v1"
+    mode = config["uwb"]["mode"]
+    fused = mode in ("fuse", "self_calibrate", "reuse_map")
     trajectory = rows(run / "export/odometry/trajectory.csv")
     truth = rows(run / "export/simulation/truth.csv")
     graph = rows(run / "export/odometry/graph.csv")
@@ -153,16 +153,29 @@ def evaluate(run, output_dir=None):
     check(all(int(r["X"]) <= 102 for r in graph), "fixed lag vehicle bound exceeded")
     if fused:
         check(any(r["reason"] == "ACCEPT_TA" for r in uwb), "no raw TA factors")
-        map_config = json.loads((run / "metadata/config/map.json").read_text())
-        expected_anchors = (
-            len(map_config["anchors"]) if map_config["mode"] == "surveyed_map" else 0
-        )
+        map_path = run / ("export/map/calibrated_map.json" if mode == "self_calibrate" else "metadata/config/map.json")
+        map_config = json.loads(map_path.read_text())
+        expected_anchors = len(map_config["anchors"]) if phase3 or map_config["mode"] == "surveyed_map" else 0
+        if phase3:
+            import numpy as np
+            covariance = np.array(map_config["joint_covariance"], dtype=float)
+            check(covariance.shape == (3 * expected_anchors + 2,) * 2, "joint A/L map dimension")
+            check(np.isfinite(covariance).all() and np.allclose(covariance, covariance.T), "invalid joint map covariance")
+            np.linalg.cholesky(covariance)
+            check(map_config["unresolved_branches"] == [], "map contains unresolved branches")
+            check(map_config["sensor_identity"] == config["sensors"], "map sensor identity mismatch")
+            check(map_config["source_identity"].get("schema_version") == "liuo_map_source_identity_v1", "unsafe legacy map provenance")
+            check(bool(graph) and "joint_map_priors" in graph[0], "actual map lifecycle evidence missing")
+            check(all(int(r.get("joint_map_priors", -1)) == int(mode == "reuse_map") for r in graph), "joint map prior count")
+            if mode == "reuse_map":
+                check(all(int(r.get("installation_observation_factors", -1)) == 0 for r in graph), "old installation observations repeated")
+            check(all(r["state"] != "TRACKING" for r in trajectory), "provisional map claimed healthy tracking")
         check(
             all(int(r["A"]) == expected_anchors for r in graph),
             "static anchors not retained",
         )
         check(
-            all(int(r["map_priors"]) == int(expected_anchors > 0) for r in graph),
+            all(int(r["map_priors"]) == int(expected_anchors > 0 and mode != "self_calibrate") for r in graph),
             "map prior count changed",
         )
         if graph and "aa_summary_factors" in graph[0]:
@@ -206,7 +219,7 @@ def evaluate(run, output_dir=None):
     sections = {name: [] for name in ["entrance", "transition", "degenerate"]}
     attitude = []
     errors = []
-    for r in world_estimates(trajectory, truth, fused):
+    for r in run_world_estimates(run, trajectory, truth, mode):
         key = (est_sessions.index(r["session"]), round(float(r["stamp"]), 5))
         q = truth_map.get(key)
         if q is None:
@@ -372,13 +385,15 @@ def evaluate(run, output_dir=None):
         from covariance_analysis import summarize
 
         covariance_summary = summarize(
-            run, trajectory, truth, rows(covariance_path), fused
+            run, trajectory, map_local_truth(run, truth) if phase3 else truth, rows(covariance_path), fused
         )
     policy = acceptance_policy(failures, phase2)
     failures = policy["failures"]
+    if phase3:
+        policy["result_scope"] = "phase3_single_run_contracts_not_system_effectiveness"
     result = {
         "scope": (
-            "phase2_iteration_snapshot_"
+            "phase3_iteration_snapshot_" if phase3 else "phase2_iteration_snapshot_"
             if config.get("schema_version") == "liuo_phase2_v1"
             else "phase1_snapshot_"
         )
@@ -390,7 +405,8 @@ def evaluate(run, output_dir=None):
             else "entrance_sanity_only; record_only_ablation_is_not_known_map_accuracy_acceptance"
         ),
         **policy,
-        "evaluation_policy": "representative_phase2_2026_10_22" if phase2 else "phase1",
+        "evaluation_policy": "phase3_fixed_first_run_gauge" if phase3 else ("representative_phase2_2026_10_22" if phase2 else "phase1"),
+        "map_evaluation_frame": "fixed original calibration run datum; no reuse-start alignment" if phase3 else None,
         "metrics": metrics,
         "position_rmse_m": (
             math.sqrt(statistics.mean(e * e for e in errors)) if errors else None

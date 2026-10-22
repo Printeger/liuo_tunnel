@@ -49,3 +49,31 @@ class EvaluationFrames(unittest.TestCase):
         ]
         for row in local_truth(rows, False):
             self.assertEqual([row[k] for k in ["x", "y", "z"]], [0, 0, 0])
+
+class CalibratedMapFrames(unittest.TestCase):
+    def test_reuse_uses_first_run_datum_not_second_start(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from evaluation_frames import run_world_estimates, map_local_truth
+        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent.parent / "build") as directory:
+            first, second = Path(directory) / "first", Path(directory) / "second"
+            for run in (first, second):
+                (run / "metadata/config").mkdir(parents=True)
+            (first / "metadata/config/phase1.json").write_text(json.dumps({"uwb": {"mode": "self_calibrate"}}))
+            (second / "metadata/config/phase1.json").write_text(json.dumps({"uwb": {"mode": "reuse_map"}}))
+            (first / "metadata/config/scenario.json").write_text(json.dumps({"simulation_start_xyz_yaw": [200, 3, 1.2, math.pi / 2]}))
+            (second / "metadata/config/scenario.json").write_text(json.dumps({"simulation_start_xyz_yaw": [999, 8, 40, 0]}))
+            (second / "metadata/config/map.json").write_text(json.dumps({"source_run": str(first)}))
+            row = dict(session="1", stamp=4, x=20, y=2, z=.4, vx=1, vy=0, vz=0, qx=0, qy=0, qz=0, qw=1)
+            world = run_world_estimates(second, [row], [dict(row, x=999)], "reuse_map")[0]
+            self.assertAlmostEqual(world["x"], 198)
+            self.assertAlmostEqual(world["y"], 23)
+            self.assertAlmostEqual(world["z"], 1.6)
+            self.assertAlmostEqual(world["vy"], 1)
+            restored = map_local_truth(second, [world])[0]
+            for key in ("x", "y", "z", "vx", "vy", "vz", "qx", "qy", "qz", "qw"):
+                self.assertAlmostEqual(restored[key], row[key])
+            (first / "metadata/config/scenario.json").unlink()
+            with self.assertRaises(FileNotFoundError):
+                run_world_estimates(second, [row], [dict(row, x=999)], "reuse_map")
