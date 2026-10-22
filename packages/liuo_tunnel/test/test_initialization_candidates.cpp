@@ -317,3 +317,16 @@ TEST(InitializationCandidates, JointInstallationPreservesMapAndInstallationCommo
   EXPECT_LT((covariance - reference.covariance).norm(), 1e-7);
   EXPECT_GT(covariance(1, 1), .01 + .0004);
 }
+
+TEST(InitializationCandidates, RecordedPositionMirrorCannotBeCertifiedByTotalCost) {
+  // N7 case 3, stamp 19: the wrong high branch wins the old cost/stability gate.
+  std::vector<BootstrapBranchEvidence> branches{
+    {207978.2359710491, gtsam::Pose3(gtsam::Rot3::Rz(3.141528487095105), {1799.984054572254, -.7459004145439476, 1.825159921245268})},
+    {207969.2114728361, gtsam::Pose3(gtsam::Rot3::Rz(3.141554183688508), {1799.981244079938, -.7460257413391663, 6.708942127181323})}};
+  EXPECT_TRUE(separated_bootstrap_branch(branches, 1));
+  EXPECT_TRUE(unresolved_position_branch(branches, 1));
+  branches[0].first_pose = branches[1].first_pose;
+  EXPECT_FALSE(unresolved_position_branch(branches, 1));
+  branches[0].first_pose = gtsam::Pose3(gtsam::Rot3(), {1799.984, -.746, 1.825});
+  EXPECT_FALSE(unresolved_position_branch(branches, 1));  // opposite yaw uses the existing graph gate
+}

@@ -72,6 +72,17 @@ struct BootstrapBranchEvidence {
   double cost;
   gtsam::Pose3 first_pose;
 };
+// No independent certificate currently distinguishes persistent positional mirrors
+// with the same orientation. Total optimized cost alone was falsified by N7.
+// Fail closed until such a certificate exists; this is not a probability test.
+inline bool unresolved_position_branch(const std::vector<BootstrapBranchEvidence>& branches, size_t winner) {
+  if (winner >= branches.size()) return true;
+  for (const auto& branch : branches) {
+    const auto delta = branches[winner].first_pose.between(branch.first_pose);
+    if (delta.translation().norm() > .5 && gtsam::Rot3::Logmap(delta.rotation()).norm() < .1) return true;
+  }
+  return false;
+}
 // A conservative gate over a declared FINITE search, not a global-optimum proof.
 // The distances here distinguish result basins, not navigation accuracy limits.
 inline bool separated_bootstrap_branch(const std::vector<BootstrapBranchEvidence>& branches, size_t winner, double minimum_cost_gap = 5.) {

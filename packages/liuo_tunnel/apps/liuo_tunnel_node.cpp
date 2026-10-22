@@ -442,7 +442,8 @@ private:
       branch_log << session << ',' << t << ',' << i << ',' << cost << ',' << pose.x() << ',' << pose.y() << ',' << pose.z() << ',' << pose.rotation().yaw() << ',' << event << '\n';
     }
     const size_t winner = std::distance(evidence.begin(), std::min_element(evidence.begin(), evidence.end(), [](const auto& a, const auto& b) { return a.cost < b.cost; }));
-    const bool separated = separated_bootstrap_branch(evidence, winner);
+    const bool unresolved_position = unresolved_position_branch(evidence, winner);
+    const bool separated = !unresolved_position && separated_bootstrap_branch(evidence, winner);
     bool stable = false;
     if (separated && bootstrap_previous_winner) {
       const auto delta = bootstrap_previous_winner->between(evidence[winner].first_pose);
@@ -450,7 +451,7 @@ private:
     }
     bootstrap_previous_winner = separated ? std::optional<gtsam::Pose3>(evidence[winner].first_pose) : std::nullopt;
     if (!stable) {
-      status("INITIALIZING", separated ? "BRANCH_AWAITING_NEW_DATA" : "BOOTSTRAP_BRANCH_AMBIGUITY", t);
+      status("INITIALIZING", unresolved_position ? "POSITION_BRANCH_UNVERIFIED" : (separated ? "BRANCH_AWAITING_NEW_DATA" : "BOOTSTRAP_BRANCH_AMBIGUITY"), t);
       return std::nullopt;
     }
     bootstrap_factors = original;
