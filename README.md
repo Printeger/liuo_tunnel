@@ -1,5 +1,7 @@
 # LIUO Tunnel
 
+部署与初始化以 [2026-10-22 用户确认合同](docs/spec/deployment_initialization_contract.md) 为准：支持任意隧道内部位置启动及无人机平台；已知外参、静止启动、基站墙侧/有符号横向偏距可用，基站高度与首次前后顺序待估，粗高度仅作初值。没有固定发车区、机器人高度或精确绝对航向。该需求尚未全部实现，阶段二仍未验收。
+
 Independent ROS 2 Jazzy GPU LiDAR–IMU project. Phase one is accepted under the snapshot scope; phase two is in development and **not accepted**. The current known-map path adds raw UWB factors to the same GPU VGICP/IMU fixed-lag graph. See [phase-two results](docs/phase2_acceptance.md) for failures and remaining gates. The original phase-one 0.603× bottleneck has been repaired and short live runs reach 1×; this does not establish long-run fused accuracy or campaign acceptance.
 
 ```bash
@@ -155,7 +157,7 @@ seed 0 始终保留为代表性完整输入；其余 seed 的已完成复用组�
 
 **当前部署约束覆盖历史密集布局说明：** 正式候选为 7 个基站，纵向
 0/400/800/1200/1600/2000/2400 m；任意闭区间 1 km 最多 3 个。墙侧/高度
-按 handbook 5.1 的四角循环安装假设。旧 49 基站结果仅作诊断，不能用于
+按 handbook 5.1 的四角循环生成仿真，不能作为首次自标定的高度或顺序输入。旧 49 基站结果仅作诊断，不能用于
 部署验收。当前只允许单 seed 代表性调查，`run_campaign.py` 拒绝多 seed；
 尚未完成稀疏完整路线 ON/OFF 与断流机制验证，不启动十种子 campaign。
 
