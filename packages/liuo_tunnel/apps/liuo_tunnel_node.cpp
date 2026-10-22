@@ -484,7 +484,7 @@ private:
           for (const auto& factor : batch.graph) graph.push_back(factor->clone());
           if (self_calibrate) {
             batch.linearization_values = initial;
-            if (calibration_solved.count(i)) {
+            if (calibration_solved.count(i) && cfg.at("uwb").value("bootstrap_joint_marginalization", false)) {
             const auto started = std::chrono::steady_clock::now();
             auto compact = marginalize_joint(graph, initial, calibration_elimination(initial, batch.stamp, true));
             std::ofstream marginal_log(logs.profiling_path("calibration_marginalization.csv"), std::ios::app);
@@ -984,7 +984,7 @@ private:
       const size_t matching_keyframe_limit = cfg.at("odometry").at("max_keyframes");
       for (auto it = frames.rbegin(); it != frames.rend(); ++it) {
         const bool recent = int(count - it->id) <= window;
-        if (!recent && (!it->keyframe || matching_keyframes >= matching_keyframe_limit)) continue;
+        if (!recent && (!it->keyframe || (self_calibrate && matching_keyframes >= matching_keyframe_limit))) continue;
         if (it->keyframe) ++matching_keyframes;
         // Raw states remain available for delayed ranges. Retaining a state
         // does not authorize adding every historical keyframe as a new match.
