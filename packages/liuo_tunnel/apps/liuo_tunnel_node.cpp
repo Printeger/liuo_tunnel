@@ -171,7 +171,7 @@ private:
     gtsam::ISAM2Params p;
     p.relinearizeSkip = 1;
     p.relinearizeThreshold = cfg.at("odometry").value("relinearize_threshold", .05);
-    if (fuse && cfg.at("uwb").value("continuous_installation_walls", false)) {
+    if (fuse && (self_calibrate || cfg.at("uwb").value("continuous_installation_walls", false))) {
       if (!cfg.at("uwb").value("installation_factors", false) || (!self_calibrate && !lateral_reference)) throw std::invalid_argument("CONTINUOUS_WALLS_REQUIRE_INSTALLATION_REFERENCE");
       const double threshold = cfg.at("odometry").value("relinearize_threshold", .05);
       gtsam::FastMap<char, gtsam::Vector> thresholds;
@@ -194,6 +194,9 @@ private:
     for (const auto& old : range_queue.reset()) log_range(old, "CLOCK_RESET");
     for (const auto& pending : pending_calibration_ranges) log_range(pending.observation, "CLOCK_RESET", pending.bracket);
     pending_calibration_ranges.clear();
+    calibration_prepared = false;
+    calibration_previous.reset();
+    if (self_calibrate) { map.ids = installation_input->ids; map.means.clear(); }
     bootstrap_factors.resize(0);
     bootstrap_values.clear();
     bootstrap_times.clear();
@@ -350,6 +353,12 @@ private:
       log_range(o, "UNKNOWN_TAG");
       return;
     }
+    if (self_calibrate && calibration_prepared &&
+        (std::find(map.ids.begin(), map.ids.end(), o.b) == map.ids.end() ||
+         (o.a_type == 1 && std::find(map.ids.begin(), map.ids.end(), o.a) == map.ids.end()))) {
+      if (o.a_type == 1) { log_range(o, "AA_ANCHOR_PENDING"); return; }
+      throw std::runtime_error("NEW_ANCHOR_REQUIRES_DELAYED_JOINT_EXTENSION");
+    }
     try {
       map.index(o.b);
       if (o.a_type == 1) map.index(o.a);
@@ -365,7 +374,7 @@ private:
       stationary_seed_ranges[o.b].add(o.range, o.variance);
   }
   std::optional<gtsam::Values> solve_bootstrap_branches(double t, const gtsam_points::LevenbergMarquardtExtParams& params) {
-    if (t - first_imu >= 20.) {
+    if (t - first_imu >= (self_calibrate ? 40. : 20.)) {
       failure_context = "INITIALIZATION_AMBIGUOUS_TIMEOUT";
       throw std::runtime_error("finite bootstrap search did not certify a branch within 20 s");
     }
@@ -488,6 +497,15 @@ private:
         batch.evidence.push_back({cost, pose});
         branch_log << session << ',' << batch.stamp << ',' << i << ',' << cost << ',' << pose.x() << ',' << pose.y() << ',' << pose.z() << ',' << pose.rotation().yaw() << ','
                    << event << ',' << t << '\n';
+        if (self_calibrate) {
+          std::ofstream anchor_log(logs.profiling_path("calibration_branches.csv"), std::ios::app);
+          if (anchor_log.tellp() == 0) anchor_log << "session,snapshot_stamp,completion_stamp,branch,anchor,x,y,z,cost,event\n";
+          anchor_log << std::setprecision(16);
+          for (auto id : map.ids) {
+            const auto point = bootstrap_branches[i].at<gtsam::Point3>(A(id));
+            anchor_log << session << ',' << batch.stamp << ',' << t << ',' << i << ',' << id << ',' << point.x() << ',' << point.y() << ',' << point.z() << ',' << cost << ',' << event << '\n';
+          }
+        }
         batch.optimizer.reset();
       }
     } while (batch.evidence.size() < bootstrap_branches.size() && std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count() < 30.);
@@ -503,12 +521,30 @@ private:
     const auto evidence = std::move(batch.evidence);
     bootstrap_batch.reset();
     const size_t winner = std::distance(evidence.begin(), std::min_element(evidence.begin(), evidence.end(), [](const auto& a, const auto& b) { return a.cost < b.cost; }));
-    const bool unresolved_position = unresolved_position_branch(evidence, winner);
-    const bool separated = !unresolved_position && separated_bootstrap_branch(evidence, winner);
+    bool unresolved_position = unresolved_position_branch(evidence, winner);
+    bool separated = !unresolved_position && separated_bootstrap_branch(evidence, winner);
+    if (self_calibrate) {
+      unresolved_position = false;
+      separated = std::isfinite(evidence[winner].cost);
+      for (size_t i = 0; i < evidence.size(); ++i) {
+        if (!std::isfinite(evidence[i].cost)) { separated = false; continue; }
+        double distance = 0;
+        for (auto id : map.ids) distance = std::max(distance, (bootstrap_branches[i].at<gtsam::Point3>(A(id)) - bootstrap_branches[winner].at<gtsam::Point3>(A(id))).norm());
+        if (distance > .5 && evidence[i].cost < evidence[winner].cost + 5.) unresolved_position = true;
+      }
+      separated = separated && !unresolved_position;
+    }
     bool stable = false;
     if (separated && bootstrap_previous_winner) {
       const auto delta = bootstrap_previous_winner->between(evidence[winner].first_pose);
       stable = delta.translation().norm() < .5 && gtsam::Rot3::Logmap(delta.rotation()).norm() < .1;
+    }
+    if (self_calibrate) {
+      stable = separated && calibration_previous.has_value();
+      if (stable)
+        for (auto id : map.ids)
+          if ((calibration_previous->at<gtsam::Point3>(A(id)) - bootstrap_branches[winner].at<gtsam::Point3>(A(id))).norm() >= .5) stable = false;
+      calibration_previous = separated ? std::optional<gtsam::Values>(bootstrap_branches[winner]) : std::nullopt;
     }
     bootstrap_previous_winner = separated ? std::optional<gtsam::Pose3>(evidence[winner].first_pose) : std::nullopt;
     if (!stable) {
@@ -528,6 +564,108 @@ private:
     }
     return result;
   }
+  bool variable_anchors() const { return map.surveyed() || (self_calibrate && calibration_prepared); }
+
+  bool prepare_calibration(double t) {
+    if (!body_walls) return false;
+    std::map<uint32_t, std::vector<TagRangeSeedObservation>> samples;
+    for (const auto& pending : pending_calibration_ranges) {
+      const auto& o = pending.observation;
+      if (o.a_type != 0) continue;
+      const auto& b = pending.bracket;
+      const auto left = bootstrap_values.at<gtsam::Pose3>(b.left);
+      const auto point = b.right ? interpolated_tag(left, bootstrap_values.at<gtsam::Pose3>(*b.right), b.beta, tag) : left.transformFrom(tag);
+      samples[o.b].push_back({point, o.range});
+    }
+    if (samples.size() < 3) return false;
+    const auto pose = bootstrap_values.at<gtsam::Pose3>(X(0));
+    const auto world_normal = pose.rotation().rotate(body_walls->normal);
+    const Eigen::Vector2d normal = world_normal.head<2>().normalized();
+    const auto center = pose.transformFrom(body_walls->center);
+    std::vector<uint32_t> ids;
+    std::vector<size_t> installation_rows;
+    for (const auto& entry : samples) {
+      ids.push_back(entry.first);
+      installation_rows.push_back(std::distance(installation_input->ids.begin(), std::find(installation_input->ids.begin(), installation_input->ids.end(), entry.first)));
+    }
+    std::vector<gtsam::Values> proposals;
+    for (double sign : {-1., 1.}) {
+      const Eigen::Vector2d n = sign * normal;
+      const double offset = n.dot(center.head<2>());
+      std::vector<gtsam::Values> side{bootstrap_values};
+      side.front().insert(gtsam::Symbol('l', 0), gtsam::Vector2(1000 * std::atan2(n.y(), n.x()), offset));
+      for (size_t i = 0; i < ids.size(); ++i) {
+        const auto& all = samples.at(ids[i]);
+        std::vector<TagRangeSeedObservation> selected;
+        // Decimation affects proposals only. ALL raw ranges enter the graph.
+        const size_t count = std::min(size_t(512), all.size());
+        if (count < 8) return false;
+        for (size_t k = 0; k < count; ++k) selected.push_back(all[k * (all.size() - 1) / (count - 1)]);
+        auto seeds = unknown_anchor_seeds(selected, n, offset, installation_input->offsets[installation_rows[i]]);
+        if (seeds.points.empty()) return false;
+        // Tiny estimated vertical motion is not proof that a mirror is gone.
+        if (seeds.points.size() == 1) {
+          auto mirror = seeds.points.front();
+          double height = 0;
+          for (const auto& sample : selected) height += sample.tag.z();
+          mirror.z() = 2 * height / selected.size() - mirror.z();
+          seeds.points.push_back(mirror);
+        }
+        if (side.size() * seeds.points.size() + proposals.size() > 32) {
+          status("INITIALIZING", "UNKNOWN_ANCHOR_BRANCH_CAPACITY", t);
+          return false;
+        }
+        std::vector<gtsam::Values> expanded;
+        for (const auto& candidate : side)
+          for (const auto& point : seeds.points) {
+            auto next = candidate;
+            next.insert(A(ids[i]), point);
+            expanded.push_back(std::move(next));
+          }
+        side = std::move(expanded);
+      }
+      proposals.insert(proposals.end(), side.begin(), side.end());
+    }
+    map.ids = ids;
+    map.means.clear();
+    gtsam::KeyVector keys;
+    gtsam::Vector offsets(ids.size());
+    gtsam::Matrix covariance(ids.size(), ids.size());
+    for (size_t i = 0; i < ids.size(); ++i) {
+      keys.push_back(A(ids[i]));
+      map.means.push_back(proposals.front().at<gtsam::Point3>(keys.back()));
+      offsets[i] = installation_input->offsets[installation_rows[i]];
+      for (size_t j = 0; j < ids.size(); ++j) covariance(i, j) = installation_input->covariance(installation_rows[i], installation_rows[j]);
+      bootstrap_values.insert(keys.back(), map.means.back());
+      bootstrap_times[keys.back()] = t;
+    }
+    const auto line = gtsam::Symbol('l', 0);
+    bootstrap_values.insert(line, proposals.front().at<gtsam::Vector2>(line));
+    bootstrap_times[line] = t;
+    bootstrap_factors.emplace_shared<InstallationOffsetFactor>(line, keys, offsets, covariance, gtsam::Point3::Zero(), 1000.);
+    bootstrap_factors.emplace_shared<WallReferenceFactor>(X(0), line, body_walls->normal, body_walls->center, body_walls->covariance, gtsam::Point3::Zero(), 1000.);
+    for (const auto& pending : pending_calibration_ranges) {
+      const auto& o = pending.observation;
+      const auto& b = pending.bracket;
+      if (o.a_type == 0) {
+        bootstrap_factors.emplace_shared<TagAnchorRangeFactor>(b.left, b.right, A(o.b), gtsam::Point3::Zero(), tag, b.beta, o.range, std::sqrt(o.variance));
+        last_uwb = std::max(last_uwb, o.stamp);
+        log_range(o, "ACCEPT_TA", b, gtsam::DefaultKeyFormatter(A(o.b)), NAN, "CALIBRATION_RAW_TRANSFER");
+      } else if (std::find(ids.begin(), ids.end(), o.a) != ids.end() && std::find(ids.begin(), ids.end(), o.b) != ids.end()) {
+        const auto pair = std::make_pair(std::min(o.a, o.b), std::max(o.a, o.b));
+        aa_summaries[pair].statistics.add(o.range, o.variance);
+        ++aa_measurements;
+        log_range(o, "ACCEPT_AA", {}, "", NAN, "CALIBRATION_RAW_TRANSFER");
+      } else {
+        log_range(o, "AA_ANCHOR_PENDING");
+      }
+    }
+    pending_calibration_ranges.clear();
+    bootstrap_branches = std::move(proposals);
+    calibration_prepared = true;
+    return true;
+  }
+
   void retain_calibration_ranges(double t) {
     std::map<double, gtsam::Key> poses;
     for (const auto& frame : frames) poses[frame.t] = X(frame.id);
@@ -567,7 +705,7 @@ private:
       const size_t j = map.index(o.b);
       if (o.a_type == 1) {
         const size_t i = map.index(o.a);
-        if (!map.surveyed()) {
+        if (!variable_anchors()) {
           log_range(o, "ORACLE_AA_CHECK", {}, "", o.range - (map.means[i] - map.means[j]).norm(), "CONSISTENCY_ONLY");
           continue;
         }
@@ -579,7 +717,7 @@ private:
         new_aa++;
         log_range(o, "ACCEPT_AA", {}, gtsam::DefaultKeyFormatter(A(o.a)) + ";" + gtsam::DefaultKeyFormatter(A(o.b)), f->unwhitenedError(predicted)[0], "PRE_OPT_INNOVATION");
       } else {
-        auto anchor = map.surveyed() ? std::optional<gtsam::Key>(A(o.b)) : std::nullopt;
+        auto anchor = variable_anchors() ? std::optional<gtsam::Key>(A(o.b)) : std::nullopt;
         auto f = gtsam::make_shared<TagAnchorRangeFactor>(bracket.left, bracket.right, anchor, map.means[j], tag, bracket.beta, o.range, std::sqrt(o.variance));
         double residual = f->unwhitenedError(predicted)[0];
         factors.add(f);
@@ -648,7 +786,7 @@ private:
     auto start = std::chrono::steady_clock::now();
     if (m.header.frame_id != "lidar" || m.is_bigendian) throw std::runtime_error("pointcloud frame/endian contract");
     std::vector<Eigen::Vector4d> points;
-    const double line_angle_scale = cfg.at("uwb").value("continuous_installation_walls", false) ? 1000.0 : 1.0;
+    const double line_angle_scale = (self_calibrate || cfg.at("uwb").value("continuous_installation_walls", false)) ? 1000.0 : 1.0;
     const bool ongoing_walls = bootstrapped && fuse && body_walls && cfg.at("uwb").value("continuous_installation_walls", false) && count % 10 == 0;
     std::vector<gtsam::Vector3> wall_points;
     size_t raw_index = 0;
@@ -709,7 +847,7 @@ private:
       if (lateral_reference || self_calibrate) {
         std::vector<Eigen::Vector3d> leveled;
         if (cfg.at("uwb").value("installation_factors", false)) {
-          if (!dedicated_geometry_cloud || (!self_calibrate && !map.surveyed())) throw std::runtime_error("DEDICATED_GEOMETRY_OR_SURVEYED_MAP_MISSING");
+          if (!dedicated_geometry_cloud || (!self_calibrate && !variable_anchors())) throw std::runtime_error("DEDICATED_GEOMETRY_OR_SURVEYED_MAP_MISSING");
           std::vector<gtsam::Vector3> dedicated;
           const auto& observed = *dedicated_geometry_cloud;
           if (observed.header.frame_id != "lidar" || observed.is_bigendian) throw std::runtime_error("DEDICATED_GEOMETRY_FRAME_INVALID");
@@ -753,7 +891,7 @@ private:
       bias = gtsam::imuBias::ConstantBias(gtsam::Vector3::Zero(), sum_w / initial_samples);
       if (fuse && !self_calibrate) {
         factors.emplace_shared<GravityAlignmentFactor>(X(0), avg, .001);
-        if (map.surveyed()) {
+        if (variable_anchors()) {
           gtsam::KeyVector keys;
           for (size_t j = 0; j < map.ids.size(); j++) {
             keys.push_back(A(map.ids[j]));
@@ -851,7 +989,7 @@ private:
     initial.insert(B(count), bias);
     gtsam::Values predicted = bootstrapped ? smoother->calculateEstimate() : bootstrap_values;
     predicted.insert(initial);
-    if (self_calibrate) retain_calibration_ranges(t);
+    if (self_calibrate && !calibration_prepared) retain_calibration_ranges(t);
     else if (fuse) append_ranges(t, factors, predicted);
     Eigen::Matrix<double, 6, 6> H = Eigen::Matrix<double, 6, 6>::Zero();
     gtsam::Vector6 lidar_gradient = gtsam::Vector6::Zero();
@@ -876,16 +1014,17 @@ private:
     auto eigen = eig.eigenvalues();
     auto weak = eig.eigenvectors().col(0).eval();
     gtsam::FixedLagSmoother::KeyTimestampMap times{{X(count), t}, {V(count), t}, {B(count), t}};
-    if (fuse && map.surveyed())
+    if (fuse && variable_anchors())
       for (auto id : map.ids) times[A(id)] = t;
-    if (body_walls && !self_calibrate) times[gtsam::Symbol('l', 0)] = t;
+    if (body_walls && (!self_calibrate || calibration_prepared)) times[gtsam::Symbol('l', 0)] = t;
     failure_context = "OPTIMIZATION_FAILED";
     const auto solver_start = std::chrono::steady_clock::now();
     if (!bootstrapped) {
       bootstrap_factors.add(factors);
       bootstrap_values.insert(initial);
       for (const auto& kv : times) bootstrap_times[kv.first] = kv.second;
-      if (self_calibrate) {
+      if (self_calibrate && !calibration_prepared && t - first_imu >= cfg.at("uwb").at("bootstrap_s").get<double>()) prepare_calibration(t);
+      if (self_calibrate && !calibration_prepared) {
         // Retain the original graph, not a trajectory pseudo-measurement. No
         // smoother marginalization occurs before unknown anchors are resolved.
         if (t - first_imu >= 40. || count >= 400) {
@@ -1185,6 +1324,10 @@ private:
         uwb_geometry_trace);
       mode = diagnostic.state;
       state_reason = diagnostic.reason;
+      if (self_calibrate && mode == "TRACKING") {
+        mode = "DEGRADED";
+        state_reason = "CALIBRATED_MAP_VALIDITY_UNVERIFIED";
+      }
     }
     failure_context = "STATE_OUTPUT_FAILED";
     if (count > 0) {
@@ -1230,7 +1373,7 @@ private:
     } else {
       status("INITIALIZING", "WAIT_SECOND_POSE_FOR_TWIST", t);
     }
-    size_t anchors = fuse && map.surveyed() ? map.ids.size() : 0;
+    size_t anchors = fuse && variable_anchors() ? map.ids.size() : 0;
     size_t active = (smoother->timestamps().size() - anchors) / 3;
     graph << session << ',' << t << ',' << active << ',' << active << ',' << active << ',' << anchors << ',' << (count ? 1 : 0) << ',' << lidar.size() << ','
           << smoother->getFactors().nrFactors() << ',' << retired << ',' << ms(preprocessed, finish) << ',' << (session - 1) << ",0," << new_ta << ',' << new_aa << ','
@@ -1255,7 +1398,8 @@ private:
   }
   std::unique_ptr<gtsam_points::StreamTempBufferRoundRobin> streams;
   std::string backend, gpu_name;
-  bool fuse = false, bootstrapped = true, self_calibrate = false;
+  bool fuse = false, bootstrapped = true, self_calibrate = false, calibration_prepared = false;
+  std::optional<gtsam::Values> calibration_previous;
   std::optional<InstallationInput> installation_input;
   struct PendingCalibrationRange { RangeObservation observation; RangeBracket bracket; };
   std::vector<PendingCalibrationRange> pending_calibration_ranges;
