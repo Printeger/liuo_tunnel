@@ -487,3 +487,18 @@ TEST(Smoother, RepeatedBranchedMarginalizationMatchesFullHistoryInformation) {
     if (i >= 3) EXPECT_FALSE(smoother.getISAM2().getLinearizationPoint().exists(X(i - 3)));
   }
 }
+
+TEST(UwbQueue, StaticAlignmentIsBoundedAndNeverExtrapolatesLatePose) {
+  const std::map<double, gtsam::Key> first{{3., 42}};
+  for (double stamp : {1., 2., 2.999}) {
+    const auto bracket = static_alignment_bracket(first, stamp, 1., 3.);
+    EXPECT_EQ(bracket.reason, "STATIC_ALIGNMENT");
+    EXPECT_EQ(bracket.left, 42);
+    EXPECT_FALSE(bracket.right);
+  }
+  EXPECT_EQ(static_alignment_bracket(first, .999, 1., 3.).reason, "WINDOW_EXPIRED");
+  EXPECT_EQ(static_alignment_bracket(first, 3., 1., 3.).reason, "SYNC");
+  EXPECT_EQ(static_alignment_bracket(first, 3.001, 1., 3.).reason, "WAIT_RIGHT");
+  EXPECT_EQ(static_alignment_bracket({{3.1, 42}}, 2., 1., 3.).reason, "WINDOW_EXPIRED");
+  EXPECT_EQ(static_alignment_bracket({{3., 42}, {3.1, 43}}, 2., 1., 3.).reason, "WINDOW_EXPIRED");
+}

@@ -34,6 +34,14 @@ inline RangeBracket range_bracket(const std::map<double, gtsam::Key>& states, do
   if (dt > .150000001) return {"TIME_BRACKET_GAP"};
   return {"INTERPOLATED", left->second, right->second, (stamp - left->first) / dt};
 }
+// The user-declared stationary alignment interval can share its single endpoint
+// pose. Never extrapolate a dynamic pose or extend the interval to a late cloud.
+inline RangeBracket static_alignment_bracket(const std::map<double, gtsam::Key>& states, double stamp, double start, double end) {
+  if (
+    states.size() == 1 && std::isfinite(start) && std::isfinite(end) && start >= 0 && end > start && std::abs(states.begin()->first - end) < 1e-8 && stamp >= start && stamp < end)
+    return {"STATIC_ALIGNMENT", states.begin()->second, std::nullopt, 0};
+  return range_bracket(states, stamp);
+}
 // Bounded sequence watermark prevents old duplicates being resurrected after
 // their factor leaves the smoother. Sequence identity is independent of time order.
 class RangeQueue {

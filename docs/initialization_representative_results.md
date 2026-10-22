@@ -51,14 +51,14 @@ cd /home/dev/code/ws_tunnel/src/liuo_tunnel
 ./tools/build.sh
 export LIUO_RUN_ROOT=/home/dev/code/ws_tunnel/src/liuo_tunnel/log
 ./tools/run.sh --replay log/20261022T033532Z_307 \
-  --config packages/liuo_tunnel/config/phase2_joint_installation.json \
-  --map packages/liuo_tunnel/config/maps/surveyed_map_installation.json --wall-timeout 90
+  --config log/20261022T034003Z_902/metadata/config/phase1.json \
+  --map log/20261022T034003Z_902/metadata/config/map.json --wall-timeout 90
 ./tools/run.sh --duration 20 --seed 0 --sim-start 1800 -0.8 1.6 3.141592653589793 \
-  --capture --config packages/liuo_tunnel/config/phase2_joint_installation.json \
-  --map packages/liuo_tunnel/config/maps/surveyed_map_installation.json --wall-timeout 90
+  --capture --config log/20261022T034003Z_902/metadata/config/phase1.json \
+  --map log/20261022T034003Z_902/metadata/config/map.json --wall-timeout 90
 ```
 
-上述命令预计返回运行检查FAIL，原因如表；不能隐藏非零退出。1000m原始输入保留，可按其run路径回放，但本轮未追加重跑。新起点仅验证融合配置；未验证该起点的OFF规范对齐评估。
+历史配置使用run中的冻结快照，避免后续候选配置修改改变复现条件。上述命令预计返回运行检查FAIL，原因如表；不能隐藏非零退出。1000m原始输入保留，可按其run路径回放，但本轮未追加重跑。新起点仅验证融合配置；未验证该起点的OFF规范对齐评估。
 
 冻结候选配置SHA256：`bf08b6a7acfa2c960f5bfaf46186fa9ef33092de6ffeca623b3ea033b3e0773e`。
 安装地图SHA256：`68eb6929c3268a0087e390840f47091659f9e50d9eca5cb9b94af9ecffc118c5`。

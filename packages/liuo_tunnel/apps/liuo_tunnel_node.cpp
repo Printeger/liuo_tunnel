@@ -282,7 +282,7 @@ private:
     }
     uwb << o.producer << ',' << o.session << ',' << o.sequence << ',' << o.stamp << ',' << o.received << ',' << int(o.a_type) << ',' << o.a << ',' << int(o.b_type) << ',' << o.b
         << ',' << o.range << ',' << o.variance << ',' << reason << ',';
-    if (bracket.reason == "SYNC" || bracket.reason == "INTERPOLATED") uwb << gtsam::DefaultKeyFormatter(bracket.left);
+    if (bracket.reason == "SYNC" || bracket.reason == "INTERPOLATED" || bracket.reason == "STATIC_ALIGNMENT") uwb << gtsam::DefaultKeyFormatter(bracket.left);
     uwb << ',';
     if (bracket.right) uwb << gtsam::DefaultKeyFormatter(*bracket.right);
     uwb << ',' << anchor_key << ',' << category << ',' << residual << ',' << residual / std::sqrt(o.variance) << ",1,"
@@ -467,8 +467,10 @@ private:
     for (const auto& frame : frames) poses[frame.t] = X(frame.id);
     poses[t] = X(count);
     for (const auto& o : range_queue.take_until(t)) {
-      auto bracket = range_bracket(poses, o.stamp);
-      if (bracket.reason != "SYNC" && bracket.reason != "INTERPOLATED") {
+      auto bracket = count == 0 && cfg.at("uwb").value("use_static_alignment_ranges", false)
+                       ? static_alignment_bracket(poses, o.stamp, first_imu, first_imu + cfg.at("odometry").at("initialization_s").get<double>())
+                       : range_bracket(poses, o.stamp);
+      if (bracket.reason != "SYNC" && bracket.reason != "INTERPOLATED" && bracket.reason != "STATIC_ALIGNMENT") {
         log_range(o, bracket.reason);
         continue;
       }
@@ -497,7 +499,13 @@ private:
         // renewed input before returning to TRACKING; this never alters X/V/B.
         if (bootstrapped && last_uwb >= 0 && o.stamp > last_uwb + .3) uwb_recovery_until = std::max(uwb_recovery_until, t + cfg.at("odometry").at("lag_s").get<double>());
         last_uwb = std::max(last_uwb, o.stamp);
-        log_range(o, "ACCEPT_TA", bracket, anchor ? gtsam::DefaultKeyFormatter(*anchor) : "constant:" + std::to_string(o.b), residual, "PRE_OPT_INNOVATION");
+        log_range(
+          o,
+          "ACCEPT_TA",
+          bracket,
+          anchor ? gtsam::DefaultKeyFormatter(*anchor) : "constant:" + std::to_string(o.b),
+          residual,
+          bracket.reason == "STATIC_ALIGNMENT" ? "STATIC_ALIGNMENT_PRE_OPT_INNOVATION" : "PRE_OPT_INNOVATION");
       }
     }
     if (bootstrapped) {

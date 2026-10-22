@@ -55,7 +55,8 @@
     "bootstrap_s": 8.0,
     "bootstrap_multistart": true,
     "installation_seeds": true,
-    "installation_factors": true
+    "installation_factors": true,
+    "use_static_alignment_ranges": true
   },
   "logging": {
     "raw_bag": false
