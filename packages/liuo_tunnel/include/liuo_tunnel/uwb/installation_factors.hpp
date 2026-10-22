@@ -42,7 +42,7 @@ public:
     }
     return residual;
   }
-  gtsam::NonlinearFactor::shared_ptr clone() const override { return gtsam::make_shared<InstallationOffsetFactor>(*this); }
+  gtsam::NonlinearFactor::shared_ptr clone() const override { return gtsam::NonlinearFactor::shared_ptr(new InstallationOffsetFactor(*this)); }
 
 private:
   static gtsam::KeyVector keys(gtsam::Key reference, const gtsam::KeyVector& anchors) {
@@ -97,7 +97,7 @@ public:
     }
     return gtsam::Vector2(angle, line[1] - n.dot(world_center));
   }
-  gtsam::NonlinearFactor::shared_ptr clone() const override { return gtsam::make_shared<WallReferenceFactor>(*this); }
+  gtsam::NonlinearFactor::shared_ptr clone() const override { return gtsam::NonlinearFactor::shared_ptr(new WallReferenceFactor(*this)); }
 
 private:
   gtsam::Vector3 normal_;

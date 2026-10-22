@@ -203,10 +203,13 @@ def evaluate(run, output_dir=None):
             if mode == "reuse_map":
                 check(all(int(r.get("installation_observation_factors", -1)) == 0 for r in graph), "old installation observations repeated")
             check(all(r["state"] != "TRACKING" for r in trajectory), "provisional map claimed healthy tracking")
-        check(
-            all(int(r["A"]) == expected_anchors for r in graph),
-            "static anchors not retained",
-        )
+        if mode == "self_calibrate":
+            counts = [int(r["A"]) for r in graph]
+            check(bool(counts) and counts[-1] == expected_anchors and all(a <= b for a, b in zip(counts, counts[1:])),
+                  "initialized anchor set shrank or export missed extension")
+            check(all(int(r.get("installation_observation_factors", -1)) == 1 for r in graph), "installation subset not exactly once")
+        else:
+            check(all(int(r["A"]) == expected_anchors for r in graph), "static anchors not retained")
         check(
             all(int(r["map_priors"]) == int(expected_anchors > 0 and mode != "self_calibrate") for r in graph),
             "map prior count changed",

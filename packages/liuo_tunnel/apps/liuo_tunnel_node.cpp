@@ -16,6 +16,7 @@
 #include <liuo_tunnel/common/gauge_consistent_vgicp_gpu.hpp>
 #include <liuo_tunnel/uwb/known_map.hpp>
 #include <liuo_tunnel/uwb/installation_input.hpp>
+#include <liuo_tunnel/uwb/installation_subset.hpp>
 #include <liuo_tunnel/uwb/calibrated_map.hpp>
 #include <liuo_tunnel/uwb/unknown_anchor_candidates.hpp>
 #include <liuo_tunnel/uwb/joint_marginalization.hpp>
@@ -210,6 +211,8 @@ private:
     for (const auto& old : range_queue.reset()) log_range(old, "CLOCK_RESET");
     for (const auto& pending : pending_calibration_ranges) log_range(pending.observation, "CLOCK_RESET", pending.bracket);
     pending_calibration_ranges.clear();
+    for (const auto& pending : extension_ranges) log_range(pending.observation,"CLOCK_RESET",pending.bracket);
+    extension_ranges.clear(); extension_batch.reset(); extension_previous.clear(); extension_last_attempt.clear();
     calibration_prepared = false;
     calibration_previous.reset();
     bootstrap_idle_failure = nullptr;
@@ -329,7 +332,7 @@ private:
     const std::string& anchor_key = "",
     double residual = NAN,
     const std::string& category = "NONE") {
-    if (fuse && reason != "ACCEPT_TA" && reason != "ACCEPT_AA" && reason != "ORACLE_AA_CHECK" && reason != "CLOCK_RESET" && reason != "SHUTDOWN_PENDING" && reason != "PENDING_CALIBRATION" && reason != "AA_ABLATION_DISABLED") {
+    if (fuse && reason != "ACCEPT_TA" && reason != "ACCEPT_AA" && reason != "ORACLE_AA_CHECK" && reason != "CLOCK_RESET" && reason != "SHUTDOWN_PENDING" && reason != "PENDING_CALIBRATION" && reason != "AA_ABLATION_DISABLED" && reason != "ANCHOR_PENDING" && reason != "ANCHOR_WINDOW_EXPIRED") {
       ++rejected_total;
       last_rejected = now().seconds();
       last_rejection = reason;
@@ -371,15 +374,15 @@ private:
       log_range(o, "UNKNOWN_TAG");
       return;
     }
-    if (self_calibrate && calibration_prepared &&
-        (std::find(map.ids.begin(), map.ids.end(), o.b) == map.ids.end() ||
-         (o.a_type == 1 && std::find(map.ids.begin(), map.ids.end(), o.a) == map.ids.end()))) {
-      if (o.a_type == 1) { log_range(o, "AA_ANCHOR_PENDING"); return; }
-      throw std::runtime_error("NEW_ANCHOR_REQUIRES_DELAYED_JOINT_EXTENSION");
-    }
     try {
-      map.index(o.b);
-      if (o.a_type == 1) map.index(o.a);
+      auto validate_id = [&](uint32_t id) {
+        if (self_calibrate) {
+          if (std::find(installation_input->ids.begin(), installation_input->ids.end(), id) == installation_input->ids.end())
+            throw std::invalid_argument("UNKNOWN_ANCHOR");
+        } else map.index(id);
+      };
+      validate_id(o.b);
+      if (o.a_type == 1) validate_id(o.a);
     } catch (const std::exception&) {
       log_range(o, "UNKNOWN_ANCHOR");
       return;
@@ -672,6 +675,7 @@ private:
     };
     CalibratedMap::parse(document, cfg.at("sensors")).save_atomic(logs.export_path("map/calibrated_map.json"));
     map_export_session = session;
+    map_export_anchor_count = map.ids.size();
   }
   bool variable_anchors() const { return reuse_map || map.surveyed() || (self_calibrate && calibration_prepared); }
 
@@ -775,6 +779,146 @@ private:
     return true;
   }
 
+  void advance_anchor_extension(double t, gtsam::NonlinearFactorGraph& frame_factors) {
+    if (!bootstrapped || extension_ranges.empty()) return;
+    const double lag = cfg.at("odometry").at("lag_s");
+    auto current = smoother->calculateEstimate();
+    auto known = [&](uint32_t id) { return current.exists(A(id)); };
+    auto usable = [&](const PendingCalibrationRange& p) {
+      return p.observation.stamp >= t - lag && (p.observation.a_type == 1 ||
+        (current.exists(p.bracket.left) && (!p.bracket.right || current.exists(*p.bracket.right))));
+    };
+    for (auto it = extension_ranges.begin(); it != extension_ranges.end();) {
+      if (!usable(*it)) { log_range(it->observation,"ANCHOR_WINDOW_EXPIRED",it->bracket); it = extension_ranges.erase(it); }
+      else ++it;
+    }
+    auto log = [&](uint32_t id, const char* event, double a = NAN, double b = NAN) {
+      std::ofstream out(RunLogManager::instance().profiling_path("anchor_extension.csv"),std::ios::app);
+      if (out.tellp() == 0) out << "session,stamp,anchor,event,value_a,value_b,pending_records\n";
+      out << std::setprecision(16) << session << ',' << t << ',' << id << ',' << event << ',' << a << ',' << b << ',' << extension_ranges.size() << '\n';
+    };
+    if (extension_batch && extension_batch->oldest < t-lag) {
+      log(extension_batch->id,"SNAPSHOT_WINDOW_EXPIRED"); extension_batch.reset();
+    }
+    if (!extension_batch) {
+      std::map<uint32_t,std::vector<TagRangeSeedObservation>> samples;
+      for (const auto& p : extension_ranges) if (p.observation.a_type == 0 && p.observation.stamp >= t-lag/2) {
+        const auto& b=p.bracket;
+        const auto left=current.at<gtsam::Pose3>(b.left);
+        const auto point=b.right ? interpolated_tag(left,current.at<gtsam::Pose3>(*b.right),b.beta,tag) : left.transformFrom(tag);
+        samples[p.observation.b].push_back({point,p.observation.range});
+      }
+      const auto line=current.at<gtsam::Vector2>(gtsam::Symbol('l',0));
+      const Eigen::Vector2d normal(std::cos(line[0]/1000.),std::sin(line[0]/1000.));
+      for (const auto& entry : samples) {
+        const auto id=entry.first;
+        if (extension_last_attempt.count(id) && t-extension_last_attempt.at(id)<2.) continue;
+        const auto row=std::distance(installation_input->ids.begin(),std::find(installation_input->ids.begin(),installation_input->ids.end(),id));
+        auto seeds=unknown_anchor_seeds(entry.second,normal,line[1],installation_input->offsets[row]);
+        if (seeds.points.empty()) continue;
+        if (seeds.points.size()==1) {
+          auto mirror=seeds.points.front(); double height=0;
+          for (const auto& p : entry.second) height+=p.tag.z();
+          mirror.z()=2*height/entry.second.size()-mirror.z(); seeds.points.push_back(mirror);
+        }
+        extension_batch=std::make_unique<ExtensionBatch>();
+        auto& batch=*extension_batch;
+        batch.id=id; batch.stamp=t; batch.oldest=t; batch.initial=current; batch.seeds=seeds.points;
+        const auto& old=smoother->getFactors();
+        const size_t replaced=installation_subset_index(old,map.ids);
+        for (size_t i=0;i<old.size();++i) if (old[i] && i!=replaced) batch.graph.push_back(old[i]->clone());
+        auto ids=map.ids; ids.push_back(id);
+        batch.graph.add(joint_installation_factor(*installation_input,ids));
+        for (const auto& p : extension_ranges) {
+          const auto& o=p.observation; const auto& b=p.bracket;
+          if (o.stamp<t-lag/2) continue;
+          if (o.a_type==0 && o.b==id) {
+            batch.graph.emplace_shared<TagAnchorRangeFactor>(b.left,b.right,A(id),gtsam::Point3::Zero(),tag,b.beta,o.range,std::sqrt(o.variance));
+          } else if (o.a_type==1 && ((o.a==id && known(o.b)) || (o.b==id && known(o.a)))) {
+            batch.graph.emplace_shared<AnchorAnchorRangeFactor>(A(o.a),A(o.b),o.range,std::sqrt(o.variance));
+          } else continue;
+          batch.oldest=std::min(batch.oldest,o.stamp);
+        }
+        extension_last_attempt[id]=t;
+        log(id,"CANDIDATES_STARTED",seeds.baseline,batch.graph.size());
+        break;
+      }
+      if (!extension_batch) return;
+    }
+    auto& batch=*extension_batch;
+    if (!batch.optimizer) {
+      auto initial=batch.initial;
+      initial.insert(A(batch.id),batch.seeds.at(batch.solutions.size()));
+      gtsam::NonlinearFactorGraph graph;
+      for (const auto& f : batch.graph) graph.push_back(f->clone());
+      gtsam_points::LevenbergMarquardtExtParams params;
+      params.maxIterations=cfg.at("uwb").value("bootstrap_max_iterations",30);
+      params.relativeErrorTol=cfg.at("uwb").value("bootstrap_relative_error_tolerance",1e-5);
+      batch.optimizer=std::make_unique<SteppedBootstrapLM>(graph,initial,params,true);
+    }
+    try {
+      if (batch.failure) std::rethrow_exception(batch.failure);
+      if (!batch.optimizer->advance()) return;
+      const auto solution=batch.optimizer->values().at<gtsam::Point3>(A(batch.id));
+      const double cost=batch.optimizer->error();
+      if (!solution.allFinite() || !std::isfinite(cost)) throw std::runtime_error("NONFINITE_ANCHOR_CANDIDATE");
+      batch.solutions.push_back(solution); batch.costs.push_back(cost); batch.optimizer.reset();
+      log(batch.id,"CANDIDATE_SOLVED",solution.z(),cost);
+    } catch (const std::exception& error) {
+      logger->warn("anchor {} candidate failed: {}",batch.id,error.what());
+      log(batch.id,"CANDIDATE_FAILED"); extension_previous.erase(batch.id); extension_batch.reset(); return;
+    }
+    if (batch.solutions.size()<batch.seeds.size()) return;
+    const uint32_t id=batch.id;
+    const size_t best=std::distance(batch.costs.begin(),std::min_element(batch.costs.begin(),batch.costs.end()));
+    const auto point=batch.solutions[best];
+    for (const auto& alternative : batch.solutions) if ((alternative-point).norm()>=.5) {
+      log(id,"UNRESOLVED_POSITION_BRANCH",(alternative-point).norm());
+      extension_previous.erase(id); extension_batch.reset(); return;
+    }
+    const bool stable=extension_previous.count(id) && (extension_previous.at(id)-point).norm()<.5;
+    extension_previous.insert_or_assign(id,point);
+    if (!stable) { log(id,"AWAITING_NEW_DATA"); extension_batch.reset(); return; }
+    // Commit only current-window RAW measurements. Candidate robot states and
+    // candidate covariance never become independent observations or priors.
+    const size_t old_installation=installation_subset_index(smoother->getFactors(),map.ids);
+    auto ids=map.ids; ids.push_back(id);
+    gtsam::NonlinearFactorGraph additions;
+    additions.add(joint_installation_factor(*installation_input,ids));
+    gtsam::Values new_values; new_values.insert(A(id),point);
+    std::map<std::pair<uint32_t,uint32_t>,GaussianRangeSummary> new_pairs;
+    size_t accepted_ta=0,accepted_aa=0;
+    for (auto it=extension_ranges.begin();it!=extension_ranges.end();) {
+      const auto& o=it->observation; const auto& b=it->bracket;
+      if (o.a_type==0 && o.b==id) {
+        additions.emplace_shared<TagAnchorRangeFactor>(b.left,b.right,A(id),gtsam::Point3::Zero(),tag,b.beta,o.range,std::sqrt(o.variance));
+        log_range(o,"ACCEPT_TA",b,gtsam::DefaultKeyFormatter(A(id)),NAN,"DELAYED_RAW_TRANSFER"); ++accepted_ta;
+      } else if (o.a_type==1 && ((o.a==id && known(o.b)) || (o.b==id && known(o.a)))) {
+        new_pairs[{std::min(o.a,o.b),std::max(o.a,o.b)}].add(o.range,o.variance);
+        log_range(o,"ACCEPT_AA",{},"",NAN,"DELAYED_RAW_TRANSFER"); ++accepted_aa;
+      } else { ++it; continue; }
+      it=extension_ranges.erase(it);
+    }
+    if (!accepted_ta) throw std::logic_error("EXTENSION_HAS_NO_CURRENT_RAW_TA");
+    std::vector<std::pair<std::pair<uint32_t,uint32_t>,size_t>> pair_indices;
+    for (const auto& entry : new_pairs) {
+      if (aa_summaries.count(entry.first)) throw std::logic_error("EXTENSION_AA_ALREADY_ABSORBED");
+      pair_indices.emplace_back(entry.first,additions.size());
+      const auto& stats=entry.second;
+      additions.emplace_shared<AnchorAnchorRangeFactor>(A(entry.first.first),A(entry.first.second),stats.mean,stats.sigma(),stats.scatter);
+    }
+    smoother->update(additions,new_values,{{A(id),t}},{old_installation});
+    for (const auto& entry : pair_indices) {
+      auto& summary=aa_summaries[entry.first]; summary.statistics=new_pairs.at(entry.first);
+      summary.factor_index=smoother->getISAM2Result().newFactorsIndices.at(entry.second);
+    }
+    aa_measurements+=accepted_aa; new_aa+=accepted_aa; new_ta+=accepted_ta;
+    frame_factors.add(additions);
+    map.ids=std::move(ids); map.means.push_back(point);
+    log(id,"JOINTLY_INITIALIZED",accepted_ta,accepted_aa);
+    extension_previous.erase(id); extension_batch.reset();
+  }
+
   void retain_calibration_ranges(double t) {
     std::map<double, gtsam::Key> poses;
     for (const auto& frame : frames) poses[frame.t] = X(frame.id);
@@ -811,6 +955,13 @@ private:
                        : range_bracket(poses, o.stamp);
       if (bracket.reason != "SYNC" && bracket.reason != "INTERPOLATED" && bracket.reason != "STATIC_ALIGNMENT") {
         log_range(o, bracket.reason);
+        continue;
+      }
+      if (self_calibrate && (std::find(map.ids.begin(),map.ids.end(),o.b) == map.ids.end() ||
+          (o.a_type == 1 && std::find(map.ids.begin(),map.ids.end(),o.a) == map.ids.end()))) {
+        if (extension_ranges.size() >= 6000) throw std::runtime_error("ANCHOR_PENDING_RANGE_CAPACITY");
+        extension_ranges.push_back({o,bracket});
+        log_range(o,"ANCHOR_PENDING",bracket);
         continue;
       }
       const size_t j = map.index(o.b);
@@ -864,6 +1015,11 @@ private:
     aa_removed.clear();
   }
   void drain() {
+    if (clouds.empty() && extension_batch && extension_batch->optimizer && !extension_batch->optimizer->finished() && !extension_batch->failure) {
+      try { extension_batch->optimizer->advance(); }
+      catch (...) { extension_batch->failure = std::current_exception(); }
+      return;
+    }
     if (clouds.empty() && bounded_bootstrap_work && bootstrap_batch && bootstrap_batch->optimizer &&
         !bootstrap_batch->optimizer->finished() && !bootstrap_idle_failure) {
       // One original LM damping attempt on the existing frozen snapshot.
@@ -1326,6 +1482,7 @@ private:
       smoother->update(factors, initial, times, aa_removed);
       bind_aa_factor_indices();
     }
+    if (self_calibrate) advance_anchor_extension(t, factors);
     // Bounded diagnostic: re-optimize the SAME early graph without new data.
     // Never enabled implicitly or extended after a failed experiment.
     if (fuse && cfg.at("odometry").value("early_five_extra_updates", false) && t <= 13.0) {
@@ -1406,7 +1563,7 @@ private:
     }
     state = gtsam::NavState(smoother->calculateEstimate<gtsam::Pose3>(X(count)), smoother->calculateEstimate<gtsam::Vector3>(V(count)));
     bias = smoother->calculateEstimate<gtsam::imuBias::ConstantBias>(B(count));
-    if (self_calibrate && (count % 10 == 0 || map_export_session != session)) export_calibrated_map(t);
+    if (self_calibrate && (count % 10 == 0 || map_export_session != session || map_export_anchor_count != map.ids.size())) export_calibrated_map(t);
     if (!state.pose().matrix().allFinite() || !state.velocity().allFinite()) throw std::runtime_error("nonfinite optimized state");
     failure_context = "COVARIANCE_FAILED";
     const auto covariance_start = std::chrono::steady_clock::now();
@@ -1535,6 +1692,7 @@ private:
       surveyed_priors += dynamic_cast<const SurveyedMapPrior*>(factor.get()) != nullptr;
       installation_observations += dynamic_cast<const InstallationOffsetFactor*>(factor.get()) != nullptr;
     }
+    if (self_calibrate && installation_observations != 1) throw std::runtime_error("CALIBRATION_INSTALLATION_INFORMATION_LIFECYCLE_VIOLATION");
     if (reuse_map && (joint_map_priors != 1 || surveyed_priors != 0 || installation_observations != 0))
       throw std::runtime_error("REUSE_MAP_INFORMATION_LIFECYCLE_VIOLATION");
     size_t active = (smoother->timestamps().size() - anchors) / 3;
@@ -1564,12 +1722,26 @@ private:
   std::string backend, gpu_name;
   bool fuse = false, bootstrapped = true, self_calibrate = false, calibration_prepared = false, reuse_map = false, bounded_bootstrap_work = false;
   std::optional<CalibratedMap> calibrated_map;
-  size_t map_export_session = 0;
+  size_t map_export_session = 0, map_export_anchor_count = 0;
   std::optional<gtsam::Values> calibration_previous;
   std::set<size_t> calibration_solved;
   std::optional<InstallationInput> installation_input;
   struct PendingCalibrationRange { RangeObservation observation; RangeBracket bracket; };
   std::vector<PendingCalibrationRange> pending_calibration_ranges;
+  std::vector<PendingCalibrationRange> extension_ranges;
+  struct ExtensionBatch {
+    uint32_t id = 0;
+    double stamp = 0, oldest = 0;
+    gtsam::NonlinearFactorGraph graph;
+    gtsam::Values initial;
+    std::vector<gtsam::Point3> seeds, solutions;
+    std::vector<double> costs;
+    std::unique_ptr<SteppedBootstrapLM> optimizer;
+    std::exception_ptr failure;
+  };
+  std::unique_ptr<ExtensionBatch> extension_batch;
+  std::map<uint32_t,gtsam::Point3> extension_previous;
+  std::map<uint32_t,double> extension_last_attempt;
   KnownMap map;
   std::optional<LateralReference> lateral_reference;
   std::optional<LocalWallPair> initial_walls;

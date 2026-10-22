@@ -185,3 +185,25 @@ TEST(Physics, LocalCalibrationMotionDerivativesAndClosure) {
     EXPECT_LT((m.R * liuo_tunnel_sim::specific_force(m) + Eigen::Vector3d(0,0,-9.80665) - m.a).norm(), 1e-12);
   }
 }
+
+TEST(Physics, RepresentativeCalibrationRoutePreservesPrefixAndDerivatives) {
+  const Eigen::Vector3d start(200,0,1.2);
+  for (double t : {0.,5.,17.,35.,59.9,60.}) {
+    const auto a=liuo_tunnel_sim::calibration_motion(t,start,0.);
+    const auto b=liuo_tunnel_sim::calibration_route_motion(t,start,0.);
+    EXPECT_LT((a.p-b.p).norm(),1e-12);
+    EXPECT_LT((a.v-b.v).norm(),1e-12);
+  }
+  for (double t : {60.01,80.,150.,200.,300.,359.99,361.}) {
+    const double h=1e-3;
+    const auto m=liuo_tunnel_sim::calibration_route_motion(t,start,0.);
+    const auto left=liuo_tunnel_sim::calibration_route_motion(t-h,start,0.);
+    const auto right=liuo_tunnel_sim::calibration_route_motion(t+h,start,0.);
+    EXPECT_LT(((right.p-left.p)/(2*h)-m.v).norm(),1e-6);
+    EXPECT_LT(((right.v-left.v)/(2*h)-m.a).norm(),1e-6);
+    EXPECT_LE(m.v.x(),5.+1e-9);
+  }
+  const auto last=liuo_tunnel_sim::calibration_route_motion(370,start,0.);
+  EXPECT_NEAR(last.p.x(),1000,1e-9);
+  EXPECT_LT(last.v.norm(),1e-12);
+}

@@ -43,3 +43,30 @@ TEST(InstallationInput, RejectsInvalidIdentityAndCovariance) {
   j["joint_covariance_m2"][0][1] = .001;
   EXPECT_THROW(InstallationInput::parse(j), std::invalid_argument);
 }
+
+#include <liuo_tunnel/uwb/installation_subset.hpp>
+TEST(InstallationInput, ExtensionReplacesCorrelatedSubsetExactlyOnce) {
+  liuo_tunnel::InstallationInput input;
+  input.ids = {91, 4, 8};
+  input.offsets = Eigen::Vector3d(2., -2., 2.);
+  input.covariance = Eigen::Matrix3d::Constant(.04);
+  input.covariance.diagonal() += Eigen::Vector3d(.01,.02,.03);
+  gtsam::NonlinearFactorGraph graph;
+  graph.push_back(gtsam::NonlinearFactor::shared_ptr());
+  graph.add(liuo_tunnel::joint_installation_factor(input, {8,91}));
+  EXPECT_EQ(liuo_tunnel::installation_subset_index(graph,{8,91}),1);
+  // Correct replacement, not appending a second prior for old records.
+  graph[1] = liuo_tunnel::joint_installation_factor(input,{8,91,4});
+  EXPECT_EQ(liuo_tunnel::installation_subset_index(graph,{8,91,4}),1);
+  gtsam::Values values;
+  values.insert(gtsam::Symbol('l',0),gtsam::Vector2(0.,0.));
+  values.insert(gtsam::Symbol('a',91),gtsam::Point3(2.1,100,4));
+  values.insert(gtsam::Symbol('a',4),gtsam::Point3(-1.8,-20,8));
+  values.insert(gtsam::Symbol('a',8),gtsam::Point3(2.3,700,-5));
+  const gtsam::Vector3 residual(-.1,-.2,-.3);
+  EXPECT_NEAR(graph.error(values),.5*residual.dot(input.covariance.ldlt().solve(residual)),1e-10);
+  // Reintroducing old independent information must be rejected.
+  graph.add(liuo_tunnel::joint_installation_factor(input,{8,91}));
+  EXPECT_THROW(liuo_tunnel::installation_subset_index(graph,{8,91,4}),std::logic_error);
+  EXPECT_THROW(liuo_tunnel::joint_installation_factor(input,{91,91}),std::invalid_argument);
+}

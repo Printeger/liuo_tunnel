@@ -80,6 +80,7 @@ def main():
         help="explicit straight-rail outbound and backward return; use duration >=1070s",
     )
     p.add_argument("--config", type=Path, default=ROOT / "packages/liuo_tunnel/config/phase1.json")
+    p.add_argument("--calibration-route", action="store_true", help="local bootstrap followed by representative motion to x=1000")
     p.add_argument("--local-calibration", action="store_true", help="simulation-only closed 3D calibration maneuver")
     p.add_argument("--installation", type=Path, help="coordinate-free first-run installation measurements")
     p.add_argument("--map", type=Path, help="external oracle_map or surveyed_map JSON")
@@ -114,6 +115,10 @@ def main():
         p.error("delivery profile requires --replay")
     if args.replay and (args.capture or args.rate != 1.0):
         p.error("frozen replay requires 1x and cannot recapture")
+    if args.calibration_route:
+        args.local_calibration = True
+        if not args.sim_start or not 200 <= args.sim_start[0] < 1000:
+            p.error("representative calibration route requires start x in [200,1000)")
     if args.local_calibration and (args.replay or args.return_trip):
         p.error("--local-calibration is a live-only alternative to return trip")
     if args.local_calibration:
@@ -270,7 +275,7 @@ def main():
                 "scan_model": "snapshot",
                 "reset_at_s": args.reset_at,
                 "return_trip": args.return_trip,
-                "motion": ("closed_local_3d_30s_wide_v2" if args.local_calibration else ("outbound_and_reverse_return" if args.return_trip else "outbound")),
+                "motion": ("local_bootstrap_then_x1000_300s_v1" if args.calibration_route else "closed_local_3d_30s_wide_v2" if args.local_calibration else ("outbound_and_reverse_return" if args.return_trip else "outbound")),
                 "simulation_start_xyz_yaw": args.sim_start or [0, 0, 1.2, 0],
                 "clock_start_s": 1,
                 "dt_s": 0.005,
@@ -386,6 +391,7 @@ def main():
             f"return_trip:={str(args.return_trip).lower()}",
             "-p",
             f"local_calibration:={str(args.local_calibration).lower()}",
+            f"calibration_route:={str(args.calibration_route).lower()}",
             "-p",
             f"rate:={args.rate}",
             "-p",

@@ -1,5 +1,6 @@
 #pragma once
 #include <Eigen/Geometry>
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -105,6 +106,24 @@ inline Motion calibration_motion(double seconds, const Eigen::Vector3d& start, d
   m.a = {20 * (std::cos(theta)*w*w + std::sin(theta)*dw),
          1.6 * (-std::sin(theta)*w*w + std::cos(theta)*dw),
          2.4 * (2 * std::cos(2*theta)*w*w + std::sin(2*theta)*dw)};
+  return m;
+}
+// Representative simulated route: preserve the first 60 s local bootstrap,
+// then traverse to x=1000 over 300 s with observable transverse/vertical motion.
+// All constants belong to the simulation scenario, never the estimator.
+inline Motion calibration_route_motion(double seconds, const Eigen::Vector3d& start, double yaw) {
+  if (seconds <= 60) return calibration_motion(seconds,start,yaw);
+  Motion m=calibration_motion(0,start,yaw);
+  const double q=std::clamp((seconds-60)/300.,0.,1.);
+  const double u=10*q*q*q-15*q*q*q*q+6*q*q*q*q*q;
+  const double du=(30*q*q-60*q*q*q+30*q*q*q*q)/300.;
+  const double ddu=(60*q-180*q*q+120*q*q*q)/90000.;
+  const double distance=1000-start.x();
+  const double x=distance*u,v=distance*du,a=distance*ddu;
+  const double k=2*M_PI/100.,theta=k*x,w=k*v,dw=k*a;
+  m.p+=Eigen::Vector3d(x,.6*std::sin(theta),1.2*(1-std::cos(theta)));
+  m.v={v,.6*std::cos(theta)*w,1.2*std::sin(theta)*w};
+  m.a={a,.6*(-std::sin(theta)*w*w+std::cos(theta)*dw),1.2*(std::cos(theta)*w*w+std::sin(theta)*dw)};
   return m;
 }
 // Adapted physical definition from quadToIapImuMsg, IAP quadrotor_simulator_so3.cpp @ fbccae168.
