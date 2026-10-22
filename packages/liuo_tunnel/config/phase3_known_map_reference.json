@@ -59,7 +59,8 @@
     "use_static_alignment_ranges": true,
     "continuous_installation_walls": true,
     "nonintersecting_seed_proposals": true,
-    "bootstrap_timeout_s": 60.0
+    "bootstrap_timeout_s": 60.0,
+    "bounded_bootstrap_work": true
   },
   "logging": {
     "raw_bag": false

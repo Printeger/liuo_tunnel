@@ -78,6 +78,7 @@ public:
     self_calibrate = cfg.at("uwb").at("mode") == "self_calibrate";
     reuse_map = cfg.at("uwb").at("mode") == "reuse_map";
     fuse = self_calibrate || reuse_map || cfg.at("uwb").at("mode") == "fuse";
+    bounded_bootstrap_work = self_calibrate || reuse_map || cfg.at("uwb").value("bounded_bootstrap_work", false);
     if (fuse) {
       try {
         tag = vector3(cfg.at("sensors").at("T_BU_translation"));
@@ -518,7 +519,7 @@ private:
             initial = std::move(compact.values);
             }
           }
-          batch.optimizer = std::make_unique<SteppedBootstrapLM>(graph, initial, params, self_calibrate);
+          batch.optimizer = std::make_unique<SteppedBootstrapLM>(graph, initial, params, bounded_bootstrap_work);
         }
         done = batch.optimizer->advance();
         if (done) {
@@ -862,7 +863,7 @@ private:
     aa_removed.clear();
   }
   void drain() {
-    if (clouds.empty() && self_calibrate && bootstrap_batch && bootstrap_batch->optimizer &&
+    if (clouds.empty() && bounded_bootstrap_work && bootstrap_batch && bootstrap_batch->optimizer &&
         !bootstrap_batch->optimizer->finished() && !bootstrap_idle_failure) {
       // One original LM damping attempt on the existing frozen snapshot.
       // No graph mutation, new observations or second initialization pathway.
@@ -1075,7 +1076,7 @@ private:
       const size_t matching_keyframe_limit = cfg.at("odometry").at("max_keyframes");
       for (auto it = frames.rbegin(); it != frames.rend(); ++it) {
         const bool recent = int(count - it->id) <= window;
-        if (!recent && (!it->keyframe || (self_calibrate && matching_keyframes >= matching_keyframe_limit))) continue;
+        if (!recent && (!it->keyframe || (bounded_bootstrap_work && matching_keyframes >= matching_keyframe_limit))) continue;
         if (it->keyframe) ++matching_keyframes;
         // Raw states remain available for delayed ranges. Retaining a state
         // does not authorize adding every historical keyframe as a new match.
@@ -1560,7 +1561,7 @@ private:
   }
   std::unique_ptr<gtsam_points::StreamTempBufferRoundRobin> streams;
   std::string backend, gpu_name;
-  bool fuse = false, bootstrapped = true, self_calibrate = false, calibration_prepared = false, reuse_map = false;
+  bool fuse = false, bootstrapped = true, self_calibrate = false, calibration_prepared = false, reuse_map = false, bounded_bootstrap_work = false;
   std::optional<CalibratedMap> calibrated_map;
   std::optional<gtsam::Values> calibration_previous;
   std::set<size_t> calibration_solved;
