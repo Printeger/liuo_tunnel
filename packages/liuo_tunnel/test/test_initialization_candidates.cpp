@@ -373,3 +373,30 @@ TEST(InitializationCandidates, RecordedPositiveDefiniteLineBlockNeedsCoordinateC
   const gtsam::Matrix2 J = P.topLeftCorner<2, 2>();
   EXPECT_LT((J * centered.topLeftCorner<2, 2>().inverse() * J.transpose() - H.topLeftCorner<2, 2>().inverse()).norm(), 1e-10);
 }
+
+#include <liuo_tunnel/uwb/stepped_bootstrap_lm.hpp>
+TEST(InitializationCandidates, SteppedOptimizerMatchesWholeSolveAndTermination) {
+  using namespace gtsam::symbol_shorthand;
+  gtsam::Values initial;
+  initial.insert(X(0), gtsam::Pose3(gtsam::Rot3::Rz(.4), {250, .3, 2.}));
+  gtsam::NonlinearFactorGraph graph;
+  const gtsam::Point3 truth(200, .8, 1.6), lever(.1, .15, .25);
+  for (const gtsam::Point3 anchor : std::vector<gtsam::Point3>{{0, 3, 4}, {400, -3, 4}, {800, 3, .4}, {1200, -3, .4}})
+    graph.emplace_shared<TagAnchorRangeFactor>(X(0), std::nullopt, std::nullopt, anchor, lever, 0, (truth + gtsam::Rot3::Rz(.4) * lever - anchor).norm(), .1);
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(0), gtsam::Pose3(gtsam::Rot3::Rz(.4), truth), gtsam::noiseModel::Isotropic::Sigma(6, 10));
+  for (bool custom_stop : {false, true}) {
+    gtsam_points::LevenbergMarquardtExtParams params;
+    params.maxIterations = 30;
+    if (custom_stop) params.termination_criteria = [](const gtsam::Values& v) { return v.at<gtsam::Pose3>(X(0)).x() < 220; };
+    gtsam_points::LevenbergMarquardtOptimizerExt original(graph, initial, params);
+    const auto expected = original.optimize();
+    SteppedBootstrapLM stepped(graph, initial, params);
+    size_t calls = 0;
+    while (!stepped.advance()) ASSERT_LT(++calls, 100);
+    EXPECT_EQ(stepped.iterations(), original.iterations());
+    EXPECT_NEAR(stepped.error(), original.error(), 1e-12);
+    EXPECT_LT(gtsam::Pose3::Logmap(expected.at<gtsam::Pose3>(X(0)).between(stepped.values().at<gtsam::Pose3>(X(0)))).norm(), 1e-12);
+    EXPECT_TRUE(stepped.advance());
+    EXPECT_EQ(stepped.iterations(), original.iterations());
+  }
+}

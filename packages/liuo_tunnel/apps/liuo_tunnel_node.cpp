@@ -22,6 +22,7 @@
 #include <liuo_tunnel/uwb/body_wall_observation.hpp>
 #include <liuo_tunnel/uwb/measurement_queue.hpp>
 #include <gtsam_points/optimizers/levenberg_marquardt_ext.hpp>
+#include <liuo_tunnel/uwb/stepped_bootstrap_lm.hpp>
 #include <liuo_tunnel/util/run_log_manager.hpp>
 #include <liuo_tunnel/util/logging.hpp>
 #include <liuo_tunnel/optimizers/incremental_fixed_lag_smoother_ext.hpp>
@@ -171,6 +172,7 @@ private:
     bootstrap_times.clear();
     stationary_seed_ranges.clear();
     bootstrap_branches.clear();
+    bootstrap_batch.reset();
     bootstrap_last_attempt = -1;
     bootstrap_previous_winner.reset();
     initial_walls.reset();
@@ -336,12 +338,12 @@ private:
       failure_context = "INITIALIZATION_AMBIGUOUS_TIMEOUT";
       throw std::runtime_error("finite bootstrap search did not certify a branch within 20 s");
     }
-    if (bootstrap_last_attempt >= 0 && t < bootstrap_last_attempt + 2. - 1e-8) return std::nullopt;
-    bootstrap_last_attempt = t;
+    if (!bootstrap_batch && bootstrap_last_attempt >= 0 && t < bootstrap_last_attempt + 2. - 1e-8) return std::nullopt;
+    if (!bootstrap_batch) bootstrap_last_attempt = t;
     auto& logs = RunLogManager::instance();
     std::ofstream branch_log(logs.profiling_path("bootstrap_branches.csv"), std::ios::app);
     branch_log << std::setprecision(16);
-    if (branch_log.tellp() == 0) branch_log << "session,stamp,branch,cost,x0,y0,z0,yaw0,event\n";
+    if (branch_log.tellp() == 0) branch_log << "session,stamp,branch,cost,x0,y0,z0,yaw0,event,completion_stamp\n";
     if (bootstrap_branches.empty()) {
       // Pick the best conditioned available triangle, never anchor ID order as
       // a proxy for tunnel direction. Static means are proposal inputs only.
@@ -385,14 +387,14 @@ private:
         const auto reference = reference_optimizer.optimize();
         const auto reference_pose = reference.at<gtsam::Pose3>(X(0));
         branch_log << session << ',' << t << ",-1," << reference_optimizer.error() << ',' << reference_pose.x() << ',' << reference_pose.y() << ',' << reference_pose.z() << ','
-                   << reference_pose.rotation().yaw() << ",REFERENCE_ONLY\n";
+                   << reference_pose.rotation().yaw() << ",REFERENCE_ONLY," << t << '\n';
         std::vector<gtsam::Values> proposals;
         for (size_t seed_id = 0; seed_id < seeds.size(); ++seed_id) {
           auto initial = transform_bootstrap_seed(reference, X(0), seeds[seed_id]);
           auto proposal = precondition_bootstrap(bootstrap_factors, initial);
           const auto pose = proposal.values.at<gtsam::Pose3>(X(0));
           branch_log << session << ',' << t << ',' << seed_id << ',' << proposal.cost << ',' << pose.x() << ',' << pose.y() << ',' << pose.z() << ',' << pose.rotation().yaw()
-                     << ",RANGE_SEED_ONLY\n";
+                     << ",RANGE_SEED_ONLY," << t << '\n';
           bool duplicate = false;
           for (const auto& retained : proposals) {
             const auto delta = retained.at<gtsam::Pose3>(X(0)).between(pose);
@@ -411,36 +413,64 @@ private:
         bootstrap_branches = std::move(proposals);
       }
     }
-    gtsam::NonlinearFactorGraph original = bootstrap_factors;
-    aa_added.clear();
-    for (const auto& entry : aa_summaries) {
-      aa_added.emplace_back(entry.first, original.size());
-      const auto& stats = entry.second.statistics;
-      original.emplace_shared<AnchorAnchorRangeFactor>(A(entry.first.first), A(entry.first.second), stats.mean, stats.sigma(), stats.scatter);
+    if (!bootstrap_batch) {
+      bootstrap_batch = std::make_unique<BootstrapBatch>();
+      bootstrap_batch->stamp = t;
+      bootstrap_batch->graph = bootstrap_factors;
+      bootstrap_batch->initial = bootstrap_values;
+      for (const auto& entry : aa_summaries) {
+        const auto& stats = entry.second.statistics;
+        bootstrap_batch->graph.emplace_shared<AnchorAnchorRangeFactor>(A(entry.first.first), A(entry.first.second), stats.mean, stats.sigma(), stats.scatter);
+      }
     }
-    std::vector<BootstrapBranchEvidence> evidence;
-    for (size_t i = 0; i < bootstrap_branches.size(); ++i) {
-      const auto first = bootstrap_branches[i].at<gtsam::Pose3>(X(0));
-      auto initial = transform_bootstrap_seed(bootstrap_values, X(0), first);
-      for (auto key : bootstrap_branches[i].keys()) initial.update(key, bootstrap_branches[i].at(key));
-      // Clones own their nonlinear correspondence/reference cache. GPU streams
-      // are shared only serially; no candidate changes another's factor cache.
-      gtsam::NonlinearFactorGraph graph;
-      for (const auto& factor : original) graph.push_back(factor->clone());
+    auto& batch = *bootstrap_batch;
+    const auto started = std::chrono::steady_clock::now();
+    // Outer iterations are indivisible. The 30ms scheduling budget is soft,
+    // not a claim that any single iteration always meets a hard deadline.
+    do {
+      const size_t i = batch.evidence.size();
       double cost = std::numeric_limits<double>::infinity();
       std::string event = "SOLVED";
+      bool done = false;
       try {
-        gtsam_points::LevenbergMarquardtOptimizerExt optimizer(graph, initial, params);
-        bootstrap_branches[i] = optimizer.optimize();
-        cost = optimizer.error();
+        if (!batch.optimizer) {
+          const auto first = bootstrap_branches[i].at<gtsam::Pose3>(X(0));
+          auto initial = transform_bootstrap_seed(batch.initial, X(0), first);
+          for (auto key : bootstrap_branches[i].keys()) initial.update(key, bootstrap_branches[i].at(key));
+          // Each candidate owns its nonlinear cache; GPU work stays serial.
+          gtsam::NonlinearFactorGraph graph;
+          for (const auto& factor : batch.graph) graph.push_back(factor->clone());
+          batch.optimizer = std::make_unique<SteppedBootstrapLM>(graph, initial, params);
+        }
+        done = batch.optimizer->advance();
+        if (done) {
+          bootstrap_branches[i] = batch.optimizer->values();
+          cost = batch.optimizer->error();
+        }
       } catch (const std::exception& error) {
+        done = true;
         event = "SOLVE_FAILED";
         logger->warn("bootstrap branch {} failed: {}", i, error.what());
       }
-      const auto pose = bootstrap_branches[i].at<gtsam::Pose3>(X(0));
-      evidence.push_back({cost, pose});
-      branch_log << session << ',' << t << ',' << i << ',' << cost << ',' << pose.x() << ',' << pose.y() << ',' << pose.z() << ',' << pose.rotation().yaw() << ',' << event << '\n';
+      if (done) {
+        const auto pose = bootstrap_branches[i].at<gtsam::Pose3>(X(0));
+        batch.evidence.push_back({cost, pose});
+        branch_log << session << ',' << batch.stamp << ',' << i << ',' << cost << ',' << pose.x() << ',' << pose.y() << ',' << pose.z() << ',' << pose.rotation().yaw() << ','
+                   << event << ',' << t << '\n';
+        batch.optimizer.reset();
+      }
+    } while (batch.evidence.size() < bootstrap_branches.size() && std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count() < 30.);
+    std::ofstream work_log(logs.profiling_path("bootstrap_work.csv"), std::ios::app);
+    if (work_log.tellp() == 0) work_log << "session,stamp,snapshot_stamp,finished_candidates,work_ms,current_factors,snapshot_factors\n";
+    work_log << std::setprecision(16) << session << ',' << t << ',' << batch.stamp << ',' << batch.evidence.size() << ','
+             << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count() << ',' << bootstrap_factors.size() << ',' << batch.graph.size()
+             << '\n';
+    if (batch.evidence.size() < bootstrap_branches.size()) {
+      status("INITIALIZING", "CANDIDATE_OPTIMIZATION_IN_PROGRESS", t);
+      return std::nullopt;
     }
+    const auto evidence = std::move(batch.evidence);
+    bootstrap_batch.reset();
     const size_t winner = std::distance(evidence.begin(), std::min_element(evidence.begin(), evidence.end(), [](const auto& a, const auto& b) { return a.cost < b.cost; }));
     const bool unresolved_position = unresolved_position_branch(evidence, winner);
     const bool separated = !unresolved_position && separated_bootstrap_branch(evidence, winner);
@@ -454,8 +484,18 @@ private:
       status("INITIALIZING", unresolved_position ? "POSITION_BRANCH_UNVERIFIED" : (separated ? "BRANCH_AWAITING_NEW_DATA" : "BOOTSTRAP_BRANCH_AMBIGUITY"), t);
       return std::nullopt;
     }
-    bootstrap_factors = original;
-    return bootstrap_branches[winner];
+    // The comparison used one frozen graph. Transfer ALL observations arriving
+    // during its solve too, with the current AA summary exactly once. Those new
+    // states are initial guesses, refined by the same original joint graph.
+    auto result = transform_bootstrap_seed(bootstrap_values, X(0), bootstrap_branches[winner].at<gtsam::Pose3>(X(0)));
+    for (auto key : bootstrap_branches[winner].keys()) result.update(key, bootstrap_branches[winner].at(key));
+    aa_added.clear();
+    for (const auto& entry : aa_summaries) {
+      aa_added.emplace_back(entry.first, bootstrap_factors.size());
+      const auto& stats = entry.second.statistics;
+      bootstrap_factors.emplace_shared<AnchorAnchorRangeFactor>(A(entry.first.first), A(entry.first.second), stats.mean, stats.sigma(), stats.scatter);
+    }
+    return result;
   }
   void append_ranges(double t, gtsam::NonlinearFactorGraph& factors, const gtsam::Values& predicted) {
     new_ta = 0;
@@ -1144,6 +1184,14 @@ private:
   gtsam::Values bootstrap_values;
   std::map<uint32_t, GaussianRangeSummary> stationary_seed_ranges;
   std::vector<gtsam::Values> bootstrap_branches;
+  struct BootstrapBatch {
+    double stamp = 0;
+    gtsam::NonlinearFactorGraph graph;
+    gtsam::Values initial;
+    std::vector<BootstrapBranchEvidence> evidence;
+    std::unique_ptr<SteppedBootstrapLM> optimizer;
+  };
+  std::unique_ptr<BootstrapBatch> bootstrap_batch;
   double bootstrap_last_attempt = -1;
   std::optional<gtsam::Pose3> bootstrap_previous_winner;
   gtsam::FixedLagSmoother::KeyTimestampMap bootstrap_times;

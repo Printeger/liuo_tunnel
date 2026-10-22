@@ -53,3 +53,8 @@ The local ISAM2 marginalization now attaches its existing linearization point to
 LinearContainerFactor so Dogleg evaluates the retained historical prior rather
 than a zero nonlinear cost. The Gaussian information is unchanged. A three-state
 regression demonstrates the formerly omitted, analytically known prior cost.
+
+SteppedBootstrapLM preserves the optimization-loop stopping policy of public
+gtsam_points v1.2.1 `src/gtsam_points/optimizers/levenberg_marquardt_ext.cpp`
+(https://github.com/koide3/gtsam_points/blob/v1.2.1/src/gtsam_points/optimizers/levenberg_marquardt_ext.cpp).
+Its existing GTSAM/BSD and gtsam_points/MIT notices and licenses remain applicable.
