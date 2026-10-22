@@ -667,7 +667,16 @@ private:
         factors.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(0), state.pose(), gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
       if (body_walls) {
         const auto line_key = gtsam::Symbol('l', 0);
-        initial.insert(line_key, gtsam::Vector2(std::atan2(lateral_reference->normal.y(), lateral_reference->normal.x()), lateral_reference->offset));
+        // Center the line coordinates to avoid angle/offset scale disparity in
+        // elimination. This is an exact reparameterization, not new information.
+        gtsam::Point3 axis_origin = gtsam::Point3::Zero();
+        for (const auto& point : map.means) axis_origin += point;
+        axis_origin /= map.means.size();
+        initial.insert(
+          line_key,
+          gtsam::Vector2(
+            std::atan2(lateral_reference->normal.y(), lateral_reference->normal.x()),
+            lateral_reference->offset - lateral_reference->normal.dot(axis_origin.head<2>())));
         const auto& records = map.installation.at("records");
         gtsam::KeyVector anchor_keys;
         gtsam::Vector offsets(records.size());
@@ -677,8 +686,8 @@ private:
           offsets[i] = records[i].at("signed_offset_m");
           for (size_t j = 0; j < records.size(); ++j) covariance(i, j) = map.installation.at("joint_covariance_m2")[i][j].get<double>();
         }
-        factors.emplace_shared<InstallationOffsetFactor>(line_key, anchor_keys, offsets, covariance);
-        factors.emplace_shared<WallReferenceFactor>(X(0), line_key, body_walls->normal, body_walls->center, body_walls->covariance);
+        factors.emplace_shared<InstallationOffsetFactor>(line_key, anchor_keys, offsets, covariance, axis_origin);
+        factors.emplace_shared<WallReferenceFactor>(X(0), line_key, body_walls->normal, body_walls->center, body_walls->covariance, axis_origin);
       }
       factors.emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(V(0), state.velocity(), gtsam::noiseModel::Isotropic::Sigma(3, .01));
       gtsam::Vector6 sig;

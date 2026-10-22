@@ -330,3 +330,46 @@ TEST(InitializationCandidates, RecordedPositionMirrorCannotBeCertifiedByTotalCos
   branches[0].first_pose = gtsam::Pose3(gtsam::Rot3(), {1799.984, -.746, 1.825});
   EXPECT_FALSE(unresolved_position_branch(branches, 1));  // opposite yaw uses the existing graph gate
 }
+
+#include <gtsam/base/cholesky.h>
+TEST(InitializationCandidates, CenteredLinePreservesPhysicalLikelihoodAndJacobians) {
+  using namespace gtsam::symbol_shorthand;
+  const auto L = gtsam::Symbol('l', 0);
+  const gtsam::Point3 origin(1200, -.4, 2);
+  const double angle = 1.2;
+  const gtsam::Vector3 normal(std::cos(angle), std::sin(angle), 0);
+  gtsam::Values original;
+  original.insert(L, gtsam::Vector2(angle, .7));
+  original.insert(X(0), gtsam::Pose3(gtsam::Rot3::RzRyRx(.1, -.2, .4), {1800, 3, 8}));
+  original.insert(A(1), gtsam::Point3(20, 3, 4));
+  original.insert(A(2), gtsam::Point3(2400, -3, 5));
+  auto centered = original;
+  centered.update(L, gtsam::Vector2(angle, .7 - normal.dot(origin)));
+  gtsam::Matrix2 C;
+  C << .003, .0004, .0004, .003;
+  InstallationOffsetFactor a(L, {A(1), A(2)}, gtsam::Vector2(2.8, -2.8), C);
+  InstallationOffsetFactor b(L, {A(1), A(2)}, gtsam::Vector2(2.8, -2.8), C, origin);
+  WallReferenceFactor c(X(0), L, {.2, .9, .1}, {.1, -.7, .2}, C);
+  WallReferenceFactor d(X(0), L, {.2, .9, .1}, {.1, -.7, .2}, C, origin);
+  EXPECT_LT((a.unwhitenedError(original) - b.unwhitenedError(centered)).norm(), 1e-10);
+  EXPECT_LT((c.unwhitenedError(original) - d.unwhitenedError(centered)).norm(), 1e-10);
+  check_installation_derivatives(b, centered);
+  check_installation_derivatives(d, centered);
+}
+TEST(InitializationCandidates, RecordedPositiveDefiniteLineBlockNeedsCoordinateConditioning) {
+  // Rounded observed N10 frontal block. SPD, but GTSAM's pivot exponent check
+  // rejects the radian/global-offset parameter scales. No information is added.
+  gtsam::Matrix H(3, 3);
+  H.setZero();
+  H.topLeftCorner<2, 2>() << 1.98901835e10, 1.05838231e7, 1.05838231e7, 6320.74879;
+  H(2, 2) = 3.1574;
+  auto raw = H;
+  EXPECT_FALSE(gtsam::choleskyPartial(raw, 2));
+  gtsam::Matrix P = gtsam::Matrix::Identity(3, 3);
+  P(1, 0) = -1200;
+  gtsam::Matrix centered = P.transpose() * H * P;
+  auto factored = centered;
+  EXPECT_TRUE(gtsam::choleskyPartial(factored, 2));
+  const gtsam::Matrix2 J = P.topLeftCorner<2, 2>();
+  EXPECT_LT((J * centered.topLeftCorner<2, 2>().inverse() * J.transpose() - H.topLeftCorner<2, 2>().inverse()).norm(), 1e-10);
+}

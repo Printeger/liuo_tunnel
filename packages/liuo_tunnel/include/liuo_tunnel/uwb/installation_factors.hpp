@@ -4,13 +4,20 @@
 #include <stdexcept>
 #include <cmath>
 namespace liuo_tunnel {
-// One correlated installation observation. L=[horizontal normal angle, offset].
+// One correlated installation observation. L=[normal angle, offset relative to origin].
+// origin is a fixed numerical coordinate choice, not a measured centerline prior.
 // A retains its existing map prior; no pre-fitted line prior is added.
 class InstallationOffsetFactor : public gtsam::NoiseModelFactor {
 public:
-  InstallationOffsetFactor(gtsam::Key reference, const gtsam::KeyVector& anchors, const gtsam::Vector& signed_offsets, const gtsam::Matrix& covariance)
+  InstallationOffsetFactor(
+    gtsam::Key reference,
+    const gtsam::KeyVector& anchors,
+    const gtsam::Vector& signed_offsets,
+    const gtsam::Matrix& covariance,
+    const gtsam::Point3& origin = gtsam::Point3::Zero())
   : gtsam::NoiseModelFactor(gtsam::noiseModel::Gaussian::Covariance(covariance), keys(reference, anchors)),
-    offsets_(signed_offsets) {
+    offsets_(signed_offsets),
+    origin_(origin) {
     if (anchors.size() != size_t(offsets_.size()) || covariance.rows() != offsets_.size() || covariance.cols() != offsets_.size() || !offsets_.allFinite())
       throw std::invalid_argument("INSTALLATION_FACTOR_DIMENSION");
   }
@@ -23,7 +30,7 @@ public:
       (*H)[0] = gtsam::Matrix::Zero(offsets_.size(), 2);
     }
     for (int i = 0; i < offsets_.size(); ++i) {
-      const auto& anchor = values.at<gtsam::Point3>(keys()[i + 1]);
+      const gtsam::Point3 anchor = values.at<gtsam::Point3>(keys()[i + 1]) - origin_;
       residual[i] = offsets_[i] - n.dot(anchor) + line[1];
       if (H) {
         (*H)[0].row(i) << -tangent.dot(anchor), 1;
@@ -42,15 +49,23 @@ private:
   }
   using gtsam::NoiseModelFactor::keys;
   gtsam::Vector offsets_;
+  gtsam::Point3 origin_;
 };
 // One dedicated cloud, never also used by VGICP. The unoriented wall normal
 // leaves both tunnel directions valid. No vertical or axial position datum.
 class WallReferenceFactor : public gtsam::NoiseModelFactor {
 public:
-  WallReferenceFactor(gtsam::Key pose, gtsam::Key reference, const gtsam::Vector3& body_normal, const gtsam::Point3& body_center, const gtsam::Matrix2& covariance)
+  WallReferenceFactor(
+    gtsam::Key pose,
+    gtsam::Key reference,
+    const gtsam::Vector3& body_normal,
+    const gtsam::Point3& body_center,
+    const gtsam::Matrix2& covariance,
+    const gtsam::Point3& origin = gtsam::Point3::Zero())
   : gtsam::NoiseModelFactor(gtsam::noiseModel::Gaussian::Covariance(covariance), gtsam::KeyVector{pose, reference}),
     normal_(body_normal.normalized()),
-    center_(body_center) {
+    center_(body_center),
+    origin_(origin) {
     if (!body_normal.allFinite() || body_normal.norm() < 1e-8 || !body_center.allFinite()) throw std::invalid_argument("INVALID_BODY_WALL");
   }
   gtsam::Vector unwhitenedError(const gtsam::Values& values, gtsam::OptionalMatrixVecType H = nullptr) const override {
@@ -61,7 +76,7 @@ public:
     const double length2 = world_normal.head<2>().squaredNorm();
     if (length2 < 1e-10) throw std::domain_error("VERTICAL_WALL_NORMAL_INVALID");
     gtsam::Matrix36 Dcenter;
-    const auto world_center = pose.transformFrom(center_, Dcenter);
+    const gtsam::Point3 world_center = pose.transformFrom(center_, Dcenter) - origin_;
     const gtsam::Vector3 n(std::cos(line[0]), std::sin(line[0]), 0), tangent(-n.y(), n.x(), 0);
     double angle = line[0] - std::atan2(world_normal.y(), world_normal.x());
     angle = .5 * std::atan2(std::sin(2 * angle), std::cos(2 * angle));
@@ -79,6 +94,6 @@ public:
 
 private:
   gtsam::Vector3 normal_;
-  gtsam::Point3 center_;
+  gtsam::Point3 center_, origin_;
 };
 }  // namespace liuo_tunnel
