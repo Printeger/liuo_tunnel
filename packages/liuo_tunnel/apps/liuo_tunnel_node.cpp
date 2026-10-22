@@ -16,6 +16,7 @@
 #include <liuo_tunnel/common/gauge_consistent_vgicp_gpu.hpp>
 #include <liuo_tunnel/uwb/known_map.hpp>
 #include <liuo_tunnel/uwb/installation_input.hpp>
+#include <liuo_tunnel/uwb/calibrated_map.hpp>
 #include <liuo_tunnel/uwb/unknown_anchor_candidates.hpp>
 #include <liuo_tunnel/uwb/joint_marginalization.hpp>
 #include <liuo_tunnel/uwb/initialization_candidates.hpp>
@@ -605,6 +606,55 @@ private:
     return keys;
   }
 
+  void export_calibrated_map(double stamp) {
+    if (!self_calibrate || !bootstrapped) return;
+    const auto values = smoother->calculateEstimate();
+    gtsam::KeyVector keys;
+    nlohmann::json anchors = nlohmann::json::array(), missing = nlohmann::json::array();
+    for (auto id : map.ids) {
+      keys.push_back(A(id));
+      const auto a = values.at<gtsam::Point3>(A(id));
+      anchors.push_back({{"id", id}, {"mean_m", {a.x(), a.y(), a.z()}}});
+    }
+    keys.push_back(gtsam::Symbol('l', 0));
+    const auto line = values.at<gtsam::Vector2>(keys.back());
+    const auto covariance = selected_covariance(smoother->getISAM2(), keys);
+    std::vector<std::vector<double>> matrix(covariance.rows(), std::vector<double>(covariance.cols()));
+    for (int i = 0; i < covariance.rows(); ++i)
+      for (int j = 0; j < covariance.cols(); ++j) matrix[i][j] = covariance(i,j);
+    gtsam::Point3 lower = gtsam::Point3::Constant(std::numeric_limits<double>::infinity());
+    gtsam::Point3 upper = -lower;
+    for (auto key : values.keys()) if (gtsam::Symbol(key).chr() == 'x') {
+      const auto p = values.at<gtsam::Pose3>(key).translation();
+      lower = lower.cwiseMin(p); upper = upper.cwiseMax(p);
+    }
+    for (auto id : installation_input->ids)
+      if (std::find(map.ids.begin(), map.ids.end(), id) == map.ids.end())
+        missing.push_back({{"id", id}, {"reason", "NOT_JOINTLY_INITIALIZED"}});
+    auto& logs = RunLogManager::instance();
+    std::ifstream identity_file(logs.run_dir() / "metadata/manifests/input_identity.json");
+    if (!identity_file) throw std::runtime_error("MAP_EXPORT_INPUT_IDENTITY_MISSING");
+    const auto identity = nlohmann::json::parse(identity_file);
+    nlohmann::json document = {
+      {"schema_version", "liuo_joint_map_v1"}, {"frame", "map"}, {"anchor_units", "m"},
+      {"reference_units", {"mrad", "m"}}, {"reference_origin_m", {0,0,0}},
+      {"map_id", logs.run_dir().filename().string()+"_session_"+std::to_string(session)},
+      {"coordinate_gauge", "first IMU gravity alignment; initial translation zero; yaw is coordinate convention"},
+      {"status", "PROVISIONAL_INITIALIZED"}, {"deployment_validated", false},
+      {"unresolved_branches", nlohmann::json::array()},
+      {"branch_scope", "finite candidate search only; not a global uniqueness certificate"},
+      {"sensor_identity", cfg.at("sensors")}, {"source_run", logs.run_dir().string()},
+      {"source_identity", identity}, {"measurement_stamp", stamp}, {"session", session},
+      {"approximation", "Joint A/L Gaussian marginal of current fixed-lag Bayes tree, centered at current estimate; local linearization and single-basin approximation; statistical consistency not certified"},
+      {"installation_provenance", {{"input", installation_input->source}, {"already_absorbed", true}}},
+      {"not_initialized", missing}, {"anchors", anchors}, {"reference_mean", {line[0],line[1]}},
+      {"joint_covariance", matrix},
+      {"estimated_vehicle_bounds_m", {{lower.x(),lower.y(),lower.z()},{upper.x(),upper.y(),upper.z()}}},
+      {"bounds_scope", "current retained vehicle states only; not a certified reuse region"},
+      {"absorbed_information", "all accepted first-session raw factors up to measurement_stamp; do not reload installation or first-run ranges as independent observations"}
+    };
+    CalibratedMap::parse(document, cfg.at("sensors")).save_atomic(logs.export_path("map/calibrated_map.json"));
+  }
   bool variable_anchors() const { return map.surveyed() || (self_calibrate && calibration_prepared); }
 
   bool prepare_calibration(double t) {
@@ -1327,6 +1377,7 @@ private:
     }
     state = gtsam::NavState(smoother->calculateEstimate<gtsam::Pose3>(X(count)), smoother->calculateEstimate<gtsam::Vector3>(V(count)));
     bias = smoother->calculateEstimate<gtsam::imuBias::ConstantBias>(B(count));
+    if (self_calibrate && count % 10 == 0) export_calibrated_map(t);
     if (!state.pose().matrix().allFinite() || !state.velocity().allFinite()) throw std::runtime_error("nonfinite optimized state");
     failure_context = "COVARIANCE_FAILED";
     const auto covariance_start = std::chrono::steady_clock::now();
