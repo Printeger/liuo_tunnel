@@ -15,6 +15,7 @@
 #include <liuo_tunnel/common/estimator_status.hpp>
 #include <liuo_tunnel/common/gauge_consistent_vgicp_gpu.hpp>
 #include <liuo_tunnel/uwb/known_map.hpp>
+#include <liuo_tunnel/uwb/initialization_candidates.hpp>
 #include <liuo_tunnel/uwb/measurement_queue.hpp>
 #include <gtsam_points/optimizers/levenberg_marquardt_ext.hpp>
 #include <liuo_tunnel/util/run_log_manager.hpp>
@@ -163,6 +164,10 @@ private:
     bootstrap_factors.resize(0);
     bootstrap_values.clear();
     bootstrap_times.clear();
+    stationary_seed_ranges.clear();
+    bootstrap_branches.clear();
+    bootstrap_last_attempt = -1;
+    bootstrap_previous_winner.reset();
     bootstrapped = !fuse;
     clouds.clear();
     frames.clear();
@@ -313,6 +318,95 @@ private:
     }
     auto reason = range_queue.push(o);
     if (reason != "QUEUED") log_range(o, reason);
+    // Only already validated, deduplicated samples during the promised static
+    // interval generate seeds. These summaries are NOT graph observations.
+    if (reason == "QUEUED" && o.a_type == 0 && first_imu >= 0 && o.stamp >= first_imu && o.stamp <= first_imu + cfg.at("odometry").at("initialization_s").get<double>())
+      stationary_seed_ranges[o.b].add(o.range, o.variance);
+  }
+  std::optional<gtsam::Values> solve_bootstrap_branches(double t, const gtsam_points::LevenbergMarquardtExtParams& params) {
+    if (t - first_imu >= 20.) {
+      failure_context = "INITIALIZATION_AMBIGUOUS_TIMEOUT";
+      throw std::runtime_error("finite bootstrap search did not certify a branch within 20 s");
+    }
+    if (bootstrap_last_attempt >= 0 && t < bootstrap_last_attempt + 2. - 1e-8) return std::nullopt;
+    bootstrap_last_attempt = t;
+    auto& logs = RunLogManager::instance();
+    std::ofstream branch_log(logs.profiling_path("bootstrap_branches.csv"), std::ios::app);
+    branch_log << std::setprecision(16);
+    if (branch_log.tellp() == 0) branch_log << "session,stamp,branch,cost,x0,y0,z0,yaw0,event\n";
+    if (bootstrap_branches.empty()) {
+      // Pick the best conditioned available triangle, never anchor ID order as
+      // a proxy for tunnel direction. Static means are proposal inputs only.
+      std::vector<RangeSeedSphere> spheres;
+      for (const auto& entry : stationary_seed_ranges)
+        if (entry.second.count >= 8) spheres.push_back({map.means[map.index(entry.first)], entry.second.mean});
+      double area = 0;
+      std::array<RangeSeedSphere, 3> selected;
+      for (size_t i = 0; i < spheres.size(); ++i)
+        for (size_t j = i + 1; j < spheres.size(); ++j)
+          for (size_t k = j + 1; k < spheres.size(); ++k) {
+            const double candidate = (spheres[j].anchor - spheres[i].anchor).cross(spheres[k].anchor - spheres[i].anchor).norm();
+            if (candidate > area) {
+              area = candidate;
+              selected = {spheres[i], spheres[j], spheres[k]};
+            }
+          }
+      if (area == 0) {
+        status("INITIALIZING", "INSUFFICIENT_SEED_GEOMETRY", t);
+        return std::nullopt;
+      }
+      const auto tags = intersect_range_seeds(selected);
+      if (tags.tags.empty()) {
+        status("INITIALIZING", tags.reason, t);
+        return std::nullopt;
+      }
+      const auto seeds = pose_seeds_from_tags(tags.tags, bootstrap_values.at<gtsam::Pose3>(X(0)).rotation(), tag);
+      for (const auto& seed : seeds) bootstrap_branches.push_back(transform_bootstrap_seed(bootstrap_values, X(0), seed));
+    }
+    gtsam::NonlinearFactorGraph original = bootstrap_factors;
+    aa_added.clear();
+    for (const auto& entry : aa_summaries) {
+      aa_added.emplace_back(entry.first, original.size());
+      const auto& stats = entry.second.statistics;
+      original.emplace_shared<AnchorAnchorRangeFactor>(A(entry.first.first), A(entry.first.second), stats.mean, stats.sigma(), stats.scatter);
+    }
+    std::vector<BootstrapBranchEvidence> evidence;
+    for (size_t i = 0; i < bootstrap_branches.size(); ++i) {
+      const auto first = bootstrap_branches[i].at<gtsam::Pose3>(X(0));
+      auto initial = transform_bootstrap_seed(bootstrap_values, X(0), first);
+      for (auto key : bootstrap_branches[i].keys()) initial.update(key, bootstrap_branches[i].at(key));
+      // Clones own their nonlinear correspondence/reference cache. GPU streams
+      // are shared only serially; no candidate changes another's factor cache.
+      gtsam::NonlinearFactorGraph graph;
+      for (const auto& factor : original) graph.push_back(factor->clone());
+      double cost = std::numeric_limits<double>::infinity();
+      std::string event = "SOLVED";
+      try {
+        gtsam_points::LevenbergMarquardtOptimizerExt optimizer(graph, initial, params);
+        bootstrap_branches[i] = optimizer.optimize();
+        cost = optimizer.error();
+      } catch (const std::exception& error) {
+        event = "SOLVE_FAILED";
+        logger->warn("bootstrap branch {} failed: {}", i, error.what());
+      }
+      const auto pose = bootstrap_branches[i].at<gtsam::Pose3>(X(0));
+      evidence.push_back({cost, pose});
+      branch_log << session << ',' << t << ',' << i << ',' << cost << ',' << pose.x() << ',' << pose.y() << ',' << pose.z() << ',' << pose.rotation().yaw() << ',' << event << '\n';
+    }
+    const size_t winner = std::distance(evidence.begin(), std::min_element(evidence.begin(), evidence.end(), [](const auto& a, const auto& b) { return a.cost < b.cost; }));
+    const bool separated = separated_bootstrap_branch(evidence, winner);
+    bool stable = false;
+    if (separated && bootstrap_previous_winner) {
+      const auto delta = bootstrap_previous_winner->between(evidence[winner].first_pose);
+      stable = delta.translation().norm() < .5 && gtsam::Rot3::Logmap(delta.rotation()).norm() < .1;
+    }
+    bootstrap_previous_winner = separated ? std::optional<gtsam::Pose3>(evidence[winner].first_pose) : std::nullopt;
+    if (!stable) {
+      status("INITIALIZING", separated ? "BRANCH_AWAITING_NEW_DATA" : "BOOTSTRAP_BRANCH_AMBIGUITY", t);
+      return std::nullopt;
+    }
+    bootstrap_factors = original;
+    return bootstrap_branches[winner];
   }
   void append_ranges(double t, gtsam::NonlinearFactorGraph& factors, const gtsam::Values& predicted) {
     new_ta = 0;
@@ -558,11 +652,12 @@ private:
       // Before the first solve, each static pair enters once with the exact
       // accumulated raw likelihood, including its state-independent cost.
       aa_added.clear();
-      for (const auto& entry : aa_summaries) {
-        aa_added.emplace_back(entry.first, bootstrap_factors.size());
-        const auto& stats = entry.second.statistics;
-        bootstrap_factors.emplace_shared<AnchorAnchorRangeFactor>(A(entry.first.first), A(entry.first.second), stats.mean, stats.sigma(), stats.scatter);
-      }
+      if (!cfg.at("uwb").value("bootstrap_multistart", false))
+        for (const auto& entry : aa_summaries) {
+          aa_added.emplace_back(entry.first, bootstrap_factors.size());
+          const auto& stats = entry.second.statistics;
+          bootstrap_factors.emplace_shared<AnchorAnchorRangeFactor>(A(entry.first.first), A(entry.first.second), stats.mean, stats.sigma(), stats.scatter);
+        }
       gtsam_points::LevenbergMarquardtExtParams params;
       params.maxIterations = cfg.at("uwb").value("bootstrap_max_iterations", 30);
       params.relativeErrorTol = cfg.at("uwb").value("bootstrap_relative_error_tolerance", 1e-5);
@@ -591,10 +686,26 @@ private:
         write_bootstrap_state(values, "iteration");
       };
       params.status_msg_callback = [this](const std::string& message) { logger->info("bootstrap optimizer: {}", message); };
-      gtsam_points::LevenbergMarquardtOptimizerExt optimizer(bootstrap_factors, bootstrap_values, params);
-      auto optimized = optimizer.optimize();
-      bootstrap_log << session << ',' << optimizer.iterations() << ',' << optimizer.error() << ",," << optimizer.lambda() << ",,,";
-      write_bootstrap_state(optimized, "returned");
+      gtsam::Values optimized;
+      if (cfg.at("uwb").value("bootstrap_multistart", false)) {
+        // Branch results are logged separately; do not interleave the legacy
+        // single-optimizer callback with incomparable candidate iterations.
+        auto branch_params = params;
+        branch_params.callback = nullptr;
+        auto result = solve_bootstrap_branches(t, branch_params);
+        if (!result) {
+          frames.push_back({count, t, voxel, count % 10 == 0});
+          last_cloud = t;
+          ++count;
+          return;
+        }
+        optimized = *result;
+      } else {
+        gtsam_points::LevenbergMarquardtOptimizerExt optimizer(bootstrap_factors, bootstrap_values, params);
+        optimized = optimizer.optimize();
+        bootstrap_log << session << ',' << optimizer.iterations() << ',' << optimizer.error() << ",," << optimizer.lambda() << ",,,";
+        write_bootstrap_state(optimized, "returned");
+      }
       if (cfg.at("uwb").value("bootstrap_translation_probe", false)) {
         if (backend != "gpu") throw std::runtime_error("bootstrap translation probe requires GPU");
         gtsam::Matrix3 H = gtsam::Matrix3::Zero();
@@ -660,6 +771,8 @@ private:
       bootstrap_values.clear();
       bootstrap_times.clear();
       bootstrapped = true;
+      bootstrap_branches.clear();
+      stationary_seed_ranges.clear();
     } else {
       smoother->update(factors, initial, times, aa_removed);
       bind_aa_factor_indices();
@@ -900,6 +1013,10 @@ private:
   uint64_t aa_measurements = 0;
   gtsam::NonlinearFactorGraph bootstrap_factors;
   gtsam::Values bootstrap_values;
+  std::map<uint32_t, GaussianRangeSummary> stationary_seed_ranges;
+  std::vector<gtsam::Values> bootstrap_branches;
+  double bootstrap_last_attempt = -1;
+  std::optional<gtsam::Pose3> bootstrap_previous_winner;
   gtsam::FixedLagSmoother::KeyTimestampMap bootstrap_times;
   rclcpp::TimerBase::SharedPtr estimator_timer;
   nlohmann::json cfg;

@@ -57,3 +57,31 @@ TEST(InitializationCandidates, TangentIsNotAnArtificialMirrorPair) {
   EXPECT_EQ(result.reason, "TANGENT_SEED_SPHERES");
   EXPECT_LT((result.tags[0] - gtsam::Point3(3, 4, 0)).norm(), 1e-10);
 }
+TEST(InitializationCandidates, TransformsRobotTrajectoryNotMapOrBodyBias) {
+  using gtsam::symbol_shorthand::A;
+  using gtsam::symbol_shorthand::V;
+  using gtsam::symbol_shorthand::X;
+  gtsam::Values input;
+  gtsam::Pose3 a(gtsam::Rot3::Rz(.3), {10, -2, 4}), b(gtsam::Rot3::Rz(.4), {11, -1, 5});
+  input.insert(X(0), a);
+  input.insert(X(1), b);
+  input.insert(V(0), gtsam::Vector3(1, 2, 3));
+  input.insert(A(1), gtsam::Point3(400, 3, 5));
+  input.insert(gtsam::Symbol('b', 0), gtsam::Vector6::Ones().eval());
+  const gtsam::Pose3 seed(gtsam::Rot3::Rz(2), {80, 2, 8});
+  auto changed = transform_bootstrap_seed(input, X(0), seed);
+  EXPECT_LT(gtsam::Pose3::Logmap(seed.between(changed.at<gtsam::Pose3>(X(0)))).norm(), 1e-10);
+  EXPECT_LT(gtsam::Pose3::Logmap(a.between(b).between(changed.at<gtsam::Pose3>(X(0)).between(changed.at<gtsam::Pose3>(X(1))))).norm(), 1e-10);
+  EXPECT_LT((a.rotation().unrotate(input.at<gtsam::Vector3>(V(0))) - seed.rotation().unrotate(changed.at<gtsam::Vector3>(V(0)))).norm(), 1e-10);
+  EXPECT_EQ(changed.at<gtsam::Point3>(A(1)), input.at<gtsam::Point3>(A(1)));
+  EXPECT_EQ(changed.at<gtsam::Vector6>(gtsam::Symbol('b', 0)), input.at<gtsam::Vector6>(gtsam::Symbol('b', 0)));
+}
+TEST(InitializationCandidates, SmallCostOrOptimizerReturnDoesNotResolveAmbiguity) {
+  std::vector<BootstrapBranchEvidence> branches{{.01, gtsam::Pose3()}, {.02, gtsam::Pose3(gtsam::Rot3(), {0, 0, 7})}};
+  EXPECT_FALSE(separated_bootstrap_branch(branches, 0));
+  branches[1].cost = 10;
+  EXPECT_TRUE(separated_bootstrap_branch(branches, 0));
+  branches[1].cost = std::numeric_limits<double>::infinity();
+  EXPECT_FALSE(separated_bootstrap_branch(branches, 0));
+  EXPECT_FALSE(separated_bootstrap_branch({branches[0]}, 0));
+}

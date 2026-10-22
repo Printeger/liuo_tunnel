@@ -1,5 +1,7 @@
 #pragma once
 #include <gtsam/geometry/Pose3.h>
+#include <gtsam/nonlinear/Values.h>
+#include <gtsam/inference/Symbol.h>
 #include <array>
 #include <cmath>
 #include <string>
@@ -53,5 +55,32 @@ pose_seeds_from_tags(const std::vector<gtsam::Point3>& tags, const gtsam::Rot3& 
     }
   }
   return poses;
+}
+// Change only the robot-frame gauge used as a numerical starting point.
+// The fixed map and body-frame biases must not follow a robot hypothesis.
+inline gtsam::Values transform_bootstrap_seed(const gtsam::Values& values, gtsam::Key first_pose, const gtsam::Pose3& seed) {
+  const auto delta = seed.compose(values.at<gtsam::Pose3>(first_pose).inverse());
+  auto transformed = values;
+  for (auto key : values.keys()) {
+    const char symbol = gtsam::Symbol(key).chr();
+    if (symbol == 'x') transformed.update(key, delta.compose(values.at<gtsam::Pose3>(key)));
+    if (symbol == 'v') transformed.update(key, gtsam::Vector3(delta.rotation() * values.at<gtsam::Vector3>(key)));
+  }
+  return transformed;
+}
+struct BootstrapBranchEvidence {
+  double cost;
+  gtsam::Pose3 first_pose;
+};
+// A conservative gate over a declared FINITE search, not a global-optimum proof.
+// The distances here distinguish result basins, not navigation accuracy limits.
+inline bool separated_bootstrap_branch(const std::vector<BootstrapBranchEvidence>& branches, size_t winner, double minimum_cost_gap = 5.) {
+  if (branches.size() < 2 || winner >= branches.size() || !std::isfinite(minimum_cost_gap) || minimum_cost_gap <= 0) return false;
+  for (const auto& branch : branches) {
+    if (!std::isfinite(branch.cost) || !branch.first_pose.matrix().allFinite()) return false;
+    const auto delta = branches[winner].first_pose.between(branch.first_pose);
+    if ((delta.translation().norm() > .5 || gtsam::Rot3::Logmap(delta.rotation()).norm() > .1) && branch.cost - branches[winner].cost < minimum_cost_gap) return false;
+  }
+  return true;
 }
 }  // namespace liuo_tunnel
