@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Online run checks and reference metrics, not phase-two effectiveness acceptance."""
 import argparse
+import hashlib
 import csv
 import json
 import math
@@ -66,6 +67,38 @@ def raw_lidar_graph_present(graph, config):
         for r in graph
     )
     return multiple and continuous
+
+
+def calibrated_map_metrics(run, document):
+    """Simulation evaluation only, never an estimator input or fitted alignment."""
+    import numpy as np
+    from evaluation_frames import map_evaluation_datum, _transform
+
+    fixture = json.loads((Path(__file__).resolve().parent.parent / "packages/liuo_tunnel/config/maps/oracle_map.json").read_text())
+    scenario = json.loads((run / "metadata/config/scenario.json").read_text())
+    if fixture["simulation_anchor_layout"] != scenario["anchor_layout"]:
+        raise ValueError("map evaluation oracle fixture does not match simulation")
+    reference = {a["id"]: np.array(a["mean_m"]) for a in fixture["anchors"]}
+    datum = map_evaluation_datum(run)
+    records = [dict(session="map", x=a["mean_m"][0], y=a["mean_m"][1], z=a["mean_m"][2],
+                    vx=0, vy=0, vz=0, qx=0, qy=0, qz=0, qw=1) for a in document["anchors"]]
+    world = _transform(records, [datum], False)
+    estimates = {a["id"]: np.array([r[k] for k in ("x", "y", "z")]) for a, r in zip(document["anchors"], world)}
+    errors = np.array([estimates[a["id"]] - reference[a["id"]] for a in document["anchors"]])
+    order = sorted(estimates, key=lambda key: reference[key][0])
+    spacing = []
+    for a, b in zip(order, order[1:]):
+        spacing.append({"ids": [a, b], "distance_error_m": float(np.linalg.norm(estimates[b]-estimates[a]) - np.linalg.norm(reference[b]-reference[a]))})
+    covariance = np.array(document["joint_covariance"])
+    return {"scope": "observed initialized anchors only; fixed first-run gauge; no alignment",
+            "anchor_errors_world_m": {str(a["id"]): e.tolist() for a, e in zip(document["anchors"], errors)},
+            "axis_rmse_m": np.sqrt(np.mean(errors**2, axis=0)).tolist(),
+            "adjacent_initialized_spacing_errors": spacing,
+            "estimated_longitudinal_order": sorted(estimates, key=lambda key: estimates[key][0]),
+            "joint_local_std": np.sqrt(np.diag(covariance)).tolist(),
+            "joint_order": ["a"+str(a["id"])+".xyz_m" for a in document["anchors"]]+["l0.angle_mrad", "l0.offset_m"],
+            "anchor_reference_cross_covariance_norm": float(np.linalg.norm(covariance[:-2,-2:])),
+            "not_initialized": document["not_initialized"], "statistical_consistency": "NOT_CERTIFIED"}
 
 
 def evaluate(run, output_dir=None):
@@ -395,6 +428,7 @@ def evaluate(run, output_dir=None):
     if phase3:
         policy["result_scope"] = "phase3_single_run_contracts_not_system_effectiveness"
     result = {
+        "evaluator_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "scope": (
             "phase3_iteration_snapshot_" if phase3 else "phase2_iteration_snapshot_"
             if config.get("schema_version") == "liuo_phase2_v1"
@@ -410,6 +444,7 @@ def evaluate(run, output_dir=None):
         **policy,
         "evaluation_policy": "phase3_fixed_first_run_gauge" if phase3 else ("representative_phase2_2026_10_22" if phase2 else "phase1"),
         "map_evaluation_frame": "fixed original calibration run datum; no reuse-start alignment" if phase3 else None,
+        "calibrated_map_metrics": calibrated_map_metrics(run, map_config) if phase3 else None,
         "metrics": metrics,
         "position_rmse_m": (
             math.sqrt(statistics.mean(e * e for e in errors)) if errors else None
