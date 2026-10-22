@@ -14,16 +14,19 @@ public:
     const gtsam::KeyVector& anchors,
     const gtsam::Vector& signed_offsets,
     const gtsam::Matrix& covariance,
-    const gtsam::Point3& origin = gtsam::Point3::Zero())
+    const gtsam::Point3& origin = gtsam::Point3::Zero(),
+    double angle_scale = 1.0)
   : gtsam::NoiseModelFactor(gtsam::noiseModel::Gaussian::Covariance(covariance), keys(reference, anchors)),
     offsets_(signed_offsets),
-    origin_(origin) {
+    origin_(origin),
+    angle_scale_(angle_scale) {
+    if (!std::isfinite(angle_scale) || angle_scale <= 0) throw std::invalid_argument("INVALID_LINE_ANGLE_SCALE");
     if (anchors.size() != size_t(offsets_.size()) || covariance.rows() != offsets_.size() || covariance.cols() != offsets_.size() || !offsets_.allFinite())
       throw std::invalid_argument("INSTALLATION_FACTOR_DIMENSION");
   }
   gtsam::Vector unwhitenedError(const gtsam::Values& values, gtsam::OptionalMatrixVecType H = nullptr) const override {
     const auto& line = values.at<gtsam::Vector2>(keys()[0]);
-    const gtsam::Vector3 n(std::cos(line[0]), std::sin(line[0]), 0), tangent(-n.y(), n.x(), 0);
+    const gtsam::Vector3 n(std::cos(line[0] / angle_scale_), std::sin(line[0] / angle_scale_), 0), tangent(-n.y(), n.x(), 0);
     gtsam::Vector residual(offsets_.size());
     if (H) {
       H->assign(keys().size(), gtsam::Matrix::Zero(offsets_.size(), 3));
@@ -33,7 +36,7 @@ public:
       const gtsam::Point3 anchor = values.at<gtsam::Point3>(keys()[i + 1]) - origin_;
       residual[i] = offsets_[i] - n.dot(anchor) + line[1];
       if (H) {
-        (*H)[0].row(i) << -tangent.dot(anchor), 1;
+        (*H)[0].row(i) << -tangent.dot(anchor) / angle_scale_, 1;
         (*H)[i + 1].row(i) = -n.transpose();
       }
     }
@@ -50,6 +53,7 @@ private:
   using gtsam::NoiseModelFactor::keys;
   gtsam::Vector offsets_;
   gtsam::Point3 origin_;
+  double angle_scale_;
 };
 // One dedicated cloud, never also used by VGICP. The unoriented wall normal
 // leaves both tunnel directions valid. No vertical or axial position datum.
@@ -61,11 +65,14 @@ public:
     const gtsam::Vector3& body_normal,
     const gtsam::Point3& body_center,
     const gtsam::Matrix2& covariance,
-    const gtsam::Point3& origin = gtsam::Point3::Zero())
+    const gtsam::Point3& origin = gtsam::Point3::Zero(),
+    double angle_scale = 1.0)
   : gtsam::NoiseModelFactor(gtsam::noiseModel::Gaussian::Covariance(covariance), gtsam::KeyVector{pose, reference}),
     normal_(body_normal.normalized()),
     center_(body_center),
-    origin_(origin) {
+    origin_(origin),
+    angle_scale_(angle_scale) {
+    if (!std::isfinite(angle_scale) || angle_scale <= 0) throw std::invalid_argument("INVALID_LINE_ANGLE_SCALE");
     if (!body_normal.allFinite() || body_normal.norm() < 1e-8 || !body_center.allFinite()) throw std::invalid_argument("INVALID_BODY_WALL");
   }
   gtsam::Vector unwhitenedError(const gtsam::Values& values, gtsam::OptionalMatrixVecType H = nullptr) const override {
@@ -77,8 +84,8 @@ public:
     if (length2 < 1e-10) throw std::domain_error("VERTICAL_WALL_NORMAL_INVALID");
     gtsam::Matrix36 Dcenter;
     const gtsam::Point3 world_center = pose.transformFrom(center_, Dcenter) - origin_;
-    const gtsam::Vector3 n(std::cos(line[0]), std::sin(line[0]), 0), tangent(-n.y(), n.x(), 0);
-    double angle = line[0] - std::atan2(world_normal.y(), world_normal.x());
+    const gtsam::Vector3 n(std::cos(line[0] / angle_scale_), std::sin(line[0] / angle_scale_), 0), tangent(-n.y(), n.x(), 0);
+    double angle = line[0] / angle_scale_ - std::atan2(world_normal.y(), world_normal.x());
     angle = .5 * std::atan2(std::sin(2 * angle), std::cos(2 * angle));
     if (H) {
       H->assign(2, gtsam::Matrix::Zero(2, 2));
@@ -86,7 +93,7 @@ public:
       const Eigen::RowVector3d Dangle(-world_normal.y() / length2, world_normal.x() / length2, 0);
       (*H)[0].block<1, 3>(0, 0) = -Dangle * Dnormal;
       (*H)[0].row(1) = -n.transpose() * Dcenter;
-      (*H)[1] << 1, 0, -tangent.dot(world_center), 1;
+      (*H)[1] << 1 / angle_scale_, 0, -tangent.dot(world_center) / angle_scale_, 1;
     }
     return gtsam::Vector2(angle, line[1] - n.dot(world_center));
   }
@@ -95,5 +102,6 @@ public:
 private:
   gtsam::Vector3 normal_;
   gtsam::Point3 center_, origin_;
+  double angle_scale_;
 };
 }  // namespace liuo_tunnel

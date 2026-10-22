@@ -157,6 +157,17 @@ private:
     gtsam::ISAM2Params p;
     p.relinearizeSkip = 1;
     p.relinearizeThreshold = cfg.at("odometry").value("relinearize_threshold", .05);
+    if (fuse && cfg.at("uwb").value("continuous_installation_walls", false)) {
+      if (!cfg.at("uwb").value("installation_factors", false) || !lateral_reference) throw std::invalid_argument("CONTINUOUS_WALLS_REQUIRE_INSTALLATION_REFERENCE");
+      const double threshold = cfg.at("odometry").value("relinearize_threshold", .05);
+      gtsam::FastMap<char, gtsam::Vector> thresholds;
+      thresholds['x'] = gtsam::Vector::Constant(6, threshold);
+      thresholds['v'] = gtsam::Vector::Constant(3, threshold);
+      thresholds['b'] = gtsam::Vector::Constant(6, threshold);
+      thresholds['a'] = gtsam::Vector::Constant(3, threshold);
+      thresholds['l'] = gtsam::Vector2(1000 * threshold, threshold);
+      p.relinearizeThreshold = thresholds;
+    }
     p.findUnusedFactorSlots = true;
     if (cfg.at("odometry").value("use_dogleg", false)) p.setOptimizationParams(gtsam::ISAM2DoglegParams());
     p.setFactorization(cfg.at("odometry").value("factorization", std::string("CHOLESKY")));
@@ -598,6 +609,7 @@ private:
     auto start = std::chrono::steady_clock::now();
     if (m.header.frame_id != "lidar" || m.is_bigendian) throw std::runtime_error("pointcloud frame/endian contract");
     std::vector<Eigen::Vector4d> points;
+    const double line_angle_scale = cfg.at("uwb").value("continuous_installation_walls", false) ? 1000.0 : 1.0;
     const bool ongoing_walls = bootstrapped && fuse && body_walls && cfg.at("uwb").value("continuous_installation_walls", false) && count % 10 == 0;
     std::vector<gtsam::Vector3> wall_points;
     size_t raw_index = 0;
@@ -722,7 +734,7 @@ private:
         initial.insert(
           line_key,
           gtsam::Vector2(
-            std::atan2(lateral_reference->normal.y(), lateral_reference->normal.x()),
+            line_angle_scale * std::atan2(lateral_reference->normal.y(), lateral_reference->normal.x()),
             lateral_reference->offset - lateral_reference->normal.dot(axis_origin.head<2>())));
         const auto& records = map.installation.at("records");
         gtsam::KeyVector anchor_keys;
@@ -733,8 +745,8 @@ private:
           offsets[i] = records[i].at("signed_offset_m");
           for (size_t j = 0; j < records.size(); ++j) covariance(i, j) = map.installation.at("joint_covariance_m2")[i][j].get<double>();
         }
-        factors.emplace_shared<InstallationOffsetFactor>(line_key, anchor_keys, offsets, covariance, axis_origin);
-        factors.emplace_shared<WallReferenceFactor>(X(0), line_key, body_walls->normal, body_walls->center, body_walls->covariance, axis_origin);
+        factors.emplace_shared<InstallationOffsetFactor>(line_key, anchor_keys, offsets, covariance, axis_origin, line_angle_scale);
+        factors.emplace_shared<WallReferenceFactor>(X(0), line_key, body_walls->normal, body_walls->center, body_walls->covariance, axis_origin, line_angle_scale);
       }
       factors.emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(V(0), state.velocity(), gtsam::noiseModel::Isotropic::Sigma(3, .01));
       gtsam::Vector6 sig;
@@ -777,7 +789,7 @@ private:
       gtsam::Point3 origin = gtsam::Point3::Zero();
       for (const auto& point : map.means) origin += point;
       origin /= map.means.size();
-      factors.emplace_shared<WallReferenceFactor>(X(count), gtsam::Symbol('l', 0), observation.normal, observation.center, observation.covariance, origin);
+      factors.emplace_shared<WallReferenceFactor>(X(count), gtsam::Symbol('l', 0), observation.normal, observation.center, observation.covariance, origin, line_angle_scale);
       std::ofstream evidence(RunLogManager::instance().profiling_path("continuous_walls.jsonl"), std::ios::app);
       evidence.exceptions(std::ios::failbit | std::ios::badbit);
       evidence << nlohmann::json({{"session", session},

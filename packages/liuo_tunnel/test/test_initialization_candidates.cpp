@@ -355,6 +355,14 @@ TEST(InitializationCandidates, CenteredLinePreservesPhysicalLikelihoodAndJacobia
   EXPECT_LT((c.unwhitenedError(original) - d.unwhitenedError(centered)).norm(), 1e-10);
   check_installation_derivatives(b, centered);
   check_installation_derivatives(d, centered);
+  auto scaled = centered;
+  scaled.update(L, gtsam::Vector2(1000 * angle, .7 - normal.dot(origin)));
+  InstallationOffsetFactor e(L, {A(1), A(2)}, gtsam::Vector2(2.8, -2.8), C, origin, 1000);
+  WallReferenceFactor f(X(0), L, {.2, .9, .1}, {.1, -.7, .2}, C, origin, 1000);
+  EXPECT_LT((b.unwhitenedError(centered) - e.unwhitenedError(scaled)).norm(), 1e-10);
+  EXPECT_LT((d.unwhitenedError(centered) - f.unwhitenedError(scaled)).norm(), 1e-10);
+  check_installation_derivatives(e, scaled);
+  check_installation_derivatives(f, scaled);
 }
 TEST(InitializationCandidates, RecordedPositiveDefiniteLineBlockNeedsCoordinateConditioning) {
   // Rounded observed N10 frontal block. SPD, but GTSAM's pivot exponent check
@@ -412,4 +420,18 @@ TEST(InitializationCandidates, ContinuousWallPointOwnershipIsDisjointAndBounded)
   }
   EXPECT_EQ(dedicated, 5085);
   EXPECT_EQ(dedicated + vgicp, 20339);
+}
+
+TEST(InitializationCandidates, MilliradianLineCoordinatesAvoidObservedPivotScaleRejection) {
+  gtsam::Matrix H = gtsam::Matrix::Identity(3, 3);
+  H(0, 0) = std::pow(169445.71944338435, 2);
+  H(1, 1) = std::pow(51.47770156549991, 2);
+  auto raw = H;
+  EXPECT_FALSE(gtsam::choleskyPartial(raw, 2));
+  gtsam::Matrix P = gtsam::Matrix::Identity(3, 3);
+  P(0, 0) = .001;
+  gtsam::Matrix scaled = P.transpose() * H * P;
+  auto factored = scaled;
+  EXPECT_TRUE(gtsam::choleskyPartial(factored, 2));
+  EXPECT_LT((P * scaled.inverse() * P.transpose() - H.inverse()).norm(), 1e-12);
 }
