@@ -23,6 +23,14 @@ def digest(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def output_progress_token(output, completed_candidates=None):
+    """Completed graph candidates are work; sensor input/clock alone is not."""
+    return (
+        output.stat().st_size if output.exists() else 0,
+        completed_candidates.stat().st_size if completed_candidates is not None and completed_candidates.exists() else 0,
+    )
+
+
 def watchdog_failure(elapsed, wall_budget, idle_seconds, idle_budget):
     if elapsed > wall_budget:
         return "WALL_TIMEOUT: total run wall budget exceeded"
@@ -429,10 +437,15 @@ def main():
             "simulation": [run / "export/simulation/wall_clock.csv", -1, start],
             "odometry": [run / "profiling/odometry.csv", -1, start],
         }
+        calibration_progress = (
+            run / "profiling/calibration_branches.csv"
+            if effective_config["uwb"]["mode"] == "self_calibrate" else None
+        )
         rd.write_subordinate_manifest(
             run,
             "watchdog",
             {
+                "completed_candidate_progress_file": str(calibration_progress.relative_to(run)) if calibration_progress else None,
                 "wall_timeout_s": wall_budget,
                 "no_progress_timeout_s": args.no_progress_timeout,
                 "progress_files": {k: str(v[0].relative_to(run)) for k, v in progress.items()},
@@ -466,8 +479,8 @@ def main():
                 children[args.inject_failure].kill()
                 injected = True
             now = time.monotonic()
-            for state in progress.values():
-                size = state[0].stat().st_size if state[0].exists() else 0
+            for module, state in progress.items():
+                size = output_progress_token(state[0], calibration_progress if module == "odometry" else None)
                 if size != state[1]:
                     state[1], state[2] = size, now
             reason = watchdog_failure(
