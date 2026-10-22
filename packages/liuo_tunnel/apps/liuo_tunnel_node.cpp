@@ -76,7 +76,8 @@ public:
       throw std::runtime_error(std::string("EXTRINSIC_INVALID: ") + e.what());
     }
     self_calibrate = cfg.at("uwb").at("mode") == "self_calibrate";
-    fuse = self_calibrate || cfg.at("uwb").at("mode") == "fuse";
+    reuse_map = cfg.at("uwb").at("mode") == "reuse_map";
+    fuse = self_calibrate || reuse_map || cfg.at("uwb").at("mode") == "fuse";
     if (fuse) {
       try {
         tag = vector3(cfg.at("sensors").at("T_BU_translation"));
@@ -92,6 +93,18 @@ public:
           map.mode = "self_calibrate";
           map.id = "PENDING_SELF_CALIBRATION";
           map.frame = "odom";
+        } else if (reuse_map) {
+          calibrated_map = CalibratedMap::load(map_file, cfg.at("sensors"));
+          map.ids = calibrated_map->ids;
+          map.means = calibrated_map->means;
+          map.mode = "calibrated_map";
+          map.id = calibrated_map->document.at("map_id");
+          map.frame = "map";
+          const double angle = calibrated_map->reference[0] / 1000.;
+          gtsam::Matrix2 conversion = gtsam::Matrix2::Identity();
+          conversion(0,0) = .001;
+          lateral_reference = LateralReference{{std::cos(angle),std::sin(angle)}, calibrated_map->reference[1],
+            conversion * calibrated_map->covariance.bottomRightCorner<2,2>() * conversion, 0.};
         } else {
           map = KnownMap::load(map_file, tag);
           if (cfg.at("uwb").value("installation_seeds", false)) lateral_reference = LateralReference::fit(map);
@@ -655,7 +668,7 @@ private:
     };
     CalibratedMap::parse(document, cfg.at("sensors")).save_atomic(logs.export_path("map/calibrated_map.json"));
   }
-  bool variable_anchors() const { return map.surveyed() || (self_calibrate && calibration_prepared); }
+  bool variable_anchors() const { return reuse_map || map.surveyed() || (self_calibrate && calibration_prepared); }
 
   bool prepare_calibration(double t) {
     if (!body_walls) return false;
@@ -885,7 +898,7 @@ private:
     auto start = std::chrono::steady_clock::now();
     if (m.header.frame_id != "lidar" || m.is_bigendian) throw std::runtime_error("pointcloud frame/endian contract");
     std::vector<Eigen::Vector4d> points;
-    const double line_angle_scale = (self_calibrate || cfg.at("uwb").value("continuous_installation_walls", false)) ? 1000.0 : 1.0;
+    const double line_angle_scale = (self_calibrate || reuse_map || cfg.at("uwb").value("continuous_installation_walls", false)) ? 1000.0 : 1.0;
     const bool ongoing_walls = (bootstrapped || self_calibrate) && fuse && body_walls && cfg.at("uwb").value("continuous_installation_walls", false) && count % 10 == 0;
     std::vector<gtsam::Vector3> wall_points;
     size_t raw_index = 0;
@@ -996,11 +1009,20 @@ private:
             keys.push_back(A(map.ids[j]));
             initial.insert(keys.back(), map.means[j]);
           }
-          factors.emplace_shared<SurveyedMapPrior>(keys, map.means, map.covariance);
+          if (reuse_map) {
+            initial.insert(gtsam::Symbol('l',0), calibrated_map->reference);
+            // The entire first-run posterior enters once. No old ranges,
+            // installation observation, vehicle state or bias are reintroduced.
+            factors.emplace_shared<CalibratedMapPrior>(*calibrated_map);
+          } else factors.emplace_shared<SurveyedMapPrior>(keys, map.means, map.covariance);
         }
       } else
         factors.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(0), state.pose(), gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
-      if (body_walls && !self_calibrate) {
+      if (body_walls && reuse_map) {
+        factors.emplace_shared<WallReferenceFactor>(X(0), gtsam::Symbol('l',0), body_walls->normal, body_walls->center,
+          body_walls->covariance, gtsam::Point3::Zero(), 1000.);
+      }
+      if (body_walls && !self_calibrate && !reuse_map) {
         const auto line_key = gtsam::Symbol('l', 0);
         // Center the line coordinates to avoid angle/offset scale disparity in
         // elimination. This is an exact reparameterization, not new information.
@@ -1069,7 +1091,7 @@ private:
       failure_context = "CONTINUOUS_WALL_OBSERVATION_FAILED";
       const auto observation = body_wall_observation(wall_points, state.pose().rotation(), cfg.at("sensors").at("sigma_lidar_range"));
       gtsam::Point3 origin = gtsam::Point3::Zero();
-      if (!self_calibrate) {
+      if (!self_calibrate && !reuse_map) {
         for (const auto& point : map.means) origin += point;
         origin /= map.means.size();
       }
@@ -1449,7 +1471,7 @@ private:
         uwb_geometry_trace);
       mode = diagnostic.state;
       state_reason = diagnostic.reason;
-      if (self_calibrate && mode == "TRACKING") {
+      if ((self_calibrate || reuse_map) && mode == "TRACKING") {
         mode = "DEGRADED";
         state_reason = "CALIBRATED_MAP_VALIDITY_UNVERIFIED";
       }
@@ -1523,7 +1545,8 @@ private:
   }
   std::unique_ptr<gtsam_points::StreamTempBufferRoundRobin> streams;
   std::string backend, gpu_name;
-  bool fuse = false, bootstrapped = true, self_calibrate = false, calibration_prepared = false;
+  bool fuse = false, bootstrapped = true, self_calibrate = false, calibration_prepared = false, reuse_map = false;
+  std::optional<CalibratedMap> calibrated_map;
   std::optional<gtsam::Values> calibration_previous;
   std::set<size_t> calibration_solved;
   std::optional<InstallationInput> installation_input;

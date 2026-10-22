@@ -218,14 +218,18 @@ def main():
             installation_path = run / "metadata/config/installation.json"
             shutil.copyfile(args.installation, installation_path)
             rd.register_config_snapshot(run, installation_path)
-        if effective_config["uwb"]["mode"] == "fuse":
+        if effective_config["uwb"]["mode"] in ("fuse", "reuse_map"):
             if args.map is None:
                 raise RuntimeError("MAP_MISSING: fused mode requires --map")
             map_path = run / "metadata/config/map.json"
             shutil.copyfile(args.map, map_path)
             rd.register_config_snapshot(run, map_path)
             map_data = json.loads(map_path.read_text())
-            validate_deployment(map_data["anchors"])
+            if effective_config["uwb"]["mode"] == "fuse":
+                validate_deployment(map_data["anchors"])
+            # Calibrated coordinates have a local gauge and uncertain positions.
+            # Physical deployment density is checked on the simulation fixture,
+            # never inferred from estimated local map x coordinates.
             declared_layout = map_data.get("simulation_anchor_layout")
             physical_layout = source_scenario["anchor_layout"] if args.replay else LAYOUT
             if declared_layout is not None and declared_layout != physical_layout:
