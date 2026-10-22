@@ -88,6 +88,25 @@ inline Motion initialized_motion(double seconds, bool return_trip, const Eigen::
   m.R = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()).toRotationMatrix();
   return m;
 }
+// Simulation-only local calibration maneuver. Smooth closed 3D excursion;
+// all sensor generators use the same analytic p/v/a. Never an estimator prior.
+inline Motion calibration_motion(double seconds, const Eigen::Vector3d& start, double yaw) {
+  Motion m;
+  m.p = start; m.v.setZero(); m.a.setZero(); m.omega.setZero();
+  m.R = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+  if (seconds <= 5 || seconds >= 35) return m;
+  const double t = (seconds - 5) / 30.;
+  const double u = 10 * t*t*t - 15 * t*t*t*t + 6 * t*t*t*t*t;
+  const double du = (30*t*t - 60*t*t*t + 30*t*t*t*t) / 30.;
+  const double ddu = (60*t - 180*t*t + 120*t*t*t) / 900.;
+  const double theta = 2 * M_PI * u, w = 2 * M_PI * du, dw = 2 * M_PI * ddu;
+  m.p += Eigen::Vector3d(20 * (1 - std::cos(theta)), .6 * std::sin(theta), .6 * (1 - std::cos(2 * theta)));
+  m.v = {20 * std::sin(theta) * w, .6 * std::cos(theta) * w, 1.2 * std::sin(2 * theta) * w};
+  m.a = {20 * (std::cos(theta)*w*w + std::sin(theta)*dw),
+         .6 * (-std::sin(theta)*w*w + std::cos(theta)*dw),
+         1.2 * (2 * std::cos(2*theta)*w*w + std::sin(2*theta)*dw)};
+  return m;
+}
 // Adapted physical definition from quadToIapImuMsg, IAP quadrotor_simulator_so3.cpp @ fbccae168.
 inline Eigen::Vector3d specific_force(const Motion& m) {
   return m.R.transpose() * (m.a - Eigen::Vector3d(0, 0, -9.80665));

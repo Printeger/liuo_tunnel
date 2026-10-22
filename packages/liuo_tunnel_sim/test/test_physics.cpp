@@ -161,3 +161,27 @@ TEST(Physics, InternalStartNearStopUsesBoundedShortRamp) {
     EXPECT_LE(m.a.norm(), 1.);
   }
 }
+
+TEST(Physics, LocalCalibrationMotionDerivativesAndClosure) {
+  const Eigen::Vector3d start(200, .5, 1.2);
+  for (double t : {0., 5., 35., 40.}) {
+    const auto m = liuo_tunnel_sim::calibration_motion(t, start, 1.2);
+    EXPECT_LT((m.p - start).norm(), 1e-12);
+    EXPECT_LT(m.v.norm(), 1e-12);
+    EXPECT_LT(m.a.norm(), 1e-12);
+  }
+  for (double t = 5.01; t < 35; t += .17) {
+    const double h = 1e-5;
+    const auto m = liuo_tunnel_sim::calibration_motion(t, start, 1.2);
+    const auto a = liuo_tunnel_sim::calibration_motion(t-h, start, 1.2);
+    const auto b = liuo_tunnel_sim::calibration_motion(t+h, start, 1.2);
+    EXPECT_LT(((b.p-a.p)/(2*h) - m.v).norm(), 1e-7);
+    EXPECT_LT(((b.v-a.v)/(2*h) - m.a).norm(), 1e-7);
+    EXPECT_GE(m.p.x(), start.x());
+    EXPECT_LE(m.p.x(), start.x()+40);
+    EXPECT_LE(std::abs(m.p.y()-start.y()), .6);
+    EXPECT_GE(m.p.z(), start.z());
+    EXPECT_LE(m.p.z(), start.z()+1.2);
+    EXPECT_LT((m.R * liuo_tunnel_sim::specific_force(m) + Eigen::Vector3d(0,0,-9.80665) - m.a).norm(), 1e-12);
+  }
+}

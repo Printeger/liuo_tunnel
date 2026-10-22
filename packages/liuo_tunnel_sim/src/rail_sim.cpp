@@ -28,6 +28,8 @@ public:
     if (!std::isfinite(rate) || rate <= 0 || rate > 1) throw std::runtime_error("rate must be in (0,1]; explicit reference playback only");
     reset_at = declare_parameter<double>("reset_at_s", -1);
     return_trip = declare_parameter<bool>("return_trip", false);
+    local_calibration = declare_parameter<bool>("local_calibration", false);
+    if (local_calibration && return_trip) throw std::runtime_error("incompatible simulation trajectories");
     start = {declare_parameter<double>("start_x", 0), declare_parameter<double>("start_y", 0), declare_parameter<double>("start_z", 1.2)};
     start_yaw = declare_parameter<double>("start_yaw", 0);
     if (!start.allFinite() || !std::isfinite(start_yaw)) throw std::runtime_error("nonfinite simulation start");
@@ -153,7 +155,7 @@ private:
       logger->warn("explicit simulation clock reset session={}", session);
     }
     double t = ticks * .005, ros_t = 1 + t;
-    auto m = initialized_motion(t, return_trip, start, start_yaw);
+    auto m = local_calibration ? calibration_motion(t, start, start_yaw) : initialized_motion(t, return_trip, start, start_yaw);
     rosgraph_msgs::msg::Clock clock;
     clock.clock = stamp(ros_t);
     capture(clock, "/clock");
@@ -287,7 +289,7 @@ private:
     uint64_t samples;
   };
   void schedule(double t) {
-    auto m = initialized_motion(t, return_trip, start, start_yaw);
+    auto m = local_calibration ? calibration_motion(t, start, start_yaw) : initialized_motion(t, return_trip, start, start_yaw);
     Eigen::Vector3d tag_w = liuo_tunnel::tag_in_world(m.p, m.R, tag);
     // 9 TA-priority slots, then 1 AA-priority slot; oldest deadline within class.
     // The other class can use an otherwise idle slot. Never exceed 250 exchanges/s.
@@ -346,7 +348,7 @@ private:
   int seed = 0, loaded = -100;
   double duration = 45, reset_at = -1, rate = 1, start_yaw = 0;
   Eigen::Vector3d start{0, 0, 1.2};
-  bool reset_done = false, return_trip = false;
+  bool reset_done = false, return_trip = false, local_calibration = false;
   uint64_t ticks = 0, total_ticks = 0, exchange = 0, session = 1, sequence = 0;
   size_t world_points = 0;
   Eigen::Vector3d ba = Eigen::Vector3d::Zero(), bg = Eigen::Vector3d::Zero(), tag;

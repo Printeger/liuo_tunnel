@@ -374,7 +374,7 @@ private:
       stationary_seed_ranges[o.b].add(o.range, o.variance);
   }
   std::optional<gtsam::Values> solve_bootstrap_branches(double t, const gtsam_points::LevenbergMarquardtExtParams& params) {
-    if (t - first_imu >= (self_calibrate ? 40. : 20.)) {
+    if (t - first_imu >= (self_calibrate ? 60. : 20.)) {
       failure_context = "INITIALIZATION_AMBIGUOUS_TIMEOUT";
       throw std::runtime_error("finite bootstrap search did not certify a branch within 20 s");
     }
@@ -1027,7 +1027,7 @@ private:
       if (self_calibrate && !calibration_prepared) {
         // Retain the original graph, not a trajectory pseudo-measurement. No
         // smoother marginalization occurs before unknown anchors are resolved.
-        if (t - first_imu >= 40. || count >= 400) {
+        if (t - first_imu >= 60. || count >= 600) {
           failure_context = "SELF_CALIBRATION_PENDING_TIMEOUT";
           throw std::runtime_error("unknown-anchor joint initialization not certified within bounded startup");
         }
