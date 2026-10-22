@@ -467,3 +467,35 @@ TEST(InitializationCandidates, UncertainMapNonintersectionRetainsFiniteSearch) {
   }
   EXPECT_GT((proposals.tags[0]-proposals.tags[1]).norm(), 1.);
 }
+
+namespace {
+// The second residual has zero Jacobian: it changes neither the optimum nor
+// information, like accumulated scatter in a marginal/AA factor.
+class ConstantOffsetNonlinearCost : public gtsam::NoiseModelFactor1<double> {
+public:
+  explicit ConstantOffsetNonlinearCost(double offset)
+      : NoiseModelFactor1(gtsam::noiseModel::Isotropic::Sigma(2, 1), 0), offset_(offset) {}
+  gtsam::Vector evaluateError(const double& x, gtsam::OptionalMatrixType H = nullptr) const override {
+    if (H) { *H = gtsam::Matrix::Zero(2,1); (*H)(0,0)=2*x; }
+    return gtsam::Vector2(x*x-1,std::sqrt(2*offset_));
+  }
+private:
+  double offset_;
+};
+}
+TEST(InitializationCandidates, ExtensionSolveMustNotStopOnConstantBackgroundCost) {
+  auto solve=[](double constant, double relative) {
+    gtsam::NonlinearFactorGraph graph;
+    graph.emplace_shared<ConstantOffsetNonlinearCost>(constant);
+    gtsam::Values initial; initial.insert<double>(0,10.);
+    gtsam_points::LevenbergMarquardtExtParams params;
+    params.maxIterations=30; params.relativeErrorTol=relative;
+    SteppedBootstrapLM optimizer(graph,initial,params,true);
+    size_t calls=0;
+    while (!optimizer.advance()) { if (++calls>1000) throw std::runtime_error("bounded solve exceeded"); }
+    return optimizer.values().at<double>(0);
+  };
+  EXPECT_GT(std::abs(solve(900000.,1e-5)-1),.01);
+  EXPECT_NEAR(solve(0,0),1,1e-5);
+  EXPECT_NEAR(solve(900000.,0),1,1e-5);
+}

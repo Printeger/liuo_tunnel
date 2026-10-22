@@ -853,7 +853,10 @@ private:
       for (const auto& f : batch.graph) graph.push_back(f->clone());
       gtsam_points::LevenbergMarquardtExtParams params;
       params.maxIterations=cfg.at("uwb").value("bootstrap_max_iterations",30);
-      params.relativeErrorTol=cfg.at("uwb").value("bootstrap_relative_error_tolerance",1e-5);
+      // Existing marginalized/raw factors carry a large background cost. A
+      // relative TOTAL-cost test can stop before the new anchor is optimized.
+      // Keep absolute convergence and the iteration/window budgets unchanged.
+      params.relativeErrorTol=0;
       batch.optimizer=std::make_unique<SteppedBootstrapLM>(graph,initial,params,true);
     }
     try {
@@ -862,6 +865,7 @@ private:
       const auto solution=batch.optimizer->values().at<gtsam::Point3>(A(batch.id));
       const double cost=batch.optimizer->error();
       if (!solution.allFinite() || !std::isfinite(cost)) throw std::runtime_error("NONFINITE_ANCHOR_CANDIDATE");
+      log(batch.id,"CANDIDATE_ITERATIONS",batch.optimizer->iterations(),cost);
       batch.solutions.push_back(solution); batch.costs.push_back(cost); batch.optimizer.reset();
       log(batch.id,"CANDIDATE_SOLVED",solution.z(),cost);
     } catch (const std::exception& error) {
