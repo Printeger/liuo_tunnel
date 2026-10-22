@@ -836,7 +836,7 @@ private:
     if (m.header.frame_id != "lidar" || m.is_bigendian) throw std::runtime_error("pointcloud frame/endian contract");
     std::vector<Eigen::Vector4d> points;
     const double line_angle_scale = (self_calibrate || cfg.at("uwb").value("continuous_installation_walls", false)) ? 1000.0 : 1.0;
-    const bool ongoing_walls = bootstrapped && fuse && body_walls && cfg.at("uwb").value("continuous_installation_walls", false) && count % 10 == 0;
+    const bool ongoing_walls = (bootstrapped || self_calibrate) && fuse && body_walls && cfg.at("uwb").value("continuous_installation_walls", false) && count % 10 == 0;
     std::vector<gtsam::Vector3> wall_points;
     size_t raw_index = 0;
     std::set<std::tuple<int, int, int>> occupied;
@@ -1019,8 +1019,10 @@ private:
       failure_context = "CONTINUOUS_WALL_OBSERVATION_FAILED";
       const auto observation = body_wall_observation(wall_points, state.pose().rotation(), cfg.at("sensors").at("sigma_lidar_range"));
       gtsam::Point3 origin = gtsam::Point3::Zero();
-      for (const auto& point : map.means) origin += point;
-      origin /= map.means.size();
+      if (!self_calibrate) {
+        for (const auto& point : map.means) origin += point;
+        origin /= map.means.size();
+      }
       factors.emplace_shared<WallReferenceFactor>(X(count), gtsam::Symbol('l', 0), observation.normal, observation.center, observation.covariance, origin, line_angle_scale);
       std::ofstream evidence(RunLogManager::instance().profiling_path("continuous_walls.jsonl"), std::ios::app);
       evidence.exceptions(std::ios::failbit | std::ios::badbit);
