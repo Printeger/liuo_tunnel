@@ -141,3 +141,27 @@ cmake --build build/liuo_tunnel --target liuo_tunnel_node test_initialization_ca
 重新读取N11三个run的真实文件并计算SHA256，与initialization_latest_evidence.json逐项核对：分支CSV、报告、冻结配置、地图全部匹配；各自源MCAP及metadata.yaml也与frozen_input.json匹配。结果在`log/initialization-scope-evidence-recheck.json`。三个run各有stamp9和11两批完整四候选；实际轨迹分别80/65/82帧，全部DEGRADED。1800m分支原始CSV确认stamp11两个同向解z0=1.991449505874375/1.991449518867504，反向代价约106674.119，同向约87075.987；不是仅据旧报告或程序退出码作判断。
 
 当前有限范围结论仍为：已有实现及身份完整的代表性GPU证据支持本轮结束条件1，合法盆地保留、原错误高位分支未移交。此次新增的是当前组件回归和原始证据复核，没有新增传感器运行。没有注册到地图的地面/顶板高度，因此不宣称墙面本身完成竖直内外判定；高度后验过度自信、任意起点完整性、当前HEAD的GPU运行回归均未在本轮认证。现有Goal存储为第三阶段active，与本轮限定任务不同；本次不标记其complete，也不以本轮结果重新认证整个第二阶段。
+
+## 当前生产路径短包回归（50f9c77）
+
+本轮按最新指令只验证已知地图的几何关联与有限候选，不继续第三阶段工作。开始时master工作树干净，无残留仿真进程。已有实现无需重新开发。假设为：后续改动没有破坏1800m原错误镜像案例的合法盆地保留和诚实初始化；判据为两批完整四候选、同向镜像合并、实际输出且无TRACKING、严格输入核对及运行有界。本轮没有调整模型或噪声。
+
+当前二进制22项InitializationCandidates测试通过（log/initialization-current-candidate-tests.txt）。正式GPU回放run `log/20261022T152811Z_203`，输入仍是seed0的`20261022T034039Z_290`，20秒、90秒墙钟上限、默认无进度保护。原始4000 IMU、200点云、1660 UWB及4000 clock逐话题哈希核对通过。此为当前代码新运行，不把旧run改称新证据。
+
+实际静止点云stamp2.9的20336点得到机体墙法向约(0,−1,0)、中心偏距−0.80009m，独占该帧且不进入VGICP。它与地图通过有符号安装偏距及联合误差关联；没有地图注册地面/顶板，不能单凭此完成竖直内外筛选。高度镜像通过合法原始测距及运动图比较，不能归功于模拟器边界。
+
+两批stamp9/11各四候选完成。第二批两个同向解z0=1.99144951295542/1.991449508591719m，总代价约87075.984；反向代价约106674.115。原约6.71m错误高分支未移交，合法低盆地保留。首次输出stamp12.8，距首观测11.8秒；82帧全部DEGRADED，零TRACKING。轴/横/高RMSE=.04021/.05473/.33315m，姿态P95=.13143°，处理/端到端P95=57.21/64.07ms，窗口最多101车辆状态。
+
+位置NEES均值5.70、95%覆盖76.83%，联合9D NEES37.03；不宣称统计一致性。运行合同PASS不等于全阶段认证。结合已核实的200m/1000m固定seed证据，本轮结束条件1在声明范围内得到支持；任意启动、精确高度、完整全局多峰覆盖仍未验证。本轮未启动全程ON/OFF、断流或campaign，未修改存储中第三阶段Goal的完成状态。
+
+复现当前已知地图短包路径：
+
+```bash
+cd /home/dev/code/ws_tunnel/src/liuo_tunnel
+LIUO_RUN_ROOT="$PWD/log" ./tools/run.sh --replay log/20261022T034039Z_290 \
+  --config log/20261022T040502Z_331/metadata/config/phase1.json \
+  --map log/20261022T040502Z_331/metadata/config/map.json \
+  --formal --wall-timeout 90
+```
+
+具体身份、报告和关键产物SHA256见[当前回归证据](initialization_current_regression.json)。本轮仅新增针对性验证和记录，没有重新实现已有系统，也没有用旧全程失败替代初始化结论。

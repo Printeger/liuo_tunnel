@@ -1,0 +1,118 @@
+{
+  "run": "log/20261022T152811Z_203",
+  "implementation_commit": "50f9c77",
+  "scope": "known-map finite initialization only; no stage certification",
+  "hypothesis": "Current known-map path retains legal basin and does not hand off historical high mirror on the frozen 1800m input.",
+  "criteria": "Two complete four-candidate batches; converged same-heading mirrors; real output without TRACKING; verified frozen input and bounded runtime.",
+  "report": {
+    "evaluator_sha256": "33f73f51ea7f9e95017b3baad08a43d712f37728dd597986065ef14e2bebec7e",
+    "scope": "phase2_iteration_snapshot_gpu",
+    "estimator_mode": "fuse",
+    "accuracy_acceptance_scope": "phase2_accuracy_reference_only",
+    "result": "PASS",
+    "failures": [],
+    "accuracy_reference_exceedances": [
+      "known-map position RMSE >0.30m"
+    ],
+    "result_scope": "single_run_contracts_not_system_effectiveness",
+    "stage_acceptance": "NOT_ASSESSED",
+    "evaluation_policy": "representative_phase2_2026_10_22",
+    "map_evaluation_frame": null,
+    "calibrated_map_metrics": null,
+    "metrics": {
+      "entrance": {
+        "samples": 0,
+        "position_rmse_m": null,
+        "axial_p95_m": null,
+        "axial_max_m": null
+      },
+      "transition": {
+        "samples": 0,
+        "position_rmse_m": null,
+        "axial_p95_m": null,
+        "axial_max_m": null
+      },
+      "degenerate": {
+        "samples": 82,
+        "position_rmse_m": 0.3399964491864712,
+        "axial_p95_m": 0.05464279997295307,
+        "axial_max_m": 0.05978093544308649
+      }
+    },
+    "position_rmse_m": 0.3399964491864712,
+    "axis_rmse_m": [
+      0.040208147783393273,
+      0.05472569421405401,
+      0.3331455968552299
+    ],
+    "velocity_axis_rmse_mps": [
+      0.03093600256417723,
+      0.0009489678166164566,
+      0.01576216524005139
+    ],
+    "first_output_stamp": 12.8,
+    "initialization_wait_s": 11.8,
+    "states": {
+      "DEGRADED": 82
+    },
+    "optimized_output_observed": true,
+    "attitude_p95_deg": 0.1314319663575079,
+    "processing_p95_ms": 57.2092,
+    "sim_time_latency_p95_s": 0.06,
+    "wall_end_to_end_p95_s": 0.064073102,
+    "actual_input_hz": {
+      "imu": 199.99082446097188,
+      "cloud": 9.999541223048594,
+      "uwb": 82.99619215130333,
+      "clock": 199.99082446097188
+    },
+    "delivery_profile": false,
+    "delivered_input_verified": true,
+    "frozen_input_verified": true,
+    "max_vehicle_states": 101,
+    "simulation_runtime": {
+      "simulation_s": 20.0,
+      "input_prepare_s": 0.001235606,
+      "startup_buffer_records": 5,
+      "startup_buffer_bytes": 408014,
+      "wall_s": 20.000917596,
+      "real_time_factor": 0.9999541223048595,
+      "peak_rss_kib": 81320,
+      "scan_model": "snapshot",
+      "input_mode": "frozen_replay",
+      "published_counts": {
+        "imu": 4000,
+        "cloud": 200,
+        "uwb": 1660,
+        "clock": 4000
+      },
+      "delivery_queue_peak": 1
+    },
+    "delivery_audit": null,
+    "raw_counts": {
+      "imu": 4000,
+      "cloud": 200,
+      "uwb": 1660,
+      "clock": 4000
+    },
+    "covariance_diagnostics": {
+      "samples": 82,
+      "position_nees_mean_3d": 5.7026904079246865,
+      "joint_nees_mean_9d": 37.02991988790586,
+      "position_95pct_ellipsoid_coverage": 0.7682926829268293,
+      "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Uses recorded truth orientation; legacy captures use identity."
+    },
+    "sessions": 1,
+    "gpu": "PASS",
+    "rolling_deskew": "NOT_VALIDATED",
+    "accuracy_thresholds": "Reference targets only; exceedances do not block the representative stage. PASS is not effectiveness or stage acceptance."
+  },
+  "sha256": {
+    "profiling/bootstrap_branches.csv": "c613e02e13db38ef5f52e341afd868004ff0d263b2bcec3e93982d10c258a112",
+    "profiling/dedicated_wall_observation.json": "c8151cf00e1c003e3bc54965b445d0d70e98a170ac9bf1f2130e5da2f283df7c",
+    "export/analysis/report.json": "091f04dc71683283de10fe6f234c6603370345dfe91536e444371bd078ccca60",
+    "export/odometry/trajectory.csv": "384b1b417460097c36253d9aa75e59c74f66fcc00f80711a336e6091fef44ba9",
+    "metadata/manifests/frozen_input.json": "2e1a198a529088af7aaa884121626625f5f3c2bc40d030ddda85d9305c8b6d96",
+    "metadata/manifests/input_identity.json": "c9e3298f46cb9bb3acb96f07804d81769483a19ceebfc4779b4ec857883e5e71"
+  }
+}
