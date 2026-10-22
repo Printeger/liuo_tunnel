@@ -21,12 +21,18 @@ ACCURACY_REFERENCE_FAILURES = {
 def acceptance_policy(failures, phase2):
     """Keep numerical exceedances visible without certifying effectiveness."""
     references = [f for f in failures if phase2 and f in ACCURACY_REFERENCE_FAILURES]
-    blocking = [f for f in failures if not phase2 or f not in ACCURACY_REFERENCE_FAILURES]
+    blocking = [
+        f for f in failures if not phase2 or f not in ACCURACY_REFERENCE_FAILURES
+    ]
     return {
         "result": "FAIL" if blocking else "PASS",
         "failures": blocking,
         "accuracy_reference_exceedances": references,
-        "result_scope": "single_run_contracts_not_system_effectiveness" if phase2 else "phase1_checks",
+        "result_scope": (
+            "single_run_contracts_not_system_effectiveness"
+            if phase2
+            else "phase1_checks"
+        ),
         "stage_acceptance": "NOT_ASSESSED" if phase2 else "SEE_PHASE1_ACCEPTANCE",
     }
 
@@ -54,13 +60,14 @@ def raw_lidar_graph_present(graph, config):
         for r in graph
     )
     continuous = all(
-        int(r["X"]) <= 1 or (int(r["lidar_factors"]) >= 1 and int(r["imu_factors"]) >= 1)
+        int(r["X"]) <= 1
+        or (int(r["lidar_factors"]) >= 1 and int(r["imu_factors"]) >= 1)
         for r in graph
     )
     return multiple and continuous
 
 
-def evaluate(run):
+def evaluate(run, output_dir=None):
     manifest = json.loads((run / "metadata/run_manifest.json").read_text())
     failures = []
 
@@ -71,7 +78,9 @@ def evaluate(run):
     check(manifest["lifecycle"] == "completed", "run lifecycle not completed")
     check(manifest["source"]["git_worktree_clean"], "source not clean")
     audit = json.loads((run / "metadata/manifests/observation_audit.json").read_text())
-    check(not audit["violations"], "raw message violations: " + str(audit["violations"]))
+    check(
+        not audit["violations"], "raw message violations: " + str(audit["violations"])
+    )
     check(all(v > 0 for v in audit["counts"].values()), "raw topics missing")
     check(bool(audit["estimator_subscriptions"]), "estimator graph not observed")
     check(
@@ -95,7 +104,9 @@ def evaluate(run):
         frozen = json.loads(frozen_path.read_text())
         for kind in ["imu", "cloud", "clock", "uwb"]:
             if kind == "uwb" and fault_profile:
-                check("delivered_sha256" in runtime, "missing fault delivery hash audit")
+                check(
+                    "delivered_sha256" in runtime, "missing fault delivery hash audit"
+                )
                 continue
             check(
                 audit["counts"][kind] == frozen["counts"][kind],
@@ -140,8 +151,13 @@ def evaluate(run):
     if fused:
         check(any(r["reason"] == "ACCEPT_TA" for r in uwb), "no raw TA factors")
         map_config = json.loads((run / "metadata/config/map.json").read_text())
-        expected_anchors = len(map_config["anchors"]) if map_config["mode"] == "surveyed_map" else 0
-        check(all(int(r["A"]) == expected_anchors for r in graph), "static anchors not retained")
+        expected_anchors = (
+            len(map_config["anchors"]) if map_config["mode"] == "surveyed_map" else 0
+        )
+        check(
+            all(int(r["A"]) == expected_anchors for r in graph),
+            "static anchors not retained",
+        )
         check(
             all(int(r["map_priors"]) == int(expected_anchors > 0) for r in graph),
             "map prior count changed",
@@ -162,7 +178,12 @@ def evaluate(run):
             odometry = cfg["odometry"]
             factor_bound = (
                 math.ceil(250 * (odometry["lag_s"] + 0.2))
-                + 102 * (odometry["connection_window"] + odometry.get("max_keyframes", 15) + 3)
+                + 102
+                * (
+                    odometry["connection_window"]
+                    + odometry.get("max_keyframes", 15)
+                    + 3
+                )
                 + pair_bound
                 + 16
             )
@@ -176,7 +197,8 @@ def evaluate(run):
     est_sessions = list(dict.fromkeys(r["session"] for r in trajectory))
     check(len(truth_sessions) == len(est_sessions), "session count mismatch")
     truth_map = {
-        (truth_sessions.index(r["session"]), round(float(r["stamp"]), 5)): r for r in truth
+        (truth_sessions.index(r["session"]), round(float(r["stamp"]), 5)): r
+        for r in truth
     }
     sections = {name: [] for name in ["entrance", "transition", "degenerate"]}
     attitude = []
@@ -205,7 +227,9 @@ def evaluate(run):
     for name, data in sections.items():
         metrics[name] = {
             "samples": len(data),
-            "position_rmse_m": math.sqrt(statistics.mean(e * e for e, _ in data)) if data else None,
+            "position_rmse_m": (
+                math.sqrt(statistics.mean(e * e for e, _ in data)) if data else None
+            ),
             "axial_p95_m": quantile([x for _, x in data], 0.95),
             "axial_max_m": max([x for _, x in data], default=None),
         }
@@ -219,10 +243,15 @@ def evaluate(run):
         )
     scenario = json.loads((run / "metadata/config/scenario.json").read_text())
     if scenario["duration_s"] >= 35 and scenario["reset_at_s"] < 0:
-        check(bool(sections["degenerate"]), "no observation beyond entrance LiDAR visibility")
+        check(
+            bool(sections["degenerate"]),
+            "no observation beyond entrance LiDAR visibility",
+        )
     if scenario["reset_at_s"] > 0:
         check(
-            audit["clock_resets"] == 1 and len(audit["sessions"]) == 2 and len(est_sessions) == 2,
+            audit["clock_resets"] == 1
+            and len(audit["sessions"]) == 2
+            and len(est_sessions) == 2,
             "clock reset/session behavior",
         )
     elapsed = [float(r["total_ms"]) for r in timing]
@@ -231,7 +260,9 @@ def evaluate(run):
     wall_clock_path = run / "export/simulation/wall_clock.csv"
     if wall_clock_path.exists():
         deadlines = {
-            (int(r["session"]), round(float(r["stamp"]), 9)): int(r["scheduled_wall_ns"])
+            (int(r["session"]), round(float(r["stamp"]), 9)): int(
+                r["scheduled_wall_ns"]
+            )
             for r in rows(wall_clock_path)
         }
         for r in trajectory:
@@ -242,9 +273,9 @@ def evaluate(run):
             value = (int(r["publish_wall_ns"]) - deadlines[key]) * 1e-9
             check(value >= 0, "wall publication before measurement deadline")
             wall_latency.append(value)
-    backend = json.loads((run / "metadata/config/phase1.json").read_text())["odometry"].get(
-        "backend", "cpu"
-    )
+    backend = json.loads((run / "metadata/config/phase1.json").read_text())[
+        "odometry"
+    ].get("backend", "cpu")
     if backend == "gpu":
         process = json.loads((run / "metadata/processes/odometry.json").read_text())
         check(
@@ -253,17 +284,23 @@ def evaluate(run):
             "GPU execution identity missing",
         )
     if fused:
+        if errors:
+            check(
+                math.sqrt(statistics.mean(e * e for e in errors)) <= 0.30,
+                "known-map position RMSE >0.30m",
+            )
+            axial = [x for data in sections.values() for _, x in data]
+            check(quantile(axial, 0.95) <= 0.50, "known-map axial P95 >0.50m")
+            check(max(axial) <= 1.0, "known-map axial max >1.0m")
+            check(quantile(attitude, 0.95) <= 2.0, "known-map attitude P95 >2deg")
+        check(bool(elapsed) and quantile(elapsed, 0.95) < 100, "processing P95 >=100ms")
         check(
-            math.sqrt(statistics.mean(e * e for e in errors)) <= 0.30,
-            "known-map position RMSE >0.30m",
+            bool(latency) and quantile(latency, 0.95) < 0.25,
+            "simulation-time latency P95 >=250ms",
         )
-        axial = [x for data in sections.values() for _, x in data]
-        check(quantile(axial, 0.95) <= 0.50, "known-map axial P95 >0.50m")
-        check(max(axial) <= 1.0, "known-map axial max >1.0m")
-        check(quantile(attitude, 0.95) <= 2.0, "known-map attitude P95 >2deg")
-        check(quantile(elapsed, 0.95) < 100, "processing P95 >=100ms")
-        check(quantile(latency, 0.95) < 0.25, "simulation-time latency P95 >=250ms")
-        check(runtime["real_time_factor"] >= 0.99, "actual input rate below 1x tolerance")
+        check(
+            runtime["real_time_factor"] >= 0.99, "actual input rate below 1x tolerance"
+        )
         check(len(wall_latency) == len(trajectory), "wall latency evidence incomplete")
         check(
             bool(wall_latency) and quantile(wall_latency, 0.95) < 0.25,
@@ -298,7 +335,9 @@ def evaluate(run):
                 len(wire) == len(trajectory) == len(covariance_rows),
                 "published/observed odometry counts differ",
             )
-            for published, observed, covariance in zip(trajectory, wire, covariance_rows):
+            for published, observed, covariance in zip(
+                trajectory, wire, covariance_rows
+            ):
                 check(
                     abs(float(published["stamp"]) - float(observed["stamp"])) < 1e-8,
                     "wire odometry stamp mismatch",
@@ -316,14 +355,17 @@ def evaluate(run):
                     for j in range(6):
                         field = f"twist_{i}_{j}"
                         check(
-                            abs(float(covariance[field]) - float(observed[field])) < 1e-10,
+                            abs(float(covariance[field]) - float(observed[field]))
+                            < 1e-10,
                             "wire twist covariance mismatch",
                         )
     covariance_path = run / "export/odometry/covariance.csv"
-    if covariance_path.exists():
+    if covariance_path.exists() and trajectory:
         from covariance_analysis import summarize
 
-        covariance_summary = summarize(run, trajectory, truth, rows(covariance_path), fused)
+        covariance_summary = summarize(
+            run, trajectory, truth, rows(covariance_path), fused
+        )
     policy = acceptance_policy(failures, phase2)
     failures = policy["failures"]
     result = {
@@ -342,27 +384,37 @@ def evaluate(run):
         **policy,
         "evaluation_policy": "representative_phase2_2026_10_22" if phase2 else "phase1",
         "metrics": metrics,
-        "position_rmse_m": math.sqrt(statistics.mean(e * e for e in errors)),
+        "position_rmse_m": (
+            math.sqrt(statistics.mean(e * e for e in errors)) if errors else None
+        ),
+        "optimized_output_observed": bool(trajectory),
         "attitude_p95_deg": quantile(attitude, 0.95),
         "processing_p95_ms": quantile(elapsed, 0.95),
         "sim_time_latency_p95_s": quantile(latency, 0.95),
         "wall_end_to_end_p95_s": quantile(wall_latency, 0.95),
-        "actual_input_hz": {k: v / runtime["wall_s"] for k, v in audit["counts"].items()},
+        "actual_input_hz": {
+            k: v / runtime["wall_s"] for k, v in audit["counts"].items()
+        },
         "delivery_profile": fault_profile,
-        "delivered_input_verified": audit.get("raw_sha256") == runtime.get("delivered_sha256")
+        "delivered_input_verified": audit.get("raw_sha256")
+        == runtime.get("delivered_sha256")
         and audit["counts"] == runtime.get("published_counts"),
         "frozen_input_verified": frozen_path.exists()
         and audit.get("raw_sha256") == frozen["raw_sha256"]
         and audit["counts"] == frozen["counts"],
         "max_vehicle_states": max((int(r["X"]) for r in graph), default=0),
         "simulation_runtime": {
-            k: v for k, v in runtime.items() if k not in ["duplicate_uwb", "delivered_sha256"]
+            k: v
+            for k, v in runtime.items()
+            if k not in ["duplicate_uwb", "delivered_sha256"]
         },
         "delivery_audit": delivery_summary,
         "raw_counts": audit["counts"],
         "covariance_diagnostics": covariance_summary,
         "sessions": len(est_sessions),
-        "gpu": ("FAIL" if failures else "PASS") if backend == "gpu" else "NOT_VALIDATED",
+        "gpu": (
+            ("FAIL" if failures else "PASS") if backend == "gpu" else "NOT_VALIDATED"
+        ),
         "rolling_deskew": "NOT_VALIDATED",
         "accuracy_thresholds": (
             "Reference targets only; exceedances do not block phase two. PASS is not effectiveness or stage acceptance."
@@ -370,12 +422,19 @@ def evaluate(run):
             else "Fused-navigation thresholds not applied to phase-one LIO observation baseline."
         ),
     }
-    out = run / "export/analysis"
-    out.mkdir(exist_ok=True)
+    out = Path(output_dir) if output_dir is not None else run / "export/analysis"
+    out.mkdir(parents=True, exist_ok=True)
     (out / "report.json").write_text(json.dumps(result, indent=2) + "\n")
     with (out / "metrics.csv").open("w") as f:
         writer = csv.DictWriter(
-            f, fieldnames=["section", "samples", "position_rmse_m", "axial_p95_m", "axial_max_m"]
+            f,
+            fieldnames=[
+                "section",
+                "samples",
+                "position_rmse_m",
+                "axial_p95_m",
+                "axial_max_m",
+            ],
         )
         writer.writeheader()
         for section, m in metrics.items():
