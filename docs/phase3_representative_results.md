@@ -32,3 +32,15 @@ P3-2：在保留原始GPU/IMU因子的有界启动图中，通过实际运动位
 四项C++测试通过：直线时保留高度双镜像且均满足原测距；实际垂直激励产生正确初值；静止/超容量拒绝；平移/yaw规范变换等变。日志 log/phase3-unknown-anchor-seeds-tests.txt。这些是合成几何单元证据，不能代替实际噪声、GPU联合图或地图复用验证。
 
 接入风险已查明：现有append_ranges在取出消息后立即按KnownMap构因子；未知基站必须先保留消息身份及对应X插值键，候选准备后才一次性构因子。不能用初始化缓存重复push消息绕过去重，也不能让对应X在信息移交前退出。下一步在现有有界启动图内完成这条路径，随后才做局部生产运行。
+
+### P3-2b：生产入口与原始信息保留
+
+新增self_calibrate模式和phase3_self_calibrate.json，运行器使用独立--installation参数，禁止同时传--map；节点再次拒绝非空map_file，不调用KnownMap::load。仅使用InstallationInput的ID校验消息身份，map.means保持空；没有由ID生成位置。移除首轮initial_position_guess配置，当前启动沿用静止重力姿态/原点规范。
+
+原始TA通过现有RangeQueue验证和去重后，连同测量身份、精确插值键及beta保留；AA也保留原始测量。启动原始GPU/IMU因子及X/V/B在bootstrap图内保留，不进入smoother边缘化，不将预测/优化轨迹转为新独立测量。保留动作日志为PENDING_CALIBRATION，不算接受融合或拒绝。重置/退出记录待定测量去向。上限12000条、400帧/40s，届时明确失败而非无限等待。
+
+这一步尚未把候选联合求解接入，运行状态会持续INITIALIZING并最终超时，不能当作实现完毕或正式有效性证据。尚未启动该不完整路径的正式仿真。下一步需要从此原始图生成候选、加入A/L和原始TA/AA、比较地图分支，再完成一次联合移交；不能复用现有只比较X0的分支认证，因为首次坐标规范使所有X0相同。
+
+旧评估器遇到phase3 schema显式报PHASE3_EVALUATION_PENDING，防止静默按phase1或已知地图规范评估；待固定首轮规范和地图生命周期检查接入后再启用第三阶段评估。这是未完成功能的显式拒绝，不是验收豁免。
+
+独立干净underlay三包构建PASS（59.6s），日志log/phase3-self-calibration-entry-build.txt；集成构建得到的安装输入3项、未知候选4项测试通过。run/evaluate Python语法及git diff --check通过。旧第二阶段运行证据未改写，第三阶段仍未完成。

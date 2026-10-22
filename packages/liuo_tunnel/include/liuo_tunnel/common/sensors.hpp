@@ -9,7 +9,7 @@ inline nlohmann::json load_config(const std::string& path) {
   if (!f) throw std::runtime_error("missing config_file: " + path);
   auto j = nlohmann::json::parse(f);
   if (j.at("scan_model") != "snapshot") throw std::runtime_error("scan_model: only explicit snapshot is validated in phase one");
-  if (j.at("uwb").at("mode") != "record_only" && j.at("uwb").at("mode") != "fuse") throw std::runtime_error("uwb.mode must be record_only or fuse");
+  if (j.at("uwb").at("mode") != "record_only" && j.at("uwb").at("mode") != "fuse" && j.at("uwb").at("mode") != "self_calibrate") throw std::runtime_error("uwb.mode must be record_only, fuse or self_calibrate");
   for (const char* key :
        {"sigma_acc_sample", "sigma_gyro_sample", "sigma_ba_density", "sigma_bg_density", "sigma_lidar_range", "initial_acc_bias_sigma", "initial_gyro_bias_sigma"}) {
     double v = j.at("sensors").at(key);

@@ -118,6 +118,8 @@ def evaluate(run, output_dir=None):
                 "frozen input content differs: " + kind,
             )
     config = json.loads((run / "metadata/config/phase1.json").read_text())
+    if config.get("schema_version") == "liuo_phase3_v1":
+        raise RuntimeError("PHASE3_EVALUATION_PENDING: fixed first-run gauge and map lifecycle checks are not implemented; refusing phase1/phase2 fallback")
     phase2 = config.get("schema_version") == "liuo_phase2_v1"
     fused = config["uwb"]["mode"] == "fuse"
     trajectory = rows(run / "export/odometry/trajectory.csv")

@@ -72,6 +72,7 @@ def main():
         help="explicit straight-rail outbound and backward return; use duration >=1070s",
     )
     p.add_argument("--config", type=Path, default=ROOT / "packages/liuo_tunnel/config/phase1.json")
+    p.add_argument("--installation", type=Path, help="coordinate-free first-run installation measurements")
     p.add_argument("--map", type=Path, help="external oracle_map or surveyed_map JSON")
     p.add_argument(
         "--replay",
@@ -195,6 +196,13 @@ def main():
             )
         selected_backend = effective_config["odometry"]["backend"]
         map_path = None
+        installation_path = None
+        if effective_config["uwb"]["mode"] == "self_calibrate":
+            if args.map is not None or args.installation is None:
+                raise RuntimeError("self_calibrate requires --installation and forbids --map")
+            installation_path = run / "metadata/config/installation.json"
+            shutil.copyfile(args.installation, installation_path)
+            rd.register_config_snapshot(run, installation_path)
         if effective_config["uwb"]["mode"] == "fuse":
             if args.map is None:
                 raise RuntimeError("MAP_MISSING: fused mode requires --map")
@@ -342,6 +350,9 @@ def main():
             ]
             for name, binary in binaries.items()
         }
+        if installation_path is not None:
+            commands["odometry"] += ["-p", "installation_file:=" + str(installation_path)]
+            identity["installation_sha256"] = digest(installation_path)
         if map_path is not None:
             commands["odometry"] += ["-p", "map_file:=" + str(map_path)]
             identity["map_sha256"] = digest(map_path)

@@ -15,6 +15,8 @@
 #include <liuo_tunnel/common/estimator_status.hpp>
 #include <liuo_tunnel/common/gauge_consistent_vgicp_gpu.hpp>
 #include <liuo_tunnel/uwb/known_map.hpp>
+#include <liuo_tunnel/uwb/installation_input.hpp>
+#include <liuo_tunnel/uwb/unknown_anchor_candidates.hpp>
 #include <liuo_tunnel/uwb/initialization_candidates.hpp>
 #include <liuo_tunnel/uwb/bootstrap_preconditioner.hpp>
 #include <liuo_tunnel/uwb/lateral_initialization.hpp>
@@ -71,7 +73,8 @@ public:
     } catch (const std::exception& e) {
       throw std::runtime_error(std::string("EXTRINSIC_INVALID: ") + e.what());
     }
-    fuse = cfg.at("uwb").at("mode") == "fuse";
+    self_calibrate = cfg.at("uwb").at("mode") == "self_calibrate";
+    fuse = self_calibrate || cfg.at("uwb").at("mode") == "fuse";
     if (fuse) {
       try {
         tag = vector3(cfg.at("sensors").at("T_BU_translation"));
@@ -79,8 +82,18 @@ public:
         throw std::runtime_error(std::string("EXTRINSIC_INVALID: ") + e.what());
       }
       try {
-        map = KnownMap::load(declare_parameter<std::string>("map_file", ""), tag);
-        if (cfg.at("uwb").value("installation_seeds", false)) lateral_reference = LateralReference::fit(map);
+        const auto map_file = declare_parameter<std::string>("map_file", "");
+        if (self_calibrate) {
+          if (!map_file.empty()) throw std::invalid_argument("SELF_CALIBRATION_FORBIDS_MAP_INPUT");
+          installation_input = InstallationInput::load(declare_parameter<std::string>("installation_file", ""));
+          map.ids = installation_input->ids; // Identity validation only; no coordinates loaded.
+          map.mode = "self_calibrate";
+          map.id = "PENDING_SELF_CALIBRATION";
+          map.frame = "odom";
+        } else {
+          map = KnownMap::load(map_file, tag);
+          if (cfg.at("uwb").value("installation_seeds", false)) lateral_reference = LateralReference::fit(map);
+        }
       } catch (const std::exception& e) {
         throw std::runtime_error(std::string("MAP_INVALID: ") + e.what());
       }
@@ -138,6 +151,7 @@ public:
   }
 
   ~TunnelNode() override {
+    for (const auto& pending : pending_calibration_ranges) log_range(pending.observation, "SHUTDOWN_PENDING", pending.bracket);
     for (const auto& observation : range_queue.reset()) log_range(observation, "SHUTDOWN_PENDING");
   }
 
@@ -158,7 +172,7 @@ private:
     p.relinearizeSkip = 1;
     p.relinearizeThreshold = cfg.at("odometry").value("relinearize_threshold", .05);
     if (fuse && cfg.at("uwb").value("continuous_installation_walls", false)) {
-      if (!cfg.at("uwb").value("installation_factors", false) || !lateral_reference) throw std::invalid_argument("CONTINUOUS_WALLS_REQUIRE_INSTALLATION_REFERENCE");
+      if (!cfg.at("uwb").value("installation_factors", false) || (!self_calibrate && !lateral_reference)) throw std::invalid_argument("CONTINUOUS_WALLS_REQUIRE_INSTALLATION_REFERENCE");
       const double threshold = cfg.at("odometry").value("relinearize_threshold", .05);
       gtsam::FastMap<char, gtsam::Vector> thresholds;
       thresholds['x'] = gtsam::Vector::Constant(6, threshold);
@@ -178,6 +192,8 @@ private:
     ip.gyro_noise = cfg.at("sensors").at("sigma_gyro_sample").get<double>() / std::sqrt(rate);
     imu = std::make_unique<IMUIntegration>(ip);
     for (const auto& old : range_queue.reset()) log_range(old, "CLOCK_RESET");
+    for (const auto& pending : pending_calibration_ranges) log_range(pending.observation, "CLOCK_RESET", pending.bracket);
+    pending_calibration_ranges.clear();
     bootstrap_factors.resize(0);
     bootstrap_values.clear();
     bootstrap_times.clear();
@@ -292,7 +308,7 @@ private:
     const std::string& anchor_key = "",
     double residual = NAN,
     const std::string& category = "NONE") {
-    if (fuse && reason != "ACCEPT_TA" && reason != "ACCEPT_AA" && reason != "ORACLE_AA_CHECK" && reason != "CLOCK_RESET" && reason != "SHUTDOWN_PENDING") {
+    if (fuse && reason != "ACCEPT_TA" && reason != "ACCEPT_AA" && reason != "ORACLE_AA_CHECK" && reason != "CLOCK_RESET" && reason != "SHUTDOWN_PENDING" && reason != "PENDING_CALIBRATION") {
       ++rejected_total;
       last_rejected = now().seconds();
       last_rejection = reason;
@@ -512,6 +528,25 @@ private:
     }
     return result;
   }
+  void retain_calibration_ranges(double t) {
+    std::map<double, gtsam::Key> poses;
+    for (const auto& frame : frames) poses[frame.t] = X(frame.id);
+    poses[t] = X(count);
+    for (const auto& observation : range_queue.take_until(t)) {
+      auto bracket = count == 0
+          ? static_alignment_bracket(poses, observation.stamp, first_imu, first_imu + cfg.at("odometry").at("initialization_s").get<double>())
+          : range_bracket(poses, observation.stamp);
+      if (observation.a_type == 0 && bracket.reason != "SYNC" && bracket.reason != "INTERPOLATED" && bracket.reason != "STATIC_ALIGNMENT") {
+        log_range(observation, bracket.reason);
+        continue;
+      }
+      if (pending_calibration_ranges.size() >= 12000) throw std::runtime_error("SELF_CALIBRATION_RANGE_CAPACITY");
+      pending_calibration_ranges.push_back({observation, bracket});
+      // Raw identities have already passed the queue's deduplication. Do not
+      // push them back through that queue or treat this retention as fusion.
+      log_range(observation, "PENDING_CALIBRATION", bracket);
+    }
+  }
   void append_ranges(double t, gtsam::NonlinearFactorGraph& factors, const gtsam::Values& predicted) {
     new_ta = 0;
     new_aa = 0;
@@ -671,10 +706,10 @@ private:
       Eigen::Vector3d avg = sum_a / initial_samples;
       if (std::abs(avg.norm() - 9.80665) > .3 || (sum_w / initial_samples).norm() > .1) throw std::runtime_error("initialization requires stationary IMU interval");
       Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(avg, Eigen::Vector3d(0, 0, 9.80665));
-      if (lateral_reference) {
+      if (lateral_reference || self_calibrate) {
         std::vector<Eigen::Vector3d> leveled;
         if (cfg.at("uwb").value("installation_factors", false)) {
-          if (!dedicated_geometry_cloud || !map.surveyed()) throw std::runtime_error("DEDICATED_GEOMETRY_OR_SURVEYED_MAP_MISSING");
+          if (!dedicated_geometry_cloud || (!self_calibrate && !map.surveyed())) throw std::runtime_error("DEDICATED_GEOMETRY_OR_SURVEYED_MAP_MISSING");
           std::vector<gtsam::Vector3> dedicated;
           const auto& observed = *dedicated_geometry_cloud;
           if (observed.header.frame_id != "lidar" || observed.is_bigendian) throw std::runtime_error("DEDICATED_GEOMETRY_FRAME_INVALID");
@@ -706,17 +741,17 @@ private:
             initial_walls->width,
             initial_walls->center_offset,
             initial_walls->residual_rms,
-            lateral_reference->normal.x(),
-            lateral_reference->normal.y(),
-            lateral_reference->offset);
+            lateral_reference ? lateral_reference->normal.x() : 0.,
+            lateral_reference ? lateral_reference->normal.y() : 0.,
+            lateral_reference ? lateral_reference->offset : 0.);
         } catch (const std::invalid_argument& error) {
           logger->warn("initial wall extraction unavailable: {}", error.what());
         }
       }
-      auto guess = fuse ? vector3(cfg.at("uwb").at("initial_position_guess")) : gtsam::Vector3::Zero();
+      auto guess = fuse && !self_calibrate ? vector3(cfg.at("uwb").at("initial_position_guess")) : gtsam::Vector3::Zero();
       state = gtsam::NavState(gtsam::Pose3(gtsam::Rot3(q), guess), gtsam::Vector3::Zero());
       bias = gtsam::imuBias::ConstantBias(gtsam::Vector3::Zero(), sum_w / initial_samples);
-      if (fuse) {
+      if (fuse && !self_calibrate) {
         factors.emplace_shared<GravityAlignmentFactor>(X(0), avg, .001);
         if (map.surveyed()) {
           gtsam::KeyVector keys;
@@ -728,7 +763,7 @@ private:
         }
       } else
         factors.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(0), state.pose(), gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
-      if (body_walls) {
+      if (body_walls && !self_calibrate) {
         const auto line_key = gtsam::Symbol('l', 0);
         // Center the line coordinates to avoid angle/offset scale disparity in
         // elimination. This is an exact reparameterization, not new information.
@@ -816,7 +851,8 @@ private:
     initial.insert(B(count), bias);
     gtsam::Values predicted = bootstrapped ? smoother->calculateEstimate() : bootstrap_values;
     predicted.insert(initial);
-    if (fuse) append_ranges(t, factors, predicted);
+    if (self_calibrate) retain_calibration_ranges(t);
+    else if (fuse) append_ranges(t, factors, predicted);
     Eigen::Matrix<double, 6, 6> H = Eigen::Matrix<double, 6, 6>::Zero();
     gtsam::Vector6 lidar_gradient = gtsam::Vector6::Zero();
     double fraction = 0, cost = 0;
@@ -842,13 +878,26 @@ private:
     gtsam::FixedLagSmoother::KeyTimestampMap times{{X(count), t}, {V(count), t}, {B(count), t}};
     if (fuse && map.surveyed())
       for (auto id : map.ids) times[A(id)] = t;
-    if (body_walls) times[gtsam::Symbol('l', 0)] = t;
+    if (body_walls && !self_calibrate) times[gtsam::Symbol('l', 0)] = t;
     failure_context = "OPTIMIZATION_FAILED";
     const auto solver_start = std::chrono::steady_clock::now();
     if (!bootstrapped) {
       bootstrap_factors.add(factors);
       bootstrap_values.insert(initial);
       for (const auto& kv : times) bootstrap_times[kv.first] = kv.second;
+      if (self_calibrate) {
+        // Retain the original graph, not a trajectory pseudo-measurement. No
+        // smoother marginalization occurs before unknown anchors are resolved.
+        if (t - first_imu >= 40. || count >= 400) {
+          failure_context = "SELF_CALIBRATION_PENDING_TIMEOUT";
+          throw std::runtime_error("unknown-anchor joint initialization not certified within bounded startup");
+        }
+        frames.push_back({count, t, voxel, count % 10 == 0});
+        last_cloud = t;
+        ++count;
+        status("INITIALIZING", "UNKNOWN_ANCHORS_PENDING_JOINT_INITIALIZATION", t);
+        return;
+      }
       const double bootstrap_duration = cfg.at("uwb").at("bootstrap_s");
       if (t - first_imu < bootstrap_duration) {
         frames.push_back({count, t, voxel, count % 10 == 0});
@@ -1206,7 +1255,10 @@ private:
   }
   std::unique_ptr<gtsam_points::StreamTempBufferRoundRobin> streams;
   std::string backend, gpu_name;
-  bool fuse = false, bootstrapped = true;
+  bool fuse = false, bootstrapped = true, self_calibrate = false;
+  std::optional<InstallationInput> installation_input;
+  struct PendingCalibrationRange { RangeObservation observation; RangeBracket bracket; };
+  std::vector<PendingCalibrationRange> pending_calibration_ranges;
   KnownMap map;
   std::optional<LateralReference> lateral_reference;
   std::optional<LocalWallPair> initial_walls;
