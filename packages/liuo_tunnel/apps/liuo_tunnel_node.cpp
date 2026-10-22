@@ -197,6 +197,7 @@ private:
     pending_calibration_ranges.clear();
     calibration_prepared = false;
     calibration_previous.reset();
+    calibration_solved.clear();
     if (self_calibrate) { map.ids = installation_input->ids; map.means.clear(); }
     bootstrap_factors.resize(0);
     bootstrap_values.clear();
@@ -483,6 +484,7 @@ private:
           for (const auto& factor : batch.graph) graph.push_back(factor->clone());
           if (self_calibrate) {
             batch.linearization_values = initial;
+            if (calibration_solved.count(i)) {
             const auto started = std::chrono::steady_clock::now();
             auto compact = marginalize_joint(graph, initial, calibration_elimination(initial, batch.stamp, true));
             std::ofstream marginal_log(logs.profiling_path("calibration_marginalization.csv"), std::ios::app);
@@ -491,6 +493,7 @@ private:
                          << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count() << '\n';
             graph = std::move(compact.graph);
             initial = std::move(compact.values);
+            }
           }
           batch.optimizer = std::make_unique<SteppedBootstrapLM>(graph, initial, params, self_calibrate);
         }
@@ -503,6 +506,7 @@ private:
             for (auto key : batch.optimizer->values().keys()) bootstrap_branches[i].update(key, batch.optimizer->values().at(key));
           } else bootstrap_branches[i] = batch.optimizer->values();
           cost = batch.optimizer->error();
+          if (self_calibrate && std::isfinite(cost)) calibration_solved.insert(i);
         }
       } catch (const std::exception& error) {
         done = true;
@@ -976,8 +980,14 @@ private:
       imu->erase_imu_data(std::max(0, erase - 1));
       failure_context = "GRAPH_BUILD_FAILED";
       int window = cfg.at("odometry").at("connection_window");
+      size_t matching_keyframes = 0;
+      const size_t matching_keyframe_limit = cfg.at("odometry").at("max_keyframes");
       for (auto it = frames.rbegin(); it != frames.rend(); ++it) {
-        if (int(count - it->id) > window && !it->keyframe) continue;
+        const bool recent = int(count - it->id) <= window;
+        if (!recent && (!it->keyframe || matching_keyframes >= matching_keyframe_limit)) continue;
+        if (it->keyframe) ++matching_keyframes;
+        // Raw states remain available for delayed ranges. Retaining a state
+        // does not authorize adding every historical keyframe as a new match.
         gtsam::NonlinearFactor::shared_ptr f;
         if (backend == "gpu") {
           auto sb = streams->get_stream_buffer();
@@ -1448,6 +1458,7 @@ private:
   std::string backend, gpu_name;
   bool fuse = false, bootstrapped = true, self_calibrate = false, calibration_prepared = false;
   std::optional<gtsam::Values> calibration_previous;
+  std::set<size_t> calibration_solved;
   std::optional<InstallationInput> installation_input;
   struct PendingCalibrationRange { RangeObservation observation; RangeBracket bracket; };
   std::vector<PendingCalibrationRange> pending_calibration_ranges;
