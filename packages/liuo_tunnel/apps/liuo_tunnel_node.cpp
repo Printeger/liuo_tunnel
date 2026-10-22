@@ -17,6 +17,7 @@
 #include <liuo_tunnel/uwb/known_map.hpp>
 #include <liuo_tunnel/uwb/installation_input.hpp>
 #include <liuo_tunnel/uwb/unknown_anchor_candidates.hpp>
+#include <liuo_tunnel/uwb/joint_marginalization.hpp>
 #include <liuo_tunnel/uwb/initialization_candidates.hpp>
 #include <liuo_tunnel/uwb/bootstrap_preconditioner.hpp>
 #include <liuo_tunnel/uwb/lateral_initialization.hpp>
@@ -480,11 +481,27 @@ private:
           // Each candidate owns its nonlinear cache; GPU work stays serial.
           gtsam::NonlinearFactorGraph graph;
           for (const auto& factor : batch.graph) graph.push_back(factor->clone());
+          if (self_calibrate) {
+            batch.linearization_values = initial;
+            const auto started = std::chrono::steady_clock::now();
+            auto compact = marginalize_joint(graph, initial, calibration_elimination(initial, batch.stamp, true));
+            std::ofstream marginal_log(logs.profiling_path("calibration_marginalization.csv"), std::ios::app);
+            if (marginal_log.tellp() == 0) marginal_log << "snapshot_stamp,branch,source_factors,retired_factors,remaining_factors,remaining_values,milliseconds\n";
+            marginal_log << batch.stamp << ',' << i << ',' << graph.size() << ',' << compact.retired_factors << ',' << compact.graph.size() << ',' << compact.values.size() << ','
+                         << std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count() << '\n';
+            graph = std::move(compact.graph);
+            initial = std::move(compact.values);
+          }
           batch.optimizer = std::make_unique<SteppedBootstrapLM>(graph, initial, params);
         }
         done = batch.optimizer->advance();
         if (done) {
-          bootstrap_branches[i] = batch.optimizer->values();
+          if (self_calibrate) {
+            // Keep eliminated linearization points for this candidate's next
+            // snapshot; they are not new observations or independent priors.
+            bootstrap_branches[i] = batch.linearization_values;
+            for (auto key : batch.optimizer->values().keys()) bootstrap_branches[i].update(key, batch.optimizer->values().at(key));
+          } else bootstrap_branches[i] = batch.optimizer->values();
           cost = batch.optimizer->error();
         }
       } catch (const std::exception& error) {
@@ -564,6 +581,20 @@ private:
     }
     return result;
   }
+  gtsam::Ordering calibration_elimination(const gtsam::Values& values, double stamp, bool keep_origin) const {
+    gtsam::Ordering keys;
+    const double cutoff = stamp - cfg.at("odometry").at("lag_s").get<double>();
+    for (auto key : values.keys()) {
+      const auto symbol = gtsam::Symbol(key);
+      if (symbol.chr() != 'x' && symbol.chr() != 'v' && symbol.chr() != 'b') continue;
+      if (keep_origin && key == X(0)) continue;
+      const auto found = bootstrap_times.find(key);
+      if (found == bootstrap_times.end()) throw std::logic_error("CALIBRATION_TIMESTAMP_MISSING");
+      if (found->second < cutoff) keys.push_back(key);
+    }
+    return keys;
+  }
+
   bool variable_anchors() const { return map.surveyed() || (self_calibrate && calibration_prepared); }
 
   bool prepare_calibration(double t) {
@@ -1161,6 +1192,23 @@ private:
       }
       // Transfer the original factors and their joint optimized values exactly
       // once. No marginal-map + reused-observation double counting.
+      if (self_calibrate) {
+        auto compact = marginalize_joint(bootstrap_factors, optimized, calibration_elimination(optimized, t, false));
+        bootstrap_factors = std::move(compact.graph);
+        optimized = std::move(compact.values);
+        for (auto it = bootstrap_times.begin(); it != bootstrap_times.end();) {
+          if (!optimized.exists(it->first)) it = bootstrap_times.erase(it); else ++it;
+        }
+        // Compaction changes factor indices. Static AA summaries were not
+        // absorbed; bind their actual replacement indices, never add them twice.
+        aa_added.clear();
+        for (size_t index = 0; index < bootstrap_factors.size(); ++index) {
+          const auto* aa = dynamic_cast<const AnchorAnchorRangeFactor*>(bootstrap_factors[index].get());
+          if (!aa) continue;
+          auto a = uint32_t(gtsam::Symbol(aa->keys()[0]).index()), b = uint32_t(gtsam::Symbol(aa->keys()[1]).index());
+          aa_added.emplace_back(std::make_pair(std::min(a, b), std::max(a, b)), index);
+        }
+      }
       smoother->update(bootstrap_factors, optimized, bootstrap_times);
       bind_aa_factor_indices();
       bootstrap_factors.resize(0);
@@ -1432,7 +1480,7 @@ private:
   struct BootstrapBatch {
     double stamp = 0;
     gtsam::NonlinearFactorGraph graph;
-    gtsam::Values initial;
+    gtsam::Values initial, linearization_values;
     std::vector<BootstrapBranchEvidence> evidence;
     std::unique_ptr<SteppedBootstrapLM> optimizer;
   };
