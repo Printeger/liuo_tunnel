@@ -93,7 +93,7 @@ public:
     trajectory.open(logs.export_path("odometry/trajectory.csv"));
     trajectory << std::setprecision(16)
                << "session,stamp,publish_stamp,x,y,z,qx,qy,qz,qw,vx,vy,vz,cov_valid,state,map_id,publish_wall_ns,state_reason,wx,wy,wz,twist_interval_s,postfit_ta_stamp,postfit_"
-                  "ta_count,postfit_ta_squared_sum,postfit_ta_limit,failed_recovery_stamp\n";
+                  "ta_count,postfit_ta_squared_sum,postfit_ta_limit,failed_recovery_stamp,uwb_optimistic_position_trace\n";
     bootstrap_log.open(logs.profiling_path("bootstrap.csv"));
     bootstrap_log << std::setprecision(16) << "session,iteration,total_error,cost_change,lambda,solve_success,elapsed_s,ta_error,translation_gradient_norm,x0,y0,z0,event\n";
     covariance_log.open(logs.export_path("odometry/covariance.csv"));
@@ -204,6 +204,7 @@ private:
     last_uwb = -1;
     last_rejected = -1;
     uwb_recovery_until = -1;
+    uwb_geometry_trace = std::numeric_limits<double>::infinity();
     postfit_ta_stamp = -1;
     failed_recovery_stamp = -1;
     postfit_ta_count = 0;
@@ -246,6 +247,9 @@ private:
     d.values.push_back(kv);
     kv.key = "postfit_ta_squared_sum";
     kv.value = std::to_string(postfit_ta_squared_sum);
+    d.values.push_back(kv);
+    kv.key = "uwb_optimistic_position_trace";
+    kv.value = std::to_string(uwb_geometry_trace);
     d.values.push_back(kv);
     kv.key = "postfit_ta_limit";
     kv.value = std::to_string(postfit_range_limit(postfit_ta_count));
@@ -1039,17 +1043,21 @@ private:
     }
     // Read-only post-fit consistency of newly incorporated physical TA factors.
     // Evaluate against the joint optimized states, not published poses or truth.
+    uwb_geometry_trace = std::numeric_limits<double>::infinity();
     if (fuse && new_ta) {
       const auto estimate = smoother->calculateEstimate();
       size_t samples = 0;
       double squared_sum = 0;
+      gtsam::Matrix3 geometry_information = gtsam::Matrix3::Zero();
       for (const auto& factor : factors) {
         const auto* range = dynamic_cast<const TagAnchorRangeFactor*>(factor.get());
         if (!range) continue;
         squared_sum += 2.0 * range->error(estimate);
+        geometry_information += range->optimistic_translation_information(estimate);
         ++samples;
       }
       if (samples != new_ta) throw std::runtime_error("POSTFIT_TA_COUNT_MISMATCH");
+      uwb_geometry_trace = optimistic_position_trace(geometry_information);
       postfit_ta_count = samples;
       postfit_ta_squared_sum = squared_sum;
       postfit_ta_stamp = t;
@@ -1124,7 +1132,8 @@ private:
         uwb_recovery_until,
         postfit_ta_count,
         postfit_ta_squared_sum,
-        failed_recovery_stamp);
+        failed_recovery_stamp,
+        uwb_geometry_trace);
       mode = diagnostic.state;
       state_reason = diagnostic.reason;
     }
@@ -1162,7 +1171,7 @@ private:
       trajectory << session << ',' << t << ',' << now().seconds() << ',' << p.x() << ',' << p.y() << ',' << p.z() << ',' << q.x() << ',' << q.y() << ',' << q.z() << ',' << q.w()
                  << ',' << v.x() << ',' << v.y() << ',' << v.z() << ",1," << mode << "," << (fuse ? map.id : "none") << "," << publish_wall_ns << "," << state_reason << ","
                  << twist[3] << "," << twist[4] << "," << twist[5] << "," << t - last_cloud << "," << postfit_ta_stamp << "," << postfit_ta_count << "," << postfit_ta_squared_sum
-                 << "," << postfit_range_limit(postfit_ta_count) << "," << failed_recovery_stamp << "\n";
+                 << "," << postfit_range_limit(postfit_ta_count) << "," << failed_recovery_stamp << "," << uwb_geometry_trace << "\n";
       covariance_log << session << ',' << t;
       for (int i = 0; i < 9; i++)
         for (int j = 0; j < 9; j++) covariance_log << ',' << xv_cov(i, j);
@@ -1206,6 +1215,7 @@ private:
   gtsam::Point3 tag;
   RangeQueue range_queue;
   double last_uwb = -1, last_rejected = -1, uwb_recovery_until = -1;
+  double uwb_geometry_trace = std::numeric_limits<double>::infinity();
   double postfit_ta_stamp = -1, postfit_ta_squared_sum = 0, failed_recovery_stamp = -1;
   size_t postfit_ta_count = 0;
   uint64_t rejected_total = 0;

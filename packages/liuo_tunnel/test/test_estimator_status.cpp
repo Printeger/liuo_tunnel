@@ -68,10 +68,10 @@ TEST(EstimatorStatus, FailedRecoveryCannotClearItselfWithSmallResiduals) {
   // A new session explicitly resets both the failure stamp and recovery deadline.
   EXPECT_EQ(fused_status(9, 9, -1, "", .01, .02, -1, 4, 1, -1).state, "TRACKING");
 }
-TEST(EstimatorStatus, RecoveryFailureOnlyLatchesAnActualFailedWindow) {
+TEST(EstimatorStatus, FailureLatchesRegardlessOfRecoveryWindow) {
   using liuo_tunnel::recovery_failure_stamp;
-  EXPECT_EQ(recovery_failure_stamp(-1, 9, -1, 4, 1e9), -1);
-  EXPECT_EQ(recovery_failure_stamp(-1, 92, 71, 4, 1e9), -1);
+  EXPECT_EQ(recovery_failure_stamp(-1, 9, -1, 4, 1e9), 9);
+  EXPECT_EQ(recovery_failure_stamp(-1, 92, 71, 4, 1e9), 92);
   EXPECT_EQ(recovery_failure_stamp(-1, 62, 71, 0, 1e9), -1);
   EXPECT_EQ(recovery_failure_stamp(-1, 62, 71, 4, 1), -1);
   EXPECT_EQ(recovery_failure_stamp(-1, 62, 71, 4, NAN), 62);
@@ -85,4 +85,27 @@ TEST(EstimatorStatus, ExpiredTimerAndSmallResidualDoNotCertifyRecovery) {
   EXPECT_EQ(fused_status(80, 79, -1, "", .16, .17, 71.1).reason, "UWB_ABSENT_LIO_CONTINUES");
   EXPECT_EQ(fused_status(80, 80, -1, "", NAN, NAN, 71.1).reason, "POSTERIOR_NONFINITE");
   EXPECT_EQ(fused_status(9, 9, -1, "", .01, .02, -1).state, "TRACKING");
+}
+
+TEST(EstimatorStatus, RecordedNormalRunFailureCannotImmediatelyRecertifyTracking) {
+  const double failure = liuo_tunnel::recovery_failure_stamp(-1, 64.4, -1, 8, 26.20484298445045);
+  EXPECT_DOUBLE_EQ(failure, 64.4);
+  EXPECT_EQ(fused_status(64.5, 64.5, -1, "", .01, .02, -1, 8, 2, failure).state, "DEGRADED");
+}
+
+TEST(EstimatorStatus, WeakRangeGeometryCannotBeCertifiedBySmallJointPosterior) {
+  using liuo_tunnel::optimistic_position_trace;
+  Eigen::Matrix3d good = 100 * Eigen::Matrix3d::Identity();
+  EXPECT_NEAR(optimistic_position_trace(good), .03, 1e-12);
+  Eigen::Matrix3d weak = good;
+  weak(2, 2) = .01;
+  const double trace = optimistic_position_trace(weak);
+  EXPECT_GT(trace, 100);
+  EXPECT_EQ(fused_status(12, 12, -1, "", .01, .02, -1, 6, 6, -1, trace).reason, "UWB_POSITION_GEOMETRY_WEAK");
+  EXPECT_EQ(fused_status(12, 12, -1, "", .01, .02, -1, 6, 6, -1, .03).state, "TRACKING");
+  weak(2, 2) = 0;
+  EXPECT_TRUE(std::isinf(optimistic_position_trace(weak)));
+  EXPECT_TRUE(std::isinf(optimistic_position_trace(Eigen::Matrix3d::Zero())));
+  EXPECT_EQ(fused_status(12, 12, -1, "", .01, .02, -1, 6, 1e9, -1, trace).state, "LOST");
+  EXPECT_EQ(fused_status(12, 10, -1, "", .01, .02, -1, 6, 6, -1, trace).reason, "UWB_ABSENT_LIO_CONTINUES");
 }

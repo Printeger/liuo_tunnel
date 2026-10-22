@@ -1,5 +1,6 @@
 #pragma once
 #include <cmath>
+#include <Eigen/Eigenvalues>
 #include <cstddef>
 #include <limits>
 #include <boost/math/distributions/chi_squared.hpp>
@@ -17,8 +18,17 @@ inline double postfit_range_limit(size_t samples) {
 // Keep the first failure until the owning estimator starts a new session.
 inline double recovery_failure_stamp(double previous, double stamp, double recovery_until, size_t samples, double squared_sum) {
   if (previous >= 0) return previous;
-  if (recovery_until >= stamp && samples && (!std::isfinite(squared_sum) || squared_sum < 0 || squared_sum > postfit_range_limit(samples))) return stamp;
+  (void)recovery_until;  // Receipt/timer windows do not limit actual failure memory.
+  if (samples && (!std::isfinite(squared_sum) || squared_sum < 0 || squared_sum > postfit_range_limit(samples))) return stamp;
   return previous;
+}
+// Fixed-map/fixed-attitude local range-only bound. This deliberately optimistic
+// diagnostic is NOT the estimator covariance or a global branch certificate.
+inline double optimistic_position_trace(const Eigen::Matrix3d& information) {
+  if (!information.allFinite()) return std::numeric_limits<double>::infinity();
+  Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> eig(information);
+  if (eig.info() != Eigen::Success || eig.eigenvalues()[2] <= 0 || eig.eigenvalues()[0] <= 1e-10 * eig.eigenvalues()[2]) return std::numeric_limits<double>::infinity();
+  return eig.eigenvalues().cwiseInverse().sum();
 }
 // Operational diagnostics only. Local posterior covariance is not a calibrated
 // accuracy guarantee; never use simulation truth to select the online state.
@@ -32,7 +42,8 @@ inline EstimatorStatus fused_status(
   double recovery_until = -1,
   size_t postfit_samples = 0,
   double postfit_squared_sum = 0,
-  double failed_recovery_stamp = -1) {
+  double failed_recovery_stamp = -1,
+  double optimistic_geometry_trace = 0) {
   if (!std::isfinite(position_trace) || !std::isfinite(pose_trace)) return {"LOST", "POSTERIOR_NONFINITE"};
   if (pose_trace > 100) return {"LOST", "POSTERIOR_UNBOUNDED"};
   if (last_accepted < 0 || stamp - last_accepted > .3) {
@@ -48,6 +59,7 @@ inline EstimatorStatus fused_status(
   // There is currently no independent recovery certificate; session reset
   // clears this history explicitly. Keep the limitation visible.
   if (recovery_until >= 0) return {"DEGRADED", "UWB_RECOVERY_UNVERIFIED"};
+  if (!std::isfinite(optimistic_geometry_trace) || optimistic_geometry_trace > .25) return {"DEGRADED", "UWB_POSITION_GEOMETRY_WEAK"};
   return {"TRACKING", "JOINT_LIDAR_IMU_UWB"};
 }
 }  // namespace liuo_tunnel

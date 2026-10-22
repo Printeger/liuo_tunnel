@@ -502,3 +502,25 @@ TEST(UwbQueue, StaticAlignmentIsBoundedAndNeverExtrapolatesLatePose) {
   EXPECT_EQ(static_alignment_bracket({{3.1, 42}}, 2., 1., 3.).reason, "WINDOW_EXPIRED");
   EXPECT_EQ(static_alignment_bracket({{3., 42}, {3.1, 43}}, 2., 1., 3.).reason, "WINDOW_EXPIRED");
 }
+
+TEST(UwbFactors, OptimisticGeometryUsesCommonWorldTranslationNotTwoIndependentPoses) {
+  using namespace gtsam::symbol_shorthand;
+  gtsam::Values values;
+  values.insert(X(0), gtsam::Pose3(gtsam::Rot3::RzRyRx(.1, -.2, .4), {3, 4, 5}));
+  values.insert(X(1), gtsam::Pose3(gtsam::Rot3::RzRyRx(-.2, .1, 1.2), {4, 4.5, 5.2}));
+  values.insert(A(0), gtsam::Point3(100, 3, 7));
+  TagAnchorRangeFactor factor(X(0), X(1), A(0), {}, {.1, .15, .25}, .4, 100, .1);
+  Eigen::RowVector3d J;
+  for (int axis = 0; axis < 3; ++axis) {
+    auto plus = values, minus = values;
+    for (auto key : {X(0), X(1)}) {
+      auto pose = values.at<gtsam::Pose3>(key);
+      gtsam::Point3 step = gtsam::Point3::Zero();
+      step[axis] = 1e-5;
+      plus.update(key, gtsam::Pose3(pose.rotation(), pose.translation() + step));
+      minus.update(key, gtsam::Pose3(pose.rotation(), pose.translation() - step));
+    }
+    J[axis] = (factor.unwhitenedError(plus)[0] - factor.unwhitenedError(minus)[0]) / 2e-5 / .1;
+  }
+  EXPECT_LT((factor.optimistic_translation_information(values) - J.transpose() * J).norm(), 1e-6);
+}

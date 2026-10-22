@@ -104,6 +104,16 @@ public:
     }
     return gtsam::Vector1(measured_ - distance);
   }
+  // Common WORLD translation of both interpolated poses, with A/attitude fixed.
+  // Diagnostic only: no extra observation or change to the factor likelihood.
+  gtsam::Matrix3 optimistic_translation_information(const gtsam::Values& values) const {
+    std::vector<gtsam::Matrix> H;
+    unwhitenedError(values, &H);
+    gtsam::Matrix J = H[0].rightCols(3) * values.at<gtsam::Pose3>(keys()[0]).rotation().matrix().transpose();
+    if (right_) J += H[1].rightCols(3) * values.at<gtsam::Pose3>(*right_).rotation().matrix().transpose();
+    J = noiseModel()->Whiten(J);
+    return J.transpose() * J;
+  }
   gtsam::NonlinearFactor::shared_ptr clone() const override { return gtsam::make_shared<TagAnchorRangeFactor>(*this); }
 
 private:
