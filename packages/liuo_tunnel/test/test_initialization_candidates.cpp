@@ -187,3 +187,133 @@ TEST(InitializationCandidates, ActualLocalWallGeometrySupportsTwoDirectionsNotHe
     }
   }
 }
+
+#include <liuo_tunnel/uwb/installation_factors.hpp>
+namespace {
+void check_installation_derivatives(const gtsam::NoiseModelFactor& factor, const gtsam::Values& values) {
+  std::vector<gtsam::Matrix> analytic;
+  factor.unwhitenedError(values, &analytic);
+  for (size_t i = 0; i < factor.keys().size(); ++i) {
+    auto key = factor.keys()[i];
+    char c = gtsam::Symbol(key).chr();
+    int dimension = c == 'x' ? 6 : (c == 'l' ? 2 : 3);
+    for (int axis = 0; axis < dimension; ++axis) {
+      auto plus = values, minus = values;
+      constexpr double eps = 1e-5;
+      if (c == 'x') {
+        gtsam::Vector6 d = gtsam::Vector6::Zero();
+        d[axis] = eps;
+        plus.update(key, values.at<gtsam::Pose3>(key).retract(d));
+        minus.update(key, values.at<gtsam::Pose3>(key).retract(-d));
+      } else if (c == 'l') {
+        gtsam::Vector2 d = gtsam::Vector2::Zero();
+        d[axis] = eps;
+        plus.update(key, gtsam::Vector2(values.at<gtsam::Vector2>(key) + d));
+        minus.update(key, gtsam::Vector2(values.at<gtsam::Vector2>(key) - d));
+      } else {
+        gtsam::Vector3 d = gtsam::Vector3::Zero();
+        d[axis] = eps;
+        plus.update(key, gtsam::Vector3(values.at<gtsam::Vector3>(key) + d));
+        minus.update(key, gtsam::Vector3(values.at<gtsam::Vector3>(key) - d));
+      }
+      const auto numeric = ((factor.unwhitenedError(plus) - factor.unwhitenedError(minus)) / (2 * eps)).eval();
+      EXPECT_LT((numeric - analytic[i].col(axis)).lpNorm<Eigen::Infinity>(), 1e-6);
+    }
+  }
+}
+}  // namespace
+TEST(InitializationCandidates, CorrelatedInstallationAndWallFactorJacobians) {
+  using namespace gtsam::symbol_shorthand;
+  const auto L = gtsam::Symbol('l', 0);
+  gtsam::Values v;
+  v.insert(L, gtsam::Vector2(1.2, .7));
+  v.insert(X(0), gtsam::Pose3(gtsam::Rot3::RzRyRx(.1, -.2, .4), {12, 3, 8}));
+  v.insert(A(1), gtsam::Point3(20, 3, 4));
+  v.insert(A(2), gtsam::Point3(400, -3, 5));
+  gtsam::Matrix2 C;
+  C << .003, .0004, .0004, .003;
+  InstallationOffsetFactor installation(L, {A(1), A(2)}, gtsam::Vector2(2.8, -2.8), C);
+  WallReferenceFactor wall(X(0), L, {.2, .9, .1}, {.1, -.7, .2}, C);
+  check_installation_derivatives(installation, v);
+  check_installation_derivatives(wall, v);
+  EXPECT_GT(dynamic_cast<const gtsam::noiseModel::Gaussian&>(*installation.noiseModel()).covariance()(0, 1), 0);
+  const auto before = wall.unwhitenedError(v);
+  auto moved = v;
+  auto p = v.at<gtsam::Pose3>(X(0));
+  moved.update(X(0), gtsam::Pose3(p.rotation(), p.translation() + gtsam::Vector3(0, 0, 15)));
+  EXPECT_LT((wall.unwhitenedError(moved) - before).norm(), 1e-10);
+  moved.update(X(0), gtsam::Pose3(p.rotation(), p.translation() + 10 * gtsam::Vector3(-std::sin(1.2), std::cos(1.2), 0)));
+  EXPECT_LT((wall.unwhitenedError(moved) - before).norm(), 1e-10);
+}
+TEST(InitializationCandidates, WallObservationDoesNotChooseTunnelDirection) {
+  using namespace gtsam::symbol_shorthand;
+  const auto L = gtsam::Symbol('l', 0);
+  gtsam::Values v;
+  v.insert(L, gtsam::Vector2(std::acos(-1.) / 2, 0));
+  v.insert(X(0), gtsam::Pose3(gtsam::Rot3(), {50, .8, 2}));
+  WallReferenceFactor f(X(0), L, {0, 1, 0}, {0, -.8, 0}, gtsam::Matrix2::Identity());
+  EXPECT_LT(f.unwhitenedError(v).norm(), 1e-10);
+  v.update(X(0), gtsam::Pose3(gtsam::Rot3::Rz(std::acos(-1.)), {50, -.8, 9}));
+  EXPECT_LT(f.unwhitenedError(v).norm(), 1e-10);
+}
+
+#include <liuo_tunnel/uwb/body_wall_observation.hpp>
+TEST(InitializationCandidates, BodyWallNormalsComeFromPointsNotRepeatedGravityMeasurement) {
+  const auto R = gtsam::Rot3::RzRyRx(.15, -.1, .8);
+  std::vector<gtsam::Vector3> points;
+  for (double side : {-3., 3.})
+    for (int x = -20; x <= 20; ++x)
+      for (int z = 0; z < 15; ++z) points.push_back(R.unrotate(gtsam::Vector3(x, side - .7, .25 * z - 1.8)));
+  const auto a = body_wall_observation(points, R, .02);
+  const auto b = body_wall_observation(points, gtsam::Rot3::Rx(.005) * R, .02);
+  EXPECT_GT(std::abs(a.normal.dot(R.unrotate(gtsam::Vector3::UnitY()))), 1 - 1e-10);
+  EXPECT_GT(std::abs(a.normal.dot(b.normal)), 1 - 1e-10);
+  EXPECT_GT(a.covariance.determinant(), 0);
+  EXPECT_GT(a.covariance(1, 1), 0);
+}
+TEST(InitializationCandidates, InstallationGeometryResidualsAreMapFrameEquivariant) {
+  using namespace gtsam::symbol_shorthand;
+  const auto L = gtsam::Symbol('l', 0);
+  gtsam::Values v;
+  v.insert(L, gtsam::Vector2(1.2, .7));
+  v.insert(A(1), gtsam::Point3(20, 3, 4));
+  v.insert(A(2), gtsam::Point3(400, -3, 5));
+  v.insert(X(0), gtsam::Pose3(gtsam::Rot3::RzRyRx(.1, -.2, .4), {12, 3, 8}));
+  InstallationOffsetFactor a(L, {A(1), A(2)}, gtsam::Vector2(2.8, -2.8), gtsam::Matrix2::Identity());
+  WallReferenceFactor w(X(0), L, {.2, .9, .1}, {.1, -.7, .2}, gtsam::Matrix2::Identity());
+  auto shifted = v;
+  const gtsam::Pose3 T(gtsam::Rot3::Rz(.6), {40, -20, 15});
+  shifted.update(X(0), T.compose(v.at<gtsam::Pose3>(X(0))));
+  for (auto key : {A(1), A(2)}) shifted.update(key, T.transformFrom(v.at<gtsam::Point3>(key)));
+  shifted.update(L, gtsam::Vector2(1.8, .7 + gtsam::Vector3(std::cos(1.8), std::sin(1.8), 0).dot(T.translation())));
+  EXPECT_LT((a.unwhitenedError(v) - a.unwhitenedError(shifted)).norm(), 1e-10);
+  EXPECT_LT((w.unwhitenedError(v) - w.unwhitenedError(shifted)).norm(), 1e-10);
+}
+
+#include <gtsam/nonlinear/Marginals.h>
+TEST(InitializationCandidates, JointInstallationPreservesMapAndInstallationCommonErrors) {
+  using namespace gtsam::symbol_shorthand;
+  const auto L = gtsam::Symbol('l', 0);
+  auto map = installation_fixture();
+  // Add a common horizontal datum error to all surveyed anchors.
+  for (size_t i = 0; i < map.ids.size(); ++i)
+    for (size_t j = 0; j < map.ids.size(); ++j) map.covariance.block<2, 2>(3 * i, 3 * j) += .01 * gtsam::Matrix2::Identity();
+  const auto reference = LateralReference::fit(map);
+  gtsam::Values values;
+  gtsam::KeyVector keys;
+  gtsam::Vector offsets(map.ids.size());
+  gtsam::Matrix C(map.ids.size(), map.ids.size());
+  for (size_t i = 0; i < map.ids.size(); ++i) {
+    keys.push_back(A(map.ids[i]));
+    values.insert(keys.back(), map.means[i]);
+    offsets[i] = map.installation["records"][i]["signed_offset_m"];
+    for (size_t j = 0; j < map.ids.size(); ++j) C(i, j) = map.installation["joint_covariance_m2"][i][j].get<double>();
+  }
+  values.insert(L, gtsam::Vector2(std::atan2(reference.normal.y(), reference.normal.x()), reference.offset));
+  gtsam::NonlinearFactorGraph graph;
+  graph.emplace_shared<SurveyedMapPrior>(keys, map.means, map.covariance);
+  graph.emplace_shared<InstallationOffsetFactor>(L, keys, offsets, C);
+  const auto covariance = gtsam::Marginals(graph, values, gtsam::Marginals::QR).marginalCovariance(L);
+  EXPECT_LT((covariance - reference.covariance).norm(), 1e-7);
+  EXPECT_GT(covariance(1, 1), .01 + .0004);
+}

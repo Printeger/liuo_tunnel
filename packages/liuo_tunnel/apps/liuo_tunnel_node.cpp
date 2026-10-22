@@ -18,6 +18,8 @@
 #include <liuo_tunnel/uwb/initialization_candidates.hpp>
 #include <liuo_tunnel/uwb/bootstrap_preconditioner.hpp>
 #include <liuo_tunnel/uwb/lateral_initialization.hpp>
+#include <liuo_tunnel/uwb/installation_factors.hpp>
+#include <liuo_tunnel/uwb/body_wall_observation.hpp>
 #include <liuo_tunnel/uwb/measurement_queue.hpp>
 #include <gtsam_points/optimizers/levenberg_marquardt_ext.hpp>
 #include <liuo_tunnel/util/run_log_manager.hpp>
@@ -172,6 +174,8 @@ private:
     bootstrap_last_attempt = -1;
     bootstrap_previous_winner.reset();
     initial_walls.reset();
+    dedicated_geometry_cloud.reset();
+    body_walls.reset();
     bootstrapped = !fuse;
     clouds.clear();
     frames.clear();
@@ -523,6 +527,7 @@ private:
       }
       if (t < first_imu) continue;
       if (!initialized && t - first_imu < cfg.at("odometry").at("initialization_s").get<double>()) {
+        if (cfg.at("uwb").value("installation_factors", false)) dedicated_geometry_cloud = cloud;
         status("INITIALIZING", "IMU_STATIC_ALIGNMENT", t);
         continue;
       }
@@ -596,9 +601,34 @@ private:
       Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(avg, Eigen::Vector3d(0, 0, 9.80665));
       if (lateral_reference) {
         std::vector<Eigen::Vector3d> leveled;
+        if (cfg.at("uwb").value("installation_factors", false)) {
+          if (!dedicated_geometry_cloud || !map.surveyed()) throw std::runtime_error("DEDICATED_GEOMETRY_OR_SURVEYED_MAP_MISSING");
+          std::vector<gtsam::Vector3> dedicated;
+          const auto& observed = *dedicated_geometry_cloud;
+          if (observed.header.frame_id != "lidar" || observed.is_bigendian) throw std::runtime_error("DEDICATED_GEOMETRY_FRAME_INVALID");
+          sensor_msgs::PointCloud2ConstIterator<float> gx(observed, "x"), gy(observed, "y"), gz(observed, "z");
+          for (; gx != gx.end(); ++gx, ++gy, ++gz) {
+            const gtsam::Vector3 p(*gx, *gy, *gz);
+            if (p.allFinite()) dedicated.push_back(T_BL * p);
+          }
+          body_walls = body_wall_observation(dedicated, gtsam::Rot3(q), cfg.at("sensors").at("sigma_lidar_range"));
+          initial_walls = body_walls->leveled;
+          std::ofstream evidence(RunLogManager::instance().profiling_path("dedicated_wall_observation.json"));
+          evidence << nlohmann::json(
+                        {{"cloud_stamp", rclcpp::Time(observed.header.stamp).seconds()},
+                         {"pose_stamp", t},
+                         {"points", dedicated.size()},
+                         {"used_by_vgicp", false},
+                         {"static_interval_assumption", true},
+                         {"body_normal", {body_walls->normal.x(), body_walls->normal.y(), body_walls->normal.z()}},
+                         {"body_center", {body_walls->center.x(), body_walls->center.y(), body_walls->center.z()}},
+                         {"angle_offset_covariance", {{body_walls->covariance(0, 0), body_walls->covariance(0, 1)}, {body_walls->covariance(1, 0), body_walls->covariance(1, 1)}}}})
+                        .dump(2);
+          dedicated_geometry_cloud.reset();
+        }
         for (const auto& point : points) leveled.push_back(q * point.head<3>());
         try {
-          initial_walls = extract_local_walls(leveled);
+          if (!body_walls) initial_walls = extract_local_walls(leveled);
           logger->info(
             "initial walls width={} center_offset={} rms={}; installation axis={},{} offset={}",
             initial_walls->width,
@@ -626,6 +656,21 @@ private:
         }
       } else
         factors.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(X(0), state.pose(), gtsam::noiseModel::Isotropic::Sigma(6, 1e-3));
+      if (body_walls) {
+        const auto line_key = gtsam::Symbol('l', 0);
+        initial.insert(line_key, gtsam::Vector2(std::atan2(lateral_reference->normal.y(), lateral_reference->normal.x()), lateral_reference->offset));
+        const auto& records = map.installation.at("records");
+        gtsam::KeyVector anchor_keys;
+        gtsam::Vector offsets(records.size());
+        gtsam::Matrix covariance(records.size(), records.size());
+        for (size_t i = 0; i < records.size(); ++i) {
+          anchor_keys.push_back(A(records[i].at("anchor_id").get<uint32_t>()));
+          offsets[i] = records[i].at("signed_offset_m");
+          for (size_t j = 0; j < records.size(); ++j) covariance(i, j) = map.installation.at("joint_covariance_m2")[i][j].get<double>();
+        }
+        factors.emplace_shared<InstallationOffsetFactor>(line_key, anchor_keys, offsets, covariance);
+        factors.emplace_shared<WallReferenceFactor>(X(0), line_key, body_walls->normal, body_walls->center, body_walls->covariance);
+      }
       factors.emplace_shared<gtsam::PriorFactor<gtsam::Vector3>>(V(0), state.velocity(), gtsam::noiseModel::Isotropic::Sigma(3, .01));
       gtsam::Vector6 sig;
       sig.head<3>().setConstant(cfg.at("sensors").at("initial_acc_bias_sigma"));
@@ -696,6 +741,7 @@ private:
     gtsam::FixedLagSmoother::KeyTimestampMap times{{X(count), t}, {V(count), t}, {B(count), t}};
     if (fuse && map.surveyed())
       for (auto id : map.ids) times[A(id)] = t;
+    if (body_walls) times[gtsam::Symbol('l', 0)] = t;
     failure_context = "OPTIMIZATION_FAILED";
     const auto solver_start = std::chrono::steady_clock::now();
     if (!bootstrapped) {
@@ -1058,6 +1104,8 @@ private:
   KnownMap map;
   std::optional<LateralReference> lateral_reference;
   std::optional<LocalWallPair> initial_walls;
+  std::optional<BodyWallObservation> body_walls;
+  sensor_msgs::msg::PointCloud2::ConstSharedPtr dedicated_geometry_cloud;
   gtsam::Point3 tag;
   RangeQueue range_queue;
   double last_uwb = -1, last_rejected = -1, uwb_recovery_until = -1;
