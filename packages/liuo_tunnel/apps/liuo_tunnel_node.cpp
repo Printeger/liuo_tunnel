@@ -16,6 +16,7 @@
 #include <liuo_tunnel/common/gauge_consistent_vgicp_gpu.hpp>
 #include <liuo_tunnel/uwb/known_map.hpp>
 #include <liuo_tunnel/uwb/initialization_candidates.hpp>
+#include <liuo_tunnel/uwb/bootstrap_preconditioner.hpp>
 #include <liuo_tunnel/uwb/measurement_queue.hpp>
 #include <gtsam_points/optimizers/levenberg_marquardt_ext.hpp>
 #include <liuo_tunnel/util/run_log_manager.hpp>
@@ -361,7 +362,29 @@ private:
         return std::nullopt;
       }
       const auto seeds = pose_seeds_from_tags(tags.tags, bootstrap_values.at<gtsam::Pose3>(X(0)).rotation(), tag);
-      for (const auto& seed : seeds) bootstrap_branches.push_back(transform_bootstrap_seed(bootstrap_values, X(0), seed));
+      std::vector<gtsam::Values> proposals;
+      for (size_t seed_id = 0; seed_id < seeds.size(); ++seed_id) {
+        auto initial = transform_bootstrap_seed(bootstrap_values, X(0), seeds[seed_id]);
+        auto proposal = precondition_bootstrap(bootstrap_factors, initial);
+        const auto pose = proposal.values.at<gtsam::Pose3>(X(0));
+        branch_log << session << ',' << t << ',' << seed_id << ',' << proposal.cost << ',' << pose.x() << ',' << pose.y() << ',' << pose.z() << ',' << pose.rotation().yaw()
+                   << ",RANGE_SEED_ONLY\n";
+        bool duplicate = false;
+        for (const auto& retained : proposals) {
+          const auto delta = retained.at<gtsam::Pose3>(X(0)).between(pose);
+          if (delta.translation().norm() < .5 && gtsam::Rot3::Logmap(delta.rotation()).norm() < .1) {
+            duplicate = true;
+            break;
+          }
+        }
+        if (!duplicate) proposals.push_back(std::move(proposal.values));
+      }
+      // Never certify uniqueness by truncating distinct competing basins.
+      if (proposals.size() > 4) {
+        status("INITIALIZING", "BOOTSTRAP_DISTINCT_BRANCH_BUDGET", t);
+        return std::nullopt;
+      }
+      bootstrap_branches = std::move(proposals);
     }
     gtsam::NonlinearFactorGraph original = bootstrap_factors;
     aa_added.clear();

@@ -85,3 +85,41 @@ TEST(InitializationCandidates, SmallCostOrOptimizerReturnDoesNotResolveAmbiguity
   EXPECT_FALSE(separated_bootstrap_branch(branches, 0));
   EXPECT_FALSE(separated_bootstrap_branch({branches[0]}, 0));
 }
+
+#include <liuo_tunnel/uwb/bootstrap_preconditioner.hpp>
+TEST(InitializationCandidates, RawInterpolatedGaugeJacobianMatchesFiniteDifference) {
+  using namespace gtsam::symbol_shorthand;
+  gtsam::Values values;
+  values.insert(X(0), gtsam::Pose3(gtsam::Rot3::RzRyRx(.1, -.2, .6), {180, 2, 4}));
+  values.insert(X(1), gtsam::Pose3(gtsam::Rot3::RzRyRx(.2, -.1, .7), {181, 3, 4.2}));
+  values.insert(A(2), gtsam::Point3(400, -3, 5));
+  TagAnchorRangeFactor factor(X(0), X(1), A(2), gtsam::Point3::Zero(), {.1, .15, .25}, .3, 220, .1);
+  const auto analytic = range_gauge_jacobian(factor, values);
+  for (int axis = 0; axis < 4; ++axis) {
+    Eigen::Vector4d step = Eigen::Vector4d::Zero();
+    step[axis] = 1e-5;
+    const double numeric = (factor.unwhitenedError(move_bootstrap_gauge(values, step))[0] - factor.unwhitenedError(move_bootstrap_gauge(values, -step))[0]) / 2e-5;
+    EXPECT_NEAR(analytic[axis], numeric, 1e-6);
+  }
+}
+TEST(InitializationCandidates, RangePreconditionerReducesCostWithoutChangingRelativeMotion) {
+  using namespace gtsam::symbol_shorthand;
+  gtsam::Values truth;
+  gtsam::NonlinearFactorGraph graph;
+  const gtsam::Point3 lever(.1, .15, .25);
+  std::vector<gtsam::Point3> anchors{{0, 3, 4}, {400, -3, 4}, {800, -3, .5}, {1200, 3, .5}};
+  for (size_t i = 0; i < 8; ++i) {
+    gtsam::Pose3 pose(gtsam::Rot3::Rz(.3), {200 + 3. * i, .5, 2.});
+    truth.insert(X(i), pose);
+    for (const auto& a : anchors) graph.emplace_shared<TagAnchorRangeFactor>(X(i), std::nullopt, std::nullopt, a, lever, 0, (pose.transformFrom(lever) - a).norm(), .1);
+  }
+  Eigen::Vector4d offset;
+  offset << .5, .2, -.1, .05;
+  const auto initial = move_bootstrap_gauge(truth, offset);
+  const auto result = precondition_bootstrap(graph, initial);
+  EXPECT_LT(result.cost, graph.error(initial) * .001);
+  EXPECT_LE(result.iterations, 30);
+  const auto before = initial.at<gtsam::Pose3>(X(0)).between(initial.at<gtsam::Pose3>(X(7)));
+  const auto after = result.values.at<gtsam::Pose3>(X(0)).between(result.values.at<gtsam::Pose3>(X(7)));
+  EXPECT_LT(gtsam::Pose3::Logmap(before.between(after)).norm(), 1e-9);
+}
