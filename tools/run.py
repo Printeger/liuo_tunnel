@@ -391,6 +391,7 @@ def main():
             f"return_trip:={str(args.return_trip).lower()}",
             "-p",
             f"local_calibration:={str(args.local_calibration).lower()}",
+            "-p",
             f"calibration_route:={str(args.calibration_route).lower()}",
             "-p",
             f"rate:={args.rate}",
