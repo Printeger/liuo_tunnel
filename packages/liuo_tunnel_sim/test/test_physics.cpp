@@ -179,9 +179,9 @@ TEST(Physics, LocalCalibrationMotionDerivativesAndClosure) {
     EXPECT_LT(((b.v-a.v)/(2*h) - m.a).norm(), 1e-7);
     EXPECT_GE(m.p.x(), start.x());
     EXPECT_LE(m.p.x(), start.x()+40);
-    EXPECT_LE(std::abs(m.p.y()-start.y()), .6);
+    EXPECT_LE(std::abs(m.p.y()-start.y()), 1.6);
     EXPECT_GE(m.p.z(), start.z());
-    EXPECT_LE(m.p.z(), start.z()+1.2);
+    EXPECT_LE(m.p.z(), start.z()+2.4);
     EXPECT_LT((m.R * liuo_tunnel_sim::specific_force(m) + Eigen::Vector3d(0,0,-9.80665) - m.a).norm(), 1e-12);
   }
 }

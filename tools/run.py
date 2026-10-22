@@ -118,7 +118,7 @@ def main():
         p.error("--local-calibration is a live-only alternative to return trip")
     if args.local_calibration:
         start = args.sim_start or [0, 0, 1.2, 0]
-        if abs(start[1]) + .6 >= 2 or start[2] + 1.2 >= 4.5:
+        if abs(start[1]) + 1.6 >= 2 or start[2] + 2.4 >= 4.5:
             p.error("local maneuver exceeds declared simulation safety envelope")
     if args.sim_start is not None:
         if args.replay or args.return_trip or not all(math.isfinite(v) for v in args.sim_start):
@@ -266,7 +266,7 @@ def main():
                 "scan_model": "snapshot",
                 "reset_at_s": args.reset_at,
                 "return_trip": args.return_trip,
-                "motion": ("closed_local_3d_30s" if args.local_calibration else ("outbound_and_reverse_return" if args.return_trip else "outbound")),
+                "motion": ("closed_local_3d_30s_wide_v2" if args.local_calibration else ("outbound_and_reverse_return" if args.return_trip else "outbound")),
                 "simulation_start_xyz_yaw": args.sim_start or [0, 0, 1.2, 0],
                 "clock_start_s": 1,
                 "dt_s": 0.005,

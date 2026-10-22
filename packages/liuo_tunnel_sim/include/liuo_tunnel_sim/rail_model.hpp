@@ -100,11 +100,11 @@ inline Motion calibration_motion(double seconds, const Eigen::Vector3d& start, d
   const double du = (30*t*t - 60*t*t*t + 30*t*t*t*t) / 30.;
   const double ddu = (60*t - 180*t*t + 120*t*t*t) / 900.;
   const double theta = 2 * M_PI * u, w = 2 * M_PI * du, dw = 2 * M_PI * ddu;
-  m.p += Eigen::Vector3d(20 * (1 - std::cos(theta)), .6 * std::sin(theta), .6 * (1 - std::cos(2 * theta)));
-  m.v = {20 * std::sin(theta) * w, .6 * std::cos(theta) * w, 1.2 * std::sin(2 * theta) * w};
+  m.p += Eigen::Vector3d(20 * (1 - std::cos(theta)), 1.6 * std::sin(theta), 1.2 * (1 - std::cos(2 * theta)));
+  m.v = {20 * std::sin(theta) * w, 1.6 * std::cos(theta) * w, 2.4 * std::sin(2 * theta) * w};
   m.a = {20 * (std::cos(theta)*w*w + std::sin(theta)*dw),
-         .6 * (-std::sin(theta)*w*w + std::cos(theta)*dw),
-         1.2 * (2 * std::cos(2*theta)*w*w + std::sin(2*theta)*dw)};
+         1.6 * (-std::sin(theta)*w*w + std::cos(theta)*dw),
+         2.4 * (2 * std::cos(2*theta)*w*w + std::sin(2*theta)*dw)};
   return m;
 }
 // Adapted physical definition from quadToIapImuMsg, IAP quadrotor_simulator_so3.cpp @ fbccae168.
