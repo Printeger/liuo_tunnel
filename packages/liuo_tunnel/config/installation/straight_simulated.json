@@ -1,0 +1,108 @@
+{
+  "schema_version": "liuo_lateral_installation_v1",
+  "provenance": "SIMULATED_INSTALLATION_NOT_SITE_MEASUREMENTS",
+  "reference_model": "shared_straight_horizontal_axis",
+  "reference_id": "v5_straight_installation_reference",
+  "positive_side_convention": "fixed installation direction, independent of robot heading",
+  "scope": "representative straight simulation only; no floor/roof/vehicle pose datum",
+  "units": "m",
+  "seed": 67130,
+  "independent_from_map_survey": true,
+  "common_sigma_m": 0.02,
+  "independent_sigma_m": 0.05,
+  "records": [
+    {
+      "anchor_id": 0,
+      "signed_offset_m": 2.761692446220951
+    },
+    {
+      "anchor_id": 1,
+      "signed_offset_m": -2.8827693956157585
+    },
+    {
+      "anchor_id": 2,
+      "signed_offset_m": -2.8130247427275292
+    },
+    {
+      "anchor_id": 3,
+      "signed_offset_m": 2.7545593785535436
+    },
+    {
+      "anchor_id": 4,
+      "signed_offset_m": 2.6929323468979014
+    },
+    {
+      "anchor_id": 5,
+      "signed_offset_m": -2.8508359955792444
+    },
+    {
+      "anchor_id": 6,
+      "signed_offset_m": -2.851986195182529
+    }
+  ],
+  "joint_covariance_m2": [
+    [
+      0.0029000000000000007,
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0004
+    ],
+    [
+      0.0004,
+      0.0029000000000000007,
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0004
+    ],
+    [
+      0.0004,
+      0.0004,
+      0.0029000000000000007,
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0004
+    ],
+    [
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0029000000000000007,
+      0.0004,
+      0.0004,
+      0.0004
+    ],
+    [
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0029000000000000007,
+      0.0004,
+      0.0004
+    ],
+    [
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0029000000000000007,
+      0.0004
+    ],
+    [
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0004,
+      0.0029000000000000007
+    ]
+  ]
+}
