@@ -455,7 +455,8 @@ def main():
         }
         calibration_progress = (
             run / "profiling/calibration_branches.csv"
-            if effective_config["uwb"]["mode"] == "self_calibrate" else None
+            if effective_config["uwb"]["mode"] == "self_calibrate"
+            else (run / "profiling/bootstrap_branches.csv" if effective_config["uwb"].get("bootstrap_multistart", False) else None)
         )
         rd.write_subordinate_manifest(
             run,
