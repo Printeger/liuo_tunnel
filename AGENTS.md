@@ -12,3 +12,5 @@
 - README describes commands; docs/spec contains contracts; handbook describes phase scope. Record tests and evidence honestly. Zero exit and RViz are not acceptance.
 - Retain copied licenses and provenance. Use the provided 2-space/180-column formatter.
 - GPU requires driver/device preflight and separate evidence; CPU success never implies GPU success. Snapshot does not validate rolling/deskewing.
+
+- Phase-two scope was explicitly revised by the user on 2026-10-22: representative initialization, one frozen full-route ON/OFF pair, and existing 5 s/20 s outages. Accuracy numbers are reference targets; ten seeds, full fault matrix and strict statistical consistency are deferred. Preserve historical failures. Completion requires demonstrated effectiveness and honest initialization/status, not merely beating failed OFF. Stop this experimental round with a failure report if effectiveness cannot be established; never mark that as phase complete.
