@@ -770,7 +770,11 @@ private:
         ++aa_measurements;
         log_range(o, "ACCEPT_AA", {}, "", NAN, "CALIBRATION_RAW_TRANSFER");
       } else {
-        log_range(o, "AA_ANCHOR_PENDING");
+        // AA has no vehicle keys. Retain unknown-anchor observations across
+        // vehicle windows; they will be absorbed once their endpoints exist.
+        if (extension_ranges.size() >= 6000) throw std::runtime_error("ANCHOR_PENDING_RANGE_CAPACITY");
+        extension_ranges.push_back({o,{}});
+        log_range(o, "ANCHOR_PENDING");
       }
     }
     pending_calibration_ranges.clear();
@@ -785,8 +789,8 @@ private:
     auto current = smoother->calculateEstimate();
     auto known = [&](uint32_t id) { return current.exists(A(id)); };
     auto usable = [&](const PendingCalibrationRange& p) {
-      return p.observation.stamp >= t - lag && (p.observation.a_type == 1 ||
-        (current.exists(p.bracket.left) && (!p.bracket.right || current.exists(*p.bracket.right))));
+      return p.observation.a_type == 1 || (p.observation.stamp >= t - lag &&
+        current.exists(p.bracket.left) && (!p.bracket.right || current.exists(*p.bracket.right)));
     };
     for (auto it = extension_ranges.begin(); it != extension_ranges.end();) {
       if (!usable(*it)) { log_range(it->observation,"ANCHOR_WINDOW_EXPIRED",it->bracket); it = extension_ranges.erase(it); }
@@ -829,15 +833,20 @@ private:
         for (size_t i=0;i<old.size();++i) if (old[i] && i!=replaced) batch.graph.push_back(old[i]->clone());
         auto ids=map.ids; ids.push_back(id);
         batch.graph.add(joint_installation_factor(*installation_input,ids));
+        std::map<std::pair<uint32_t,uint32_t>,GaussianRangeSummary> candidate_aa;
         for (const auto& p : extension_ranges) {
           const auto& o=p.observation; const auto& b=p.bracket;
-          if (o.stamp<t-lag/2) continue;
+          if (o.a_type==0 && o.stamp<t-lag/2) continue;
           if (o.a_type==0 && o.b==id) {
             batch.graph.emplace_shared<TagAnchorRangeFactor>(b.left,b.right,A(id),gtsam::Point3::Zero(),tag,b.beta,o.range,std::sqrt(o.variance));
           } else if (o.a_type==1 && ((o.a==id && known(o.b)) || (o.b==id && known(o.a)))) {
-            batch.graph.emplace_shared<AnchorAnchorRangeFactor>(A(o.a),A(o.b),o.range,std::sqrt(o.variance));
+            candidate_aa[{std::min(o.a,o.b),std::max(o.a,o.b)}].add(o.range,o.variance);
           } else continue;
-          batch.oldest=std::min(batch.oldest,o.stamp);
+          if (o.a_type==0) batch.oldest=std::min(batch.oldest,o.stamp);
+        }
+        for (const auto& entry : candidate_aa) {
+          const auto& stats=entry.second;
+          batch.graph.emplace_shared<AnchorAnchorRangeFactor>(A(entry.first.first),A(entry.first.second),stats.mean,stats.sigma(),stats.scatter);
         }
         extension_last_attempt[id]=t;
         log(id,"CANDIDATES_STARTED",seeds.baseline,batch.graph.size());
