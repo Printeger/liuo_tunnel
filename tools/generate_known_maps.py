@@ -15,7 +15,10 @@ def validate_deployment(anchors):
     if not all(math.isfinite(x) for x in longitudinal):
         raise ValueError("DEPLOYMENT_INVALID_LONGITUDINAL_POSITION")
     # Closed intervals: four anchors exactly 1000 m apart violate the limit.
-    if any(longitudinal[i + 3] - longitudinal[i] <= 1000 for i in range(len(longitudinal) - 3)):
+    if any(
+        longitudinal[i + 3] - longitudinal[i] <= 1000
+        for i in range(len(longitudinal) - 3)
+    ):
         raise ValueError(
             "DEPLOYMENT_DENSITY_EXCEEDED: at most 3 anchors in any closed 1000 m interval"
         )
@@ -77,6 +80,41 @@ def generate(directory, survey_seed=67129):
         for i in range(3 * len(base["anchors"]))
     ]
     (directory / "surveyed_map.json").write_text(json.dumps(base, indent=2) + "\n")
+
+
+def add_simulated_installation(source, output, seed=67130):
+    """Explicit independent synthetic installation survey; never a site claim."""
+    base = json.loads(Path(source).read_text())
+    if base.get("simulation_anchor_layout") != LAYOUT:
+        raise ValueError("installation fixture only supports declared v5 simulation")
+    rng = random.Random(seed)
+    common = rng.gauss(0, 0.02)
+    records = []
+    # Simulation-side fixture only. Estimator must use these measured records,
+    # not re-create the installation sequence from endpoint IDs.
+    for anchor in base["anchors"]:
+        i = anchor["id"]
+        signed = (2.8 if i % 4 in (0, 3) else -2.8) + common + rng.gauss(0, 0.05)
+        records.append({"anchor_id": i, "signed_offset_m": signed})
+    base["installation"] = {
+        "schema_version": "liuo_lateral_installation_v1",
+        "provenance": "SIMULATED_INSTALLATION_NOT_SITE_MEASUREMENTS",
+        "reference_model": "shared_straight_horizontal_axis",
+        "reference_id": "v5_straight_installation_reference",
+        "positive_side_convention": "fixed installation direction, independent of robot heading",
+        "scope": "representative straight simulation only; no floor/roof/vehicle pose datum",
+        "units": "m",
+        "seed": seed,
+        "independent_from_map_survey": True,
+        "common_sigma_m": 0.02,
+        "independent_sigma_m": 0.05,
+        "records": records,
+        "joint_covariance_m2": [
+            [0.02**2 + (0.05**2 if i == j else 0) for j in range(len(records))]
+            for i in range(len(records))
+        ],
+    }
+    Path(output).write_text(json.dumps(base, indent=2) + "\n")
 
 
 if __name__ == "__main__":

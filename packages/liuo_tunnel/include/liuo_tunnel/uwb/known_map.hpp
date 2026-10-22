@@ -6,6 +6,7 @@
 namespace liuo_tunnel {
 struct KnownMap {
   std::string id, mode, frame, provenance;
+  nlohmann::json installation;
   std::vector<uint32_t> ids;
   std::vector<gtsam::Point3> means;
   gtsam::Matrix covariance;
@@ -19,6 +20,7 @@ struct KnownMap {
     KnownMap m;
     if (j.at("schema_version") != "liuo_known_map_v1" || j.at("units") != "m" || j.at("axis_convention") != "ENU" || j.at("valid") != true)
       throw std::invalid_argument("MAP_INVALID: schema/units/axis/validity");
+    m.installation = j.value("installation", nlohmann::json());
     m.id = j.at("map_id");
     m.mode = j.at("mode");
     m.frame = j.at("frame");

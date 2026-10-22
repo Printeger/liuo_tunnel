@@ -17,6 +17,7 @@
 #include <liuo_tunnel/uwb/known_map.hpp>
 #include <liuo_tunnel/uwb/initialization_candidates.hpp>
 #include <liuo_tunnel/uwb/bootstrap_preconditioner.hpp>
+#include <liuo_tunnel/uwb/lateral_initialization.hpp>
 #include <liuo_tunnel/uwb/measurement_queue.hpp>
 #include <gtsam_points/optimizers/levenberg_marquardt_ext.hpp>
 #include <liuo_tunnel/util/run_log_manager.hpp>
@@ -76,6 +77,7 @@ public:
       }
       try {
         map = KnownMap::load(declare_parameter<std::string>("map_file", ""), tag);
+        if (cfg.at("uwb").value("installation_seeds", false)) lateral_reference = LateralReference::fit(map);
       } catch (const std::exception& e) {
         throw std::runtime_error(std::string("MAP_INVALID: ") + e.what());
       }
@@ -169,6 +171,7 @@ private:
     bootstrap_branches.clear();
     bootstrap_last_attempt = -1;
     bootstrap_previous_winner.reset();
+    initial_walls.reset();
     bootstrapped = !fuse;
     clouds.clear();
     frames.clear();
@@ -361,39 +364,48 @@ private:
         status("INITIALIZING", tags.reason, t);
         return std::nullopt;
       }
-      const auto seeds = pose_seeds_from_tags(tags.tags, bootstrap_values.at<gtsam::Pose3>(X(0)).rotation(), tag);
-      gtsam::NonlinearFactorGraph reference_graph;
-      for (const auto& factor : bootstrap_factors) reference_graph.push_back(factor->clone());
-      // This is a numerical reference trajectory, NOT a certified branch and
-      // never a new pose observation. Every mirror/yaw seed is still tested.
-      gtsam_points::LevenbergMarquardtOptimizerExt reference_optimizer(reference_graph, bootstrap_values, params);
-      const auto reference = reference_optimizer.optimize();
-      const auto reference_pose = reference.at<gtsam::Pose3>(X(0));
-      branch_log << session << ',' << t << ",-1," << reference_optimizer.error() << ',' << reference_pose.x() << ',' << reference_pose.y() << ',' << reference_pose.z() << ','
-                 << reference_pose.rotation().yaw() << ",REFERENCE_ONLY\n";
-      std::vector<gtsam::Values> proposals;
-      for (size_t seed_id = 0; seed_id < seeds.size(); ++seed_id) {
-        auto initial = transform_bootstrap_seed(reference, X(0), seeds[seed_id]);
-        auto proposal = precondition_bootstrap(bootstrap_factors, initial);
-        const auto pose = proposal.values.at<gtsam::Pose3>(X(0));
-        branch_log << session << ',' << t << ',' << seed_id << ',' << proposal.cost << ',' << pose.x() << ',' << pose.y() << ',' << pose.z() << ',' << pose.rotation().yaw()
-                   << ",RANGE_SEED_ONLY\n";
-        bool duplicate = false;
-        for (const auto& retained : proposals) {
-          const auto delta = retained.at<gtsam::Pose3>(X(0)).between(pose);
-          if (delta.translation().norm() < .5 && gtsam::Rot3::Logmap(delta.rotation()).norm() < .1) {
-            duplicate = true;
-            break;
-          }
+      if (lateral_reference) {
+        if (!initial_walls) {
+          status("INITIALIZING", "LOCAL_WALLS_NOT_OBSERVED", t);
+          return std::nullopt;
         }
-        if (!duplicate) proposals.push_back(std::move(proposal.values));
+        const auto seeds = lateral_pose_seeds(tags.tags, bootstrap_values.at<gtsam::Pose3>(X(0)).rotation(), tag, *initial_walls, *lateral_reference);
+        for (const auto& seed : seeds) bootstrap_branches.push_back(transform_bootstrap_seed(bootstrap_values, X(0), seed));
+      } else {
+        const auto seeds = pose_seeds_from_tags(tags.tags, bootstrap_values.at<gtsam::Pose3>(X(0)).rotation(), tag);
+        gtsam::NonlinearFactorGraph reference_graph;
+        for (const auto& factor : bootstrap_factors) reference_graph.push_back(factor->clone());
+        // This is a numerical reference trajectory, NOT a certified branch and
+        // never a new pose observation. Every mirror/yaw seed is still tested.
+        gtsam_points::LevenbergMarquardtOptimizerExt reference_optimizer(reference_graph, bootstrap_values, params);
+        const auto reference = reference_optimizer.optimize();
+        const auto reference_pose = reference.at<gtsam::Pose3>(X(0));
+        branch_log << session << ',' << t << ",-1," << reference_optimizer.error() << ',' << reference_pose.x() << ',' << reference_pose.y() << ',' << reference_pose.z() << ','
+                   << reference_pose.rotation().yaw() << ",REFERENCE_ONLY\n";
+        std::vector<gtsam::Values> proposals;
+        for (size_t seed_id = 0; seed_id < seeds.size(); ++seed_id) {
+          auto initial = transform_bootstrap_seed(reference, X(0), seeds[seed_id]);
+          auto proposal = precondition_bootstrap(bootstrap_factors, initial);
+          const auto pose = proposal.values.at<gtsam::Pose3>(X(0));
+          branch_log << session << ',' << t << ',' << seed_id << ',' << proposal.cost << ',' << pose.x() << ',' << pose.y() << ',' << pose.z() << ',' << pose.rotation().yaw()
+                     << ",RANGE_SEED_ONLY\n";
+          bool duplicate = false;
+          for (const auto& retained : proposals) {
+            const auto delta = retained.at<gtsam::Pose3>(X(0)).between(pose);
+            if (delta.translation().norm() < .5 && gtsam::Rot3::Logmap(delta.rotation()).norm() < .1) {
+              duplicate = true;
+              break;
+            }
+          }
+          if (!duplicate) proposals.push_back(std::move(proposal.values));
+        }
+        // Never certify uniqueness by truncating distinct competing basins.
+        if (proposals.size() > 4) {
+          status("INITIALIZING", "BOOTSTRAP_DISTINCT_BRANCH_BUDGET", t);
+          return std::nullopt;
+        }
+        bootstrap_branches = std::move(proposals);
       }
-      // Never certify uniqueness by truncating distinct competing basins.
-      if (proposals.size() > 4) {
-        status("INITIALIZING", "BOOTSTRAP_DISTINCT_BRANCH_BUDGET", t);
-        return std::nullopt;
-      }
-      bootstrap_branches = std::move(proposals);
     }
     gtsam::NonlinearFactorGraph original = bootstrap_factors;
     aa_added.clear();
@@ -582,6 +594,23 @@ private:
       Eigen::Vector3d avg = sum_a / initial_samples;
       if (std::abs(avg.norm() - 9.80665) > .3 || (sum_w / initial_samples).norm() > .1) throw std::runtime_error("initialization requires stationary IMU interval");
       Eigen::Quaterniond q = Eigen::Quaterniond::FromTwoVectors(avg, Eigen::Vector3d(0, 0, 9.80665));
+      if (lateral_reference) {
+        std::vector<Eigen::Vector3d> leveled;
+        for (const auto& point : points) leveled.push_back(q * point.head<3>());
+        try {
+          initial_walls = extract_local_walls(leveled);
+          logger->info(
+            "initial walls width={} center_offset={} rms={}; installation axis={},{} offset={}",
+            initial_walls->width,
+            initial_walls->center_offset,
+            initial_walls->residual_rms,
+            lateral_reference->normal.x(),
+            lateral_reference->normal.y(),
+            lateral_reference->offset);
+        } catch (const std::invalid_argument& error) {
+          logger->warn("initial wall extraction unavailable: {}", error.what());
+        }
+      }
       auto guess = fuse ? vector3(cfg.at("uwb").at("initial_position_guess")) : gtsam::Vector3::Zero();
       state = gtsam::NavState(gtsam::Pose3(gtsam::Rot3(q), guess), gtsam::Vector3::Zero());
       bias = gtsam::imuBias::ConstantBias(gtsam::Vector3::Zero(), sum_w / initial_samples);
@@ -1027,6 +1056,8 @@ private:
   std::string backend, gpu_name;
   bool fuse = false, bootstrapped = true;
   KnownMap map;
+  std::optional<LateralReference> lateral_reference;
+  std::optional<LocalWallPair> initial_walls;
   gtsam::Point3 tag;
   RangeQueue range_queue;
   double last_uwb = -1, last_rejected = -1, uwb_recovery_until = -1;

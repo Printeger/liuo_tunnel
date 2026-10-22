@@ -123,3 +123,67 @@ TEST(InitializationCandidates, RangePreconditionerReducesCostWithoutChangingRela
   const auto after = result.values.at<gtsam::Pose3>(X(0)).between(result.values.at<gtsam::Pose3>(X(7)));
   EXPECT_LT(gtsam::Pose3::Logmap(before.between(after)).norm(), 1e-9);
 }
+
+#include <liuo_tunnel/uwb/lateral_initialization.hpp>
+namespace {
+KnownMap installation_fixture() {
+  KnownMap map;
+  map.mode = "surveyed_map";
+  map.covariance = .0004 * gtsam::Matrix::Identity(21, 21);
+  nlohmann::json records = nlohmann::json::array(), covariance = nlohmann::json::array();
+  const auto rotation = gtsam::Rot3::Rz(.4);
+  for (size_t i = 0; i < 7; ++i) {
+    const double d = i % 2 ? -2.8 : 2.8;
+    map.ids.push_back(100 + i * 3);
+    map.means.push_back(rotation * gtsam::Point3(400. * i, d, double(i % 3)) + gtsam::Point3(20, 4, 7));
+    records.push_back({{"anchor_id", map.ids.back()}, {"signed_offset_m", d}});
+    nlohmann::json row = nlohmann::json::array();
+    for (size_t k = 0; k < 7; ++k) row.push_back(.0004 + (i == k ? .0025 : 0));
+    covariance.push_back(row);
+  }
+  map.installation = {
+    {"schema_version", "liuo_lateral_installation_v1"},
+    {"reference_model", "shared_straight_horizontal_axis"},
+    {"reference_id", "unit_test"},
+    {"units", "m"},
+    {"provenance", "synthetic unit test"},
+    {"positive_side_convention", "declared test direction"},
+    {"independent_from_map_survey", true},
+    {"records", records},
+    {"joint_covariance_m2", covariance}};
+  return map;
+}
+}  // namespace
+TEST(InitializationCandidates, InstallationAxisUsesRecordsAndPreservesUncertainty) {
+  auto map = installation_fixture();
+  const auto reference = LateralReference::fit(map);
+  const Eigen::Vector2d n(-std::sin(.4), std::cos(.4));
+  EXPECT_LT((reference.normal - n).norm(), 1e-8);
+  EXPECT_NEAR(reference.offset, n.dot(Eigen::Vector2d(20, 4)), 1e-8);
+  EXPECT_GT(reference.covariance(1, 1), .0004);
+  EXPECT_GT(reference.covariance.determinant(), 0);
+  map.installation["records"][1]["anchor_id"] = map.ids[0];
+  EXPECT_THROW(LateralReference::fit(map), std::invalid_argument);
+}
+TEST(InitializationCandidates, ActualLocalWallGeometrySupportsTwoDirectionsNotHeight) {
+  const auto reference = LateralReference::fit(installation_fixture());
+  for (double yaw : {0., 1.57079632679, 3.14159265359}) {
+    std::vector<Eigen::Vector3d> points;
+    const auto body = gtsam::Rot3::Rz(yaw);
+    for (double side : {-3., 3.})
+      for (int x = -30; x <= 30; ++x)
+        for (int z = 0; z < 8; ++z) points.push_back(body.unrotate(gtsam::Vector3(x, side - .8, .5 * z - 2.)));
+    const auto walls = extract_local_walls(points);
+    EXPECT_NEAR(walls.width, 6., 1e-8);
+    EXPECT_NEAR(std::abs(walls.center_offset), .8, 1e-8);
+    const std::vector<gtsam::Point3> tags{{180, 2, 1}, {180, 2, 8}};
+    const gtsam::Vector3 lever(.1, .15, .25);
+    const auto seeds = lateral_pose_seeds(tags, gtsam::Rot3(), lever, walls, reference);
+    ASSERT_EQ(seeds.size(), 4);
+    EXPECT_NEAR(seeds[1].z() - seeds[0].z(), 7., 1e-8);
+    for (size_t i = 0; i < seeds.size(); ++i) {
+      const double sign = i < 2 ? 1 : -1;
+      EXPECT_NEAR(reference.normal.dot(seeds[i].translation().head<2>()) + sign * walls.center_offset, reference.offset, 1e-8);
+    }
+  }
+}

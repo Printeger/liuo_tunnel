@@ -41,3 +41,27 @@ class SurveyFixtureTest(unittest.TestCase):
         for xs in [[0, 300, 600, 1000], [1000, 600, 0, 300], [0, 0, 0, 0], [float("nan")]]:
             with self.assertRaises(ValueError):
                 validate_deployment(anchors(xs))
+
+    def test_installation_is_separate_reproducible_survey_not_pose_truth(self):
+        from generate_known_maps import add_simulated_installation
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            generate(root)
+            source = root / "surveyed_map.json"
+            original = source.read_bytes()
+            first, second = root / "installation_a.json", root / "installation_b.json"
+            add_simulated_installation(source, first)
+            add_simulated_installation(source, second)
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+            result = json.loads(first.read_text())
+            baseline = json.loads(original)
+            for key in baseline:
+                self.assertEqual(result[key], baseline[key])
+            installation = result["installation"]
+            self.assertEqual(installation["provenance"], "SIMULATED_INSTALLATION_NOT_SITE_MEASUREMENTS")
+            self.assertGreater(installation["joint_covariance_m2"][0][1], 0)
+            self.assertEqual(set(installation["records"][0]), {"anchor_id", "signed_offset_m"})
+            add_simulated_installation(source, second, seed=67131)
+            self.assertNotEqual(installation["records"], json.loads(second.read_text())["installation"]["records"])
+            self.assertEqual(original, source.read_bytes())
