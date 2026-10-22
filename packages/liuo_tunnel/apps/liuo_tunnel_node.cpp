@@ -492,7 +492,7 @@ private:
             graph = std::move(compact.graph);
             initial = std::move(compact.values);
           }
-          batch.optimizer = std::make_unique<SteppedBootstrapLM>(graph, initial, params);
+          batch.optimizer = std::make_unique<SteppedBootstrapLM>(graph, initial, params, self_calibrate);
         }
         done = batch.optimizer->advance();
         if (done) {

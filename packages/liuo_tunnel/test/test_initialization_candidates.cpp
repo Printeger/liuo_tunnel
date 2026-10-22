@@ -406,6 +406,19 @@ TEST(InitializationCandidates, SteppedOptimizerMatchesWholeSolveAndTermination) 
     EXPECT_LT(gtsam::Pose3::Logmap(expected.at<gtsam::Pose3>(X(0)).between(stepped.values().at<gtsam::Pose3>(X(0)))).norm(), 1e-12);
     EXPECT_TRUE(stepped.advance());
     EXPECT_EQ(stepped.iterations(), original.iterations());
+    SteppedBootstrapLM trial(graph, initial, params, true);
+    bool done = false;
+    size_t trial_calls = 0;
+    while (!done) {
+      const auto before = trial.getInnerIterations();
+      done = trial.advance();
+      EXPECT_LE(trial.getInnerIterations() - before, 1);
+      ASSERT_LT(++trial_calls, 2000);
+    }
+    EXPECT_EQ(trial.iterations(), original.iterations());
+    EXPECT_EQ(trial.getInnerIterations(), original.getInnerIterations());
+    EXPECT_NEAR(trial.error(), original.error(), 1e-12);
+    EXPECT_LT(gtsam::Pose3::Logmap(expected.at<gtsam::Pose3>(X(0)).between(trial.values().at<gtsam::Pose3>(X(0)))).norm(), 1e-12);
   }
 }
 
