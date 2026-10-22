@@ -66,3 +66,11 @@ export LIUO_RUN_ROOT=/home/dev/code/ws_tunnel/src/liuo_tunnel/log
 每run的`metadata/manifests/input_identity.json`保存命令/二进制身份；回放`frozen_input.json`保存逐原始话题哈希。`profiling/bootstrap_branches.csv`记录全部候选，`dedicated_wall_observation.json`记录实际专用点云；`export/odometry/trajectory.csv`、`covariance.csv`及`export/analysis/report.json`保存输出/评估。原失败runtime/odometry_failure.json保留。聚合分量结果/分支哈希见`log/initialization_n7/summary.json`。
 
 独立构建通过；16项初始化候选/因子测试、仿真内部启动运动/比力测试、非单位真值姿态协方差回归通过。日志`log/phase2-n7-{build,physics-tests,covariance-tests}.txt`与`log/phase2-n8-{build,tests}.txt`。未重跑不受影响的全套合同，未验证rolling/Mid-360实扫、完整无人机、全程持续定位、断流恢复或现场部署。
+
+## 后续持续Goal进展：N9/N10（保留上文历史）
+
+后续实现未停在几何关联反例：20c645a补回此前遗漏的合法静止原始TA/AA，9860ee4将安装轴改为相对地图数值中心的等价坐标表达，消除实际正定块被尺度检查拒绝的故障，不增先验、不改噪声、不换求解器。
+
+1000m同输入run `20261022T034736Z_149`：156 TA+12 AA原始静止测距各一次入图；总RMSE从1.548降至.521m，末高度从-.154变为1.900m。1800m同输入run `20261022T035634Z_916`：镜像种子收敛，连续100帧、无l0异常，总RMSE .368m。两例均全部DEGRADED，实际输入哈希核对通过。原失败全部保留。当前仍有启动端到端延迟FAIL（1800m P95 .574s）和局部协方差局限；没有完成阶段，也未启动全程/断流。详细证据、修复推导和后续有界实时改进实验见phase2_acceptance.md N9/N10/N11。
+
+当前候选配置已含静止测距移交，所以上文复现命令特意使用历史run配置快照。复现本段最新实现则使用项目当前phase2_joint_installation.json，原始输入仍为上述保留的冻结capture；不得将新结果覆写到旧run。
