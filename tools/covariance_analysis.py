@@ -3,6 +3,7 @@
 import csv
 import math
 import numpy as np
+from evaluation_frames import local_truth
 
 
 def summarize(run, trajectory, truth, covariance, fused):
@@ -10,7 +11,7 @@ def summarize(run, trajectory, truth, covariance, fused):
         sessions = list(dict.fromkeys(r["session"] for r in records))
         return {(sessions.index(r["session"]), round(float(r["stamp"]), 8)): r for r in records}
 
-    truth = keyed(truth)
+    truth = keyed(local_truth(truth, fused))
     covariance = keyed(covariance)
     diagnostics = []
     for key, state in keyed(trajectory).items():
@@ -43,8 +44,6 @@ def summarize(run, trajectory, truth, covariance, fused):
         norm = np.linalg.norm(delta[:3])
         rot = delta[:3] * (2 * math.atan2(norm, delta[3]) / norm if norm > 1e-12 else 2)
         p = np.array([float(reference[k]) - float(state[k]) for k in ["x", "y", "z"]])
-        if not fused:
-            p[2] -= 1.2
         position_error = R.T @ p
         a, b, c = rot
         skew = np.array([[0, -c, b], [c, 0, -a], [-b, a, 0]])

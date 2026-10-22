@@ -25,23 +25,25 @@ struct Motion {
   Eigen::Vector3d omega;
 };
 // Continuous acceleration half-cosine ramps: vmax=5, ramp=10s, amax=pi/4 < 1.
-inline Motion motion(double seconds, double radius = 0) {
-  double t = std::max(0.0, seconds - 5), x = 0, v = 0, a = 0;
+inline Motion motion(double seconds, double radius = 0, double start_x = 0) {
+  double t = std::max(0.0, seconds - 5), x = start_x, v = 0, a = 0;
   for (double goal : {600., 1200., 1800., 2350.}) {
-    double length = goal - x, cruise = (length - 50) / 5, travel = 20 + cruise;
+    if (goal <= x) continue;
+    const double length = goal - x, peak = std::min(5., length / 10.);
+    const double half = peak / 2, cruise = (length - 10 * peak) / peak, travel = 20 + cruise;
     if (t <= travel) {
       if (t < 10) {
-        v = 2.5 * (1 - std::cos(M_PI * t / 10));
-        a = M_PI / 4 * std::sin(M_PI * t / 10);
-        x += 2.5 * (t - 10 / M_PI * std::sin(M_PI * t / 10));
+        v = half * (1 - std::cos(M_PI * t / 10));
+        a = peak * M_PI / 20 * std::sin(M_PI * t / 10);
+        x += half * (t - 10 / M_PI * std::sin(M_PI * t / 10));
       } else if (t < 10 + cruise) {
-        x += 25 + 5 * (t - 10);
-        v = 5;
+        x += 5 * peak + peak * (t - 10);
+        v = peak;
       } else {
         double u = t - 10 - cruise;
-        x += 25 + 5 * cruise + 2.5 * (u + 10 / M_PI * std::sin(M_PI * u / 10));
-        v = 2.5 * (1 + std::cos(M_PI * u / 10));
-        a = -M_PI / 4 * std::sin(M_PI * u / 10);
+        x += 5 * peak + peak * cruise + half * (u + 10 / M_PI * std::sin(M_PI * u / 10));
+        v = half * (1 + std::cos(M_PI * u / 10));
+        a = -peak * M_PI / 20 * std::sin(M_PI * u / 10);
       }
       break;
     }
@@ -80,8 +82,9 @@ inline Motion rail_motion(double seconds, bool return_trip = false) {
 // Simulation-only representative starts; translation follows the existing world axis.
 // Body yaw is independent of travel direction (no nonholonomic assumption).
 inline Motion initialized_motion(double seconds, bool return_trip, const Eigen::Vector3d& start, double yaw) {
-  auto m = rail_motion(seconds, return_trip);
-  m.p += start - Eigen::Vector3d(0, 0, 1.2);
+  auto m = return_trip ? rail_motion(seconds, true) : motion(seconds, 0, start.x());
+  m.p.y() = start.y();
+  m.p.z() = start.z();
   m.R = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()).toRotationMatrix();
   return m;
 }

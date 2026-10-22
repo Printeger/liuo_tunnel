@@ -7,6 +7,7 @@ import json
 import math
 from pathlib import Path
 import statistics
+from evaluation_frames import world_estimates
 
 
 def load(path):
@@ -68,18 +69,22 @@ def compare(runs, strict_estimator_settings=False):
         raise ValueError("no common published measurement stamps")
     results = []
     for run, trajectory in zip(runs, trajectories):
-        truth = keyed(rows(run / "export/simulation/truth.csv"))
+        truth_rows = rows(run / "export/simulation/truth.csv")
+        truth = keyed(truth_rows)
         config = load(run / "metadata/config/phase1.json")
         fused = config["uwb"]["mode"] == "fuse"
+        trajectory = keyed(world_estimates(list(trajectory.values()), truth_rows, fused))
         error, axial, attitude = [], [], []
         for key in sorted(common):
             p, q = trajectory[key], truth[key]
             d = [float(p[k]) - float(q[k]) for k in ["x", "y", "z"]]
-            if not fused:
-                d[2] += 1.2  # Declared phase-one odom datum; no fitted transform.
             error.append(sum(v * v for v in d))
             axial.append(abs(d[0]))
-            attitude.append(math.degrees(2 * math.acos(min(1, abs(float(p["qw"]))))))
+            dot = sum(
+                float(p[k]) * float(q.get(k, 1 if k == "qw" else 0))
+                for k in ["qx", "qy", "qz", "qw"]
+            )
+            attitude.append(math.degrees(2 * math.acos(min(1, abs(dot)))))
         quantile = lambda values: sorted(values)[int((len(values) - 1) * 0.95)]
         report = load(run / "export/analysis/report.json")
         results.append(
@@ -111,7 +116,7 @@ def compare(runs, strict_estimator_settings=False):
         "common_samples": len(common),
         "common_first": min(common),
         "common_last": max(common),
-        "alignment": "none; OFF uses declared z=-1.2 m odom datum, not known-map accuracy",
+        "alignment": "ON map frame; OFF evaluation-only initial translation/yaw datum, no fitted trajectory transform",
         "results": results,
     }
 

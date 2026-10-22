@@ -134,3 +134,30 @@ TEST(Physics, InternalStartAndIndependentBodyHeading) {
     EXPECT_LT(m.omega.norm(), 1e-12);
   }
 }
+
+TEST(Physics, InternalRouteUsesAbsoluteStopsAndStaysInsideScene) {
+  const Eigen::Vector3d start(200, 0, 1.2);
+  EXPECT_NEAR(initialized_motion(0, false, start, 0).p.x(), 200, 1e-12);
+  EXPECT_NEAR(initialized_motion(500, false, start, 0).p.x(), 2350, 1e-12);
+  EXPECT_NEAR(initialized_motion(500, false, start, 0).v.norm(), 0, 1e-12);
+  for (double t = .01; t < 500; t += .01) {
+    auto m = initialized_motion(t, false, start, 0);
+    auto a = initialized_motion(t - 1e-5, false, start, 0), b = initialized_motion(t + 1e-5, false, start, 0);
+    EXPECT_GE(m.p.x(), 200);
+    EXPECT_LE(m.p.x(), 2350);
+    EXPECT_LE(m.a.norm(), 1.);
+    EXPECT_LE(m.v.norm(), 5.00001);
+    EXPECT_LT((m.v - (b.p - a.p) / 2e-5).norm(), 1e-5);
+    EXPECT_LT((m.a - (b.v - a.v) / 2e-5).norm(), 1e-5);
+  }
+}
+
+TEST(Physics, InternalStartNearStopUsesBoundedShortRamp) {
+  for (double t = 0; t < 30; t += .01) {
+    const auto m = motion(t, 0, 599);
+    EXPECT_GE(m.p.x(), 599.);
+    EXPECT_LE(m.p.x(), 600.);
+    EXPECT_LE(m.v.norm(), .1000001);
+    EXPECT_LE(m.a.norm(), 1.);
+  }
+}

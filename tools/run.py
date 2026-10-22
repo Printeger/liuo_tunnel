@@ -92,6 +92,8 @@ def main():
     )
     p.add_argument("--inject-failure", choices=["simulation", "odometry"])
     args = p.parse_args()
+    if not math.isfinite(args.duration) or args.duration <= 0:
+        p.error("duration must be finite and positive")
     if not math.isfinite(args.no_progress_timeout) or args.no_progress_timeout <= 0:
         p.error("no-progress timeout must be finite and positive")
     if args.wall_timeout is not None and (
@@ -109,9 +111,8 @@ def main():
             0 <= args.sim_start[0] <= 2300
             and abs(args.sim_start[1]) < 2
             and 0.3 < args.sim_start[2] < 4.5
-            and 0 < args.duration <= 20
         ):
-            p.error("representative starts require interior positions and duration <=20s")
+            p.error("simulation starts require interior positions")
     if args.return_trip and args.replay:
         p.error("--return-trip changes live simulation only; replay preserves its source motion")
     if args.debug_throw and args.formal:

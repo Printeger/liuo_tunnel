@@ -7,6 +7,7 @@ import math
 from pathlib import Path
 import statistics
 import sys
+from evaluation_frames import world_estimates
 
 
 ACCURACY_REFERENCE_FAILURES = {
@@ -203,16 +204,16 @@ def evaluate(run, output_dir=None):
     sections = {name: [] for name in ["entrance", "transition", "degenerate"]}
     attitude = []
     errors = []
-    for r in trajectory:
+    for r in world_estimates(trajectory, truth, fused):
         key = (est_sessions.index(r["session"]), round(float(r["stamp"]), 5))
         q = truth_map.get(key)
         if q is None:
             failures.append("unmatched online state time")
             continue
-        # Fixed documented simulator/initial gauge offset only, never best-fit alignment.
+        # World-frame metrics; OFF uses the fixed initial evaluation datum, no fitting.
         dx = float(r["x"]) - float(q["x"])
         dy = float(r["y"]) - float(q["y"])
-        dz = float(r["z"]) - (float(q["z"]) - (0 if fused else 1.2))
+        dz = float(r["z"]) - float(q["z"])
         e = math.sqrt(dx * dx + dy * dy + dz * dz)
         check(math.isfinite(e), "nonfinite trajectory")
         name = (
@@ -450,7 +451,7 @@ def evaluate(run, output_dir=None):
         + (
             "\n\nOnline trajectory in external map frame; no alignment. Snapshot only.\n"
             if fused
-            else "\n\nOnline trajectory with fixed initial gauge z=-1.2 m; no fitting. Snapshot only.\n"
+            else "\n\nOFF uses evaluation-only fixed initial translation/yaw; no trajectory fitting. Snapshot only.\n"
         )
     )
     # Offline evaluator does not rewrite owner manifest.
