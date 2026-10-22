@@ -1,12 +1,12 @@
 # LIUO Tunnel
 
-下一阶段：[第三阶段任务需求](docs/phase3_requirements.md)与[可直接复制的Goal启动prompt](docs/phase3_goal_prompt.md)。范围仅为未知基站首次自标定、相关地图导出、独立第二次运行复用；开发中，已实现局部首次自标定、联合地图导出和独立短程复用，尚未完成阶段验收。当前证据见[第三阶段报告](docs/phase3_representative_results.md)。沿用代表性有效性验收，旧固定精度和全面测试要求不作为该阶段完成门槛。
+第三阶段已按代表性范围交付：**代表性仿真中首次自标定及独立地图复用有效**。完整360秒首轮/次轮、四站联合地图、同输入ON/OFF/已知地图参照及AA消融见[交付报告与完整命令](docs/phase3_representative_results.md)。地图高度和局部后验仍弱，不是全面部署认证。
 
 第二阶段按用户修订范围完成，结论仅为**代表性仿真范围内系统完成且验证有效**。使用原始GPU VGICP、IMU和UWB同图紧耦合；三个内部起点、冻结输入全程ON/OFF及5s/20s断流已有证据。正式配置、命令、run路径与限制见[交付报告](docs/phase2_representative_results.md)，历史失败见[逐轮记录](docs/phase2_acceptance.md)。
 
 正常融合位置RMSE1.034m，高度仍弱；20秒断流仍有明显速度/位置漂移，尚不能认证恢复。局部协方差过度自信未解决。0.30m等数值保留为参考目标，未放宽噪声或伪造信息。单次PASS不是阶段或部署认证；未验证任意启动、完整无人机、真实Mid-360/rolling、十种子及全面部署。
 
-部署条件以[用户确认合同](docs/spec/deployment_initialization_contract.md)为准：没有固定起点/高度/航向；已知外参和静止启动可用。第二阶段为已知不确定地图实验；第三阶段自标定/复用正在验证，不能将局部结果称为全面部署通过。Independent ROS 2 Jazzy project; phase one and representative phase two use the documented GPU snapshot scope.
+部署条件以[用户确认合同](docs/spec/deployment_initialization_contract.md)为准：没有固定起点/高度/航向；已知外参和静止启动可用。第二阶段为已知不确定地图实验；第三阶段自标定/复用仅通过声明的代表性验证，不能将局部结果称为全面部署通过。Independent ROS 2 Jazzy project; phase one and representative phase two use the documented GPU snapshot scope.
 
 以下为基础构建及历史工具入口；当前第二阶段请使用交付报告中的冻结配置与原包命令。
 
@@ -189,7 +189,7 @@ the documented sparse-layout accuracy failures are unresolved.
 当前七基站安装候选为 v5 高位优先四角循环：纵向 0/400/800/1200/1600/2000/2400 m，(y,z) 循环 (2.8,4.6)、(-2.8,4.6)、(-2.8,0.4)、(2.8,0.4) m。数量、密度、量程、噪声和验收门槛不变。此候选已做实际 GPU 路线和代表性断流验证，精度与可信恢复仍 FAIL；历史 v4 冻结输入只能配其原地图快照，不能当作 v5 输入。
 
 
-## 第三阶段局部复现（开发中）
+## 历史第三阶段局部复现（保留）
 
 以下命令使用保留的冻结原始输入及实际首轮地图，不创建真值地图。首轮只加载无坐标安装资料，复用不再加载旧安装观测。输出地图位于本次run的`export/map/calibrated_map.json`，状态为PROVISIONAL_INITIALIZED；输入旧式完整场景来源的地图会被拒绝。
 
@@ -209,4 +209,4 @@ export LIUO_RUN_ROOT="$PWD/log"
   --formal --wall-timeout 120
 ```
 
-评估器对校准地图使用首轮声明的固定坐标规范，复用时不按第二起点对齐；首轮来源run必须保留供离线评估。原始输入、地图及二进制身份在metadata/manifests内记录。单run PASS仅覆盖运行合同，不能证明地图高度可靠、失效已恢复或阶段完成。当前仍需代表性路线扩展与最终冻结对照；snapshot不代表rolling或真实Mid-360通过。
+评估器对校准地图使用首轮声明的固定坐标规范，复用时不按第二起点对齐；首轮来源run必须保留供离线评估。原始输入、地图及二进制身份在metadata/manifests内记录。单run PASS仅覆盖运行合同，不能证明地图高度可靠、失效已恢复或阶段完成。以上为旧局部入口；最新完整路线与冻结对照见第三阶段交付报告。snapshot不代表rolling或真实Mid-360通过。

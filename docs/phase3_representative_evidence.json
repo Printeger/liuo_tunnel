@@ -1,0 +1,1835 @@
+{
+  "scope": "Representative snapshot simulation only; no arbitrary-start, height-accuracy, consistency or deployment certification",
+  "runs": {
+    "first_ta_aa": {
+      "run": "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T160635Z_994",
+      "source": {
+        "git_commit": "226f3a57bd23af561dfecff917da6bc5bee1dbfb",
+        "git_worktree_clean": true
+      },
+      "binary_sha256": "85974a6cef93b3207957930992e04f10850e3724495d9b1044dbaa318c6ef8bb",
+      "report": {
+        "evaluator_sha256": "33f73f51ea7f9e95017b3baad08a43d712f37728dd597986065ef14e2bebec7e",
+        "scope": "phase3_iteration_snapshot_gpu",
+        "estimator_mode": "self_calibrate",
+        "accuracy_acceptance_scope": "phase2_accuracy_reference_only",
+        "result": "PASS",
+        "failures": [],
+        "accuracy_reference_exceedances": [
+          "known-map position RMSE >0.30m"
+        ],
+        "result_scope": "phase3_single_run_contracts_not_system_effectiveness",
+        "stage_acceptance": "NOT_ASSESSED",
+        "evaluation_policy": "phase3_fixed_first_run_gauge",
+        "map_evaluation_frame": "fixed original calibration run datum; no reuse-start alignment",
+        "calibrated_map_metrics": {
+          "scope": "observed initialized anchors only; fixed first-run gauge; no alignment",
+          "anchor_errors_world_m": {
+            "0": [
+              -0.011440083681577562,
+              -0.014387691688093618,
+              -0.24315635143085412
+            ],
+            "1": [
+              -0.009925577265789798,
+              -0.10462054895937278,
+              0.1739646576039764
+            ],
+            "2": [
+              -0.0030191389147375958,
+              -0.09272223488397424,
+              1.323761024856493
+            ],
+            "3": [
+              0.0041147077406549215,
+              -0.14487534214829,
+              3.693748576566206
+            ]
+          },
+          "axis_rmse_m": [
+            0.007991223596517447,
+            0.10091920350103734,
+            1.967581669915535
+          ],
+          "adjacent_initialized_spacing_errors": [
+            {
+              "ids": [
+                0,
+                1
+              ],
+              "distance_error_m": 0.0030051283890202285
+            },
+            {
+              "ids": [
+                1,
+                2
+              ],
+              "distance_error_m": -0.0035134690673999103
+            },
+            {
+              "ids": [
+                2,
+                3
+              ],
+              "distance_error_m": 0.013426676851281627
+            }
+          ],
+          "estimated_longitudinal_order": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "joint_local_std": [
+            0.008122013892226282,
+            0.21617051194799553,
+            0.3935211200371377,
+            0.008558011993066637,
+            0.21412674863016662,
+            0.16831600966359916,
+            0.007921532316985924,
+            0.6275815239033581,
+            0.5688135546249837,
+            0.010458639215870995,
+            1.04632467882104,
+            1.083949793592823,
+            1.0453597735657214,
+            0.003907474063919349
+          ],
+          "joint_order": [
+            "a0.xyz_m",
+            "a1.xyz_m",
+            "a2.xyz_m",
+            "a3.xyz_m",
+            "l0.angle_mrad",
+            "l0.offset_m"
+          ],
+          "anchor_reference_cross_covariance_norm": 1.3107901636518269,
+          "not_initialized": [
+            {
+              "id": 4,
+              "reason": "NOT_JOINTLY_INITIALIZED"
+            },
+            {
+              "id": 5,
+              "reason": "NOT_JOINTLY_INITIALIZED"
+            },
+            {
+              "id": 6,
+              "reason": "NOT_JOINTLY_INITIALIZED"
+            }
+          ],
+          "statistical_consistency": "NOT_CERTIFIED"
+        },
+        "metrics": {
+          "entrance": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "transition": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "degenerate": {
+            "samples": 3085,
+            "position_rmse_m": 1.1814249888005581,
+            "axial_p95_m": 0.04420781938893015,
+            "axial_max_m": 0.07378824766715297
+          }
+        },
+        "position_rmse_m": 1.1814249888005581,
+        "axis_rmse_m": [
+          0.023047590018869604,
+          0.054740868771431105,
+          1.1799310361384983
+        ],
+        "velocity_axis_rmse_mps": [
+          0.017972865822435884,
+          0.004065632321120533,
+          0.012336127538913144
+        ],
+        "first_output_stamp": 52.5,
+        "initialization_wait_s": 51.5,
+        "states": {
+          "DEGRADED": 3082,
+          "LOST": 3
+        },
+        "optimized_output_observed": true,
+        "attitude_p95_deg": 0.3128146752610987,
+        "processing_p95_ms": 34.9999,
+        "sim_time_latency_p95_s": 0.04,
+        "wall_end_to_end_p95_s": 0.042113402,
+        "actual_input_hz": {
+          "imu": 199.99948392244278,
+          "cloud": 9.999974196122139,
+          "uwb": 73.92758701544295,
+          "clock": 199.99948392244278
+        },
+        "delivery_profile": false,
+        "delivered_input_verified": true,
+        "frozen_input_verified": true,
+        "max_vehicle_states": 101,
+        "simulation_runtime": {
+          "simulation_s": 360.0,
+          "input_prepare_s": 0.0012397110000000001,
+          "startup_buffer_records": 5,
+          "startup_buffer_bytes": 408294,
+          "wall_s": 360.00092894200003,
+          "real_time_factor": 0.9999974196122139,
+          "peak_rss_kib": 83464,
+          "scan_model": "snapshot",
+          "input_mode": "frozen_replay",
+          "published_counts": {
+            "imu": 72000,
+            "cloud": 3600,
+            "uwb": 26614,
+            "clock": 72000
+          },
+          "delivery_queue_peak": 1
+        },
+        "delivery_audit": null,
+        "raw_counts": {
+          "imu": 72000,
+          "cloud": 3600,
+          "uwb": 26614,
+          "clock": 72000
+        },
+        "covariance_diagnostics": {
+          "samples": 3085,
+          "position_nees_mean_3d": 7.63930767401051,
+          "joint_nees_mean_9d": 27.248513601068314,
+          "position_95pct_ellipsoid_coverage": 0.6162074554294976,
+          "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Uses recorded truth orientation; legacy captures use identity."
+        },
+        "sessions": 1,
+        "gpu": "PASS",
+        "rolling_deskew": "NOT_VALIDATED",
+        "accuracy_thresholds": "Reference targets only; exceedances do not block the representative stage. PASS is not effectiveness or stage acceptance."
+      },
+      "raw_input_audit": {
+        "counts": {
+          "imu": 72000,
+          "cloud": 3600,
+          "uwb": 26614,
+          "clock": 72000
+        },
+        "violations": [],
+        "sessions": [
+          1792684104078114423
+        ],
+        "clock_resets": 0,
+        "cloud_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "time"
+        ],
+        "estimator_subscriptions": [
+          "/clock",
+          "/parameter_events",
+          "/sensors/imu",
+          "/sensors/lidar/points",
+          "/sensors/uwb/range"
+        ],
+        "clock_publishers": 0,
+        "duplicate_uwb": [],
+        "odometry_count": 3085,
+        "raw_sha256": {
+          "imu": "38bd4831948b3234fc07eef51971dff39738fb38d0ef52762724c8b6cceb770d",
+          "cloud": "59749c75ba6ab647a14e95595f086b8c83615a0da7d9c5bdb4c0413847c51416",
+          "uwb": "7cbcf52d76c76bb9fac64e1f5b1c1133776db418a53ea0efb469d1192ffac959",
+          "clock": "2444af9f41847054396fa4b82dc87973eb47eb983ac412e5e5cf705f2097e149"
+        },
+        "observed_wall_duration_s": 359.99468844800003,
+        "imu_static_acc_z_mean": 9.806800779677443
+      },
+      "source_measurement_frames": 3600,
+      "published_frames": 3085,
+      "effective_frames": 3082,
+      "max_publication_gap_s": 0.10000000000002274,
+      "max_abs_axis_error_m": [
+        0.07378824766715297,
+        0.1067472198033004,
+        2.04070660495544
+      ],
+      "max_abs_error_step_m": [
+        0.022785335052248,
+        0.05855927935844936,
+        0.03262028880077583
+      ],
+      "final_axis_error_m": [
+        -0.010579697792309162,
+        -0.08613466560953073,
+        1.763928827269979
+      ],
+      "segments": {
+        "world_x_200_400": {
+          "samples": 1164,
+          "axis_rmse_m": [
+            0.019222748469466405,
+            0.012387529286136416,
+            0.09288159222461709
+          ]
+        },
+        "world_x_400_800": {
+          "samples": 843,
+          "axis_rmse_m": [
+            0.026615265889835076,
+            0.04725054441271967,
+            0.8293924675549665
+          ]
+        },
+        "world_x_800_1001": {
+          "samples": 1078,
+          "axis_rmse_m": [
+            0.02381618708638816,
+            0.08163272191822742,
+            1.8539225970238975
+          ]
+        }
+      },
+      "resources": {
+        "rss_kib": 648088,
+        "device_used_bytes": 2049507328,
+        "retained_cloud_frames": 101,
+        "imu_queue": 4,
+        "cloud_queue": 0,
+        "uwb_queue": 1
+      },
+      "resource_scope": "RSS sampled; device_used_bytes includes all device users",
+      "factor_counts": {
+        "A": {
+          "3": 1379,
+          "4": 1706
+        },
+        "map_priors": {
+          "0": 3085
+        },
+        "joint_map_priors": {
+          "0": 3085
+        },
+        "installation_observation_factors": {
+          "1": 3085
+        }
+      },
+      "accepted_raw_unique": 23234,
+      "aa_accepted": 1080,
+      "aa_disabled": 0,
+      "sha256": {
+        "metadata/config/phase1.json": "ba37cacf2836d17bd4344ad31ef75e3a62ca6e518c51420c51d77a5aa917029e",
+        "metadata/manifests/input_identity.json": "cbcc5acbfebd950b95687910175e629bb45b6299e419a0046a63eeac527ba123",
+        "metadata/manifests/observation_audit.json": "6545abf93673a4dfc2c6bd484b8bf7e6dfe65ea65b7c98c6855d6b197beaab28",
+        "export/analysis/report.json": "67e25409ff71c7ced0604b4019da1559c783ff53067089166206c7b36c1cbbbd",
+        "export/odometry/trajectory.csv": "bdcf1fa644b1a7889c68e2c5b01bcdc4e003ddc3370fe32f11ee2fad47a5dc1f",
+        "export/odometry/graph.csv": "d9c0a1666377c3e3779ebfd5a845aeeb49d4043fd58a086127a61b8c0185b685",
+        "export/odometry/covariance.csv": "131f5c6257105c867e54824c7e3a7b490cd78c5e623730a48bd3b26f0bff848d",
+        "metadata/config/installation.json": "7ff25a7f022625805a8aad9c8f5603fb1cf997effbea38fc49b4f53f0bcfcdeb",
+        "metadata/manifests/frozen_input.json": "6395c1213e644bf8e0463568e21aca3a083afa77467d1e075a87c2ce4892d6ac",
+        "export/map/calibrated_map.json": "6ffc91bf57fe1a5aaf0e380f7b79e694ddf7a380229597d07359f6443fa8afe9",
+        "profiling/anchor_extension.csv": "cf620e3016aa0daa93bf16e61773bd8de4bd0ea93fff150b1384367b40f661cf"
+      },
+      "online_bounds_map_m": [
+        [
+          -0.02042052213630916,
+          -0.6858460392279004,
+          -0.03678470478591268
+        ],
+        [
+          799.9987696429262,
+          0.597909183301854,
+          4.384243990383818
+        ]
+      ]
+    },
+    "reuse": {
+      "run": "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T162059Z_880",
+      "source": {
+        "git_commit": "bcf931b43312d0af7cd5e9dd18f3d677e41ce1d6",
+        "git_worktree_clean": true
+      },
+      "binary_sha256": "85974a6cef93b3207957930992e04f10850e3724495d9b1044dbaa318c6ef8bb",
+      "report": {
+        "evaluator_sha256": "33f73f51ea7f9e95017b3baad08a43d712f37728dd597986065ef14e2bebec7e",
+        "scope": "phase3_iteration_snapshot_gpu",
+        "estimator_mode": "reuse_map",
+        "accuracy_acceptance_scope": "phase2_accuracy_reference_only",
+        "result": "PASS",
+        "failures": [],
+        "accuracy_reference_exceedances": [
+          "known-map position RMSE >0.30m"
+        ],
+        "result_scope": "phase3_single_run_contracts_not_system_effectiveness",
+        "stage_acceptance": "NOT_ASSESSED",
+        "evaluation_policy": "phase3_fixed_first_run_gauge",
+        "map_evaluation_frame": "fixed original calibration run datum; no reuse-start alignment",
+        "calibrated_map_metrics": {
+          "scope": "observed initialized anchors only; fixed first-run gauge; no alignment",
+          "anchor_errors_world_m": {
+            "0": [
+              -0.011440083681577562,
+              -0.014387691688093618,
+              -0.24315635143085412
+            ],
+            "1": [
+              -0.009925577265789798,
+              -0.10462054895937278,
+              0.1739646576039764
+            ],
+            "2": [
+              -0.0030191389147375958,
+              -0.09272223488397424,
+              1.323761024856493
+            ],
+            "3": [
+              0.0041147077406549215,
+              -0.14487534214829,
+              3.693748576566206
+            ]
+          },
+          "axis_rmse_m": [
+            0.007991223596517447,
+            0.10091920350103734,
+            1.967581669915535
+          ],
+          "adjacent_initialized_spacing_errors": [
+            {
+              "ids": [
+                0,
+                1
+              ],
+              "distance_error_m": 0.0030051283890202285
+            },
+            {
+              "ids": [
+                1,
+                2
+              ],
+              "distance_error_m": -0.0035134690673999103
+            },
+            {
+              "ids": [
+                2,
+                3
+              ],
+              "distance_error_m": 0.013426676851281627
+            }
+          ],
+          "estimated_longitudinal_order": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "joint_local_std": [
+            0.008122013892226282,
+            0.21617051194799553,
+            0.3935211200371377,
+            0.008558011993066637,
+            0.21412674863016662,
+            0.16831600966359916,
+            0.007921532316985924,
+            0.6275815239033581,
+            0.5688135546249837,
+            0.010458639215870995,
+            1.04632467882104,
+            1.083949793592823,
+            1.0453597735657214,
+            0.003907474063919349
+          ],
+          "joint_order": [
+            "a0.xyz_m",
+            "a1.xyz_m",
+            "a2.xyz_m",
+            "a3.xyz_m",
+            "l0.angle_mrad",
+            "l0.offset_m"
+          ],
+          "anchor_reference_cross_covariance_norm": 1.3107901636518269,
+          "not_initialized": [
+            {
+              "id": 4,
+              "reason": "NOT_JOINTLY_INITIALIZED"
+            },
+            {
+              "id": 5,
+              "reason": "NOT_JOINTLY_INITIALIZED"
+            },
+            {
+              "id": 6,
+              "reason": "NOT_JOINTLY_INITIALIZED"
+            }
+          ],
+          "statistical_consistency": "NOT_CERTIFIED"
+        },
+        "metrics": {
+          "entrance": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "transition": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "degenerate": {
+            "samples": 3412,
+            "position_rmse_m": 1.0355857857027495,
+            "axial_p95_m": 0.03591011720186543,
+            "axial_max_m": 0.05593943778785615
+          }
+        },
+        "position_rmse_m": 1.0355857857027495,
+        "axis_rmse_m": [
+          0.019097212785323225,
+          0.05284844321712546,
+          1.0340600843582248
+        ],
+        "velocity_axis_rmse_mps": [
+          0.016285130639524463,
+          0.0038415837931948782,
+          0.0071366493398979085
+        ],
+        "first_output_stamp": 19.8,
+        "initialization_wait_s": 18.8,
+        "states": {
+          "DEGRADED": 3410,
+          "LOST": 2
+        },
+        "optimized_output_observed": true,
+        "attitude_p95_deg": 0.18571445518521534,
+        "processing_p95_ms": 34.105,
+        "sim_time_latency_p95_s": 0.035,
+        "wall_end_to_end_p95_s": 0.039902240000000005,
+        "actual_input_hz": {
+          "imu": 199.9994747774904,
+          "cloud": 9.99997373887452,
+          "uwb": 74.12480533940739,
+          "clock": 199.9994747774904
+        },
+        "delivery_profile": false,
+        "delivered_input_verified": true,
+        "frozen_input_verified": true,
+        "max_vehicle_states": 101,
+        "simulation_runtime": {
+          "simulation_s": 360.0,
+          "input_prepare_s": 0.0012097540000000002,
+          "startup_buffer_records": 5,
+          "startup_buffer_bytes": 407894,
+          "wall_s": 360.000945403,
+          "real_time_factor": 0.999997373887452,
+          "peak_rss_kib": 83276,
+          "scan_model": "snapshot",
+          "input_mode": "frozen_replay",
+          "published_counts": {
+            "imu": 72000,
+            "cloud": 3600,
+            "uwb": 26685,
+            "clock": 72000
+          },
+          "delivery_queue_peak": 1
+        },
+        "delivery_audit": null,
+        "raw_counts": {
+          "imu": 72000,
+          "cloud": 3600,
+          "uwb": 26685,
+          "clock": 72000
+        },
+        "covariance_diagnostics": {
+          "samples": 3412,
+          "position_nees_mean_3d": 8.144630620807934,
+          "joint_nees_mean_9d": 28.821542090455043,
+          "position_95pct_ellipsoid_coverage": 0.5849941383352872,
+          "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Uses recorded truth orientation; legacy captures use identity."
+        },
+        "sessions": 1,
+        "gpu": "PASS",
+        "rolling_deskew": "NOT_VALIDATED",
+        "accuracy_thresholds": "Reference targets only; exceedances do not block the representative stage. PASS is not effectiveness or stage acceptance."
+      },
+      "raw_input_audit": {
+        "counts": {
+          "imu": 72000,
+          "cloud": 3600,
+          "uwb": 26685,
+          "clock": 72000
+        },
+        "violations": [],
+        "sessions": [
+          1792685689342531270
+        ],
+        "clock_resets": 0,
+        "cloud_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "time"
+        ],
+        "estimator_subscriptions": [
+          "/clock",
+          "/parameter_events",
+          "/sensors/imu",
+          "/sensors/lidar/points",
+          "/sensors/uwb/range"
+        ],
+        "clock_publishers": 0,
+        "duplicate_uwb": [],
+        "odometry_count": 3412,
+        "raw_sha256": {
+          "imu": "120887c46d7dd44b1c0233fb50099366bfc2a973a921b53d6565eaabf0b22db1",
+          "cloud": "e9bd22b96e417445f53958a320d547277c2f71cac00541c7b42c93146fa45154",
+          "uwb": "0829b79bf23e7fda5573b8b3173e7b8f68720816dc401e8f2519833c1607035d",
+          "clock": "2444af9f41847054396fa4b82dc87973eb47eb983ac412e5e5cf705f2097e149"
+        },
+        "observed_wall_duration_s": 359.994893779,
+        "imu_static_acc_z_mean": 9.80609330211005
+      },
+      "source_measurement_frames": 3600,
+      "published_frames": 3412,
+      "effective_frames": 3410,
+      "max_publication_gap_s": 0.10000000000002274,
+      "max_abs_axis_error_m": [
+        0.05593943778785615,
+        0.08798376187863519,
+        1.956725680010083
+      ],
+      "max_abs_error_step_m": [
+        0.015023728254789148,
+        0.03475800762379422,
+        0.0681291890555531
+      ],
+      "final_axis_error_m": [
+        0.025102098607135304,
+        -0.08649794763333779,
+        1.9430927487234628
+      ],
+      "segments": {
+        "world_x_200_400": {
+          "samples": 1454,
+          "axis_rmse_m": [
+            0.015537982006136843,
+            0.011772230639932295,
+            0.19085826238634737
+          ]
+        },
+        "world_x_400_800": {
+          "samples": 868,
+          "axis_rmse_m": [
+            0.022177086596925723,
+            0.04908548512630532,
+            0.5615176745260919
+          ]
+        },
+        "world_x_800_1001": {
+          "samples": 1090,
+          "axis_rmse_m": [
+            0.02068612874277106,
+            0.08148125965007844,
+            1.7456991293091035
+          ]
+        }
+      },
+      "resources": {
+        "rss_kib": 338540,
+        "device_used_bytes": 1798373376,
+        "retained_cloud_frames": 101,
+        "imu_queue": 2,
+        "cloud_queue": 0,
+        "uwb_queue": 1
+      },
+      "resource_scope": "RSS sampled; device_used_bytes includes all device users",
+      "factor_counts": {
+        "A": {
+          "4": 3412
+        },
+        "map_priors": {
+          "1": 3412
+        },
+        "joint_map_priors": {
+          "1": 3412
+        },
+        "installation_observation_factors": {
+          "0": 3412
+        }
+      },
+      "accepted_raw_unique": 23504,
+      "aa_accepted": 1080,
+      "aa_disabled": 0,
+      "sha256": {
+        "metadata/config/phase1.json": "351874fd80c074155dfe571ee188b03944f15347fca6ac51fc02f38203e66a7f",
+        "metadata/manifests/input_identity.json": "56326a753a2a3d84a923cbe08358689f746b571d253b2f4fa6b48de48c356fee",
+        "metadata/manifests/observation_audit.json": "a73848cdeafab1c9a5ac06bd48a9f62eeaae0f74fcda8b4581f83dcca57497f2",
+        "export/analysis/report.json": "ca09716fd505abf465bc15badf7bafe4ebb82a7e68f872e945092d16aa79bf90",
+        "export/odometry/trajectory.csv": "43e25bf608be16b90aee0b17aeb795ede5e72f32d768bb17778fb7eb2d83fbba",
+        "export/odometry/graph.csv": "5f8d17924d23f764f5ec56f6492cf7d96dad4f928626b2a8c42abdbc57ca4684",
+        "export/odometry/covariance.csv": "ad1d4f447d3da0d2aa834835aa01c9a5a5f3dae8c3ef5f79d0f1a5c6084f7163",
+        "metadata/config/map.json": "6ffc91bf57fe1a5aaf0e380f7b79e694ddf7a380229597d07359f6443fa8afe9",
+        "metadata/manifests/frozen_input.json": "523006b91160fa39789880bb79986b888bb33763dbc8419a69d436b4cf9c43cb"
+      },
+      "online_bounds_map_m": [
+        [
+          19.9732116658751,
+          -1.403681939359009,
+          0.1676411682352731
+        ],
+        [
+          800.0259047479951,
+          0.9483118452731087,
+          4.696711847227264
+        ]
+      ]
+    },
+    "off": {
+      "run": "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T161447Z_132",
+      "source": {
+        "git_commit": "bcf931b43312d0af7cd5e9dd18f3d677e41ce1d6",
+        "git_worktree_clean": true
+      },
+      "binary_sha256": "85974a6cef93b3207957930992e04f10850e3724495d9b1044dbaa318c6ef8bb",
+      "report": {
+        "evaluator_sha256": "33f73f51ea7f9e95017b3baad08a43d712f37728dd597986065ef14e2bebec7e",
+        "scope": "phase2_iteration_snapshot_gpu",
+        "estimator_mode": "record_only",
+        "accuracy_acceptance_scope": "phase2_accuracy_reference_only",
+        "result": "PASS",
+        "failures": [],
+        "accuracy_reference_exceedances": [],
+        "result_scope": "single_run_contracts_not_system_effectiveness",
+        "stage_acceptance": "NOT_ASSESSED",
+        "evaluation_policy": "representative_phase2_2026_10_22",
+        "map_evaluation_frame": null,
+        "calibrated_map_metrics": null,
+        "metrics": {
+          "entrance": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "transition": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "degenerate": {
+            "samples": 3579,
+            "position_rmse_m": 1254.7971549245115,
+            "axial_p95_m": 3296.0873725456013,
+            "axial_max_m": 3720.5711290844174
+          }
+        },
+        "position_rmse_m": 1254.7971549245115,
+        "axis_rmse_m": [
+          1254.3991886583894,
+          19.74271314624789,
+          24.67388857574498
+        ],
+        "velocity_axis_rmse_mps": [
+          19.837451856271915,
+          0.1888659306849744,
+          0.8490951635749332
+        ],
+        "first_output_stamp": 3.1,
+        "initialization_wait_s": 2.1,
+        "states": {
+          "DEGRADED": 3550,
+          "TRACKING": 29
+        },
+        "optimized_output_observed": true,
+        "attitude_p95_deg": 3.615952979064022,
+        "processing_p95_ms": 29.8233,
+        "sim_time_latency_p95_s": 0.05,
+        "wall_end_to_end_p95_s": 0.051304881000000004,
+        "actual_input_hz": {
+          "imu": 199.99999481500015,
+          "cloud": 9.999999740750008,
+          "uwb": 74.12499807830943,
+          "clock": 199.99999481500015
+        },
+        "delivery_profile": false,
+        "delivered_input_verified": false,
+        "frozen_input_verified": false,
+        "max_vehicle_states": 101,
+        "simulation_runtime": {
+          "peak_rss_kib": 72836,
+          "published_counts": {
+            "clock": 72000,
+            "cloud": 3600,
+            "imu": 72000,
+            "uwb": 26685
+          },
+          "real_time_factor": 0.9999999740750007,
+          "scan_model": "snapshot",
+          "simulation_s": 360.0,
+          "wall_s": 360.000009333
+        },
+        "delivery_audit": null,
+        "raw_counts": {
+          "imu": 72000,
+          "cloud": 3600,
+          "uwb": 26685,
+          "clock": 72000
+        },
+        "covariance_diagnostics": {
+          "samples": 3579,
+          "position_nees_mean_3d": 14015.777345769926,
+          "joint_nees_mean_9d": 53292.26016759017,
+          "position_95pct_ellipsoid_coverage": 0.021234981838502375,
+          "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Uses recorded truth orientation; legacy captures use identity."
+        },
+        "sessions": 1,
+        "gpu": "PASS",
+        "rolling_deskew": "NOT_VALIDATED",
+        "accuracy_thresholds": "Reference targets only; exceedances do not block the representative stage. PASS is not effectiveness or stage acceptance."
+      },
+      "raw_input_audit": {
+        "counts": {
+          "imu": 72000,
+          "cloud": 3600,
+          "uwb": 26685,
+          "clock": 72000
+        },
+        "violations": [],
+        "sessions": [
+          1792685689342531270
+        ],
+        "clock_resets": 0,
+        "cloud_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "time"
+        ],
+        "estimator_subscriptions": [
+          "/clock",
+          "/parameter_events",
+          "/sensors/imu",
+          "/sensors/lidar/points",
+          "/sensors/uwb/range"
+        ],
+        "clock_publishers": 0,
+        "duplicate_uwb": [],
+        "odometry_count": 3579,
+        "raw_sha256": {
+          "imu": "120887c46d7dd44b1c0233fb50099366bfc2a973a921b53d6565eaabf0b22db1",
+          "cloud": "e9bd22b96e417445f53958a320d547277c2f71cac00541c7b42c93146fa45154",
+          "uwb": "0829b79bf23e7fda5573b8b3173e7b8f68720816dc401e8f2519833c1607035d",
+          "clock": "2444af9f41847054396fa4b82dc87973eb47eb983ac412e5e5cf705f2097e149"
+        },
+        "observed_wall_duration_s": 359.994539943,
+        "imu_static_acc_z_mean": 9.80609330211005
+      },
+      "source_measurement_frames": 3600,
+      "published_frames": 3579,
+      "effective_frames": 3579,
+      "max_publication_gap_s": 0.10000000000002274,
+      "max_abs_axis_error_m": [
+        3720.5711290844174,
+        52.706165547285956,
+        99.52873139145755
+      ],
+      "max_abs_error_step_m": [
+        426.67448434676635,
+        4.9063808194063085,
+        110.82274333677708
+      ],
+      "final_axis_error_m": [
+        3720.5711290844174,
+        -52.706165547285956,
+        71.8402499330026
+      ],
+      "segments": {
+        "world_x_200_400": {
+          "samples": 1621,
+          "axis_rmse_m": [
+            706.3766769653665,
+            2.2454826776047287,
+            7.398168478998826
+          ]
+        },
+        "world_x_400_800": {
+          "samples": 868,
+          "axis_rmse_m": [
+            388.28055747196737,
+            6.975160243134922,
+            19.262637590695753
+          ]
+        },
+        "world_x_800_1001": {
+          "samples": 1090,
+          "axis_rmse_m": [
+            2074.734453159883,
+            35.122324307212196,
+            40.275487628763535
+          ]
+        }
+      },
+      "resources": {
+        "rss_kib": 328208,
+        "device_used_bytes": 1721434112,
+        "retained_cloud_frames": 101,
+        "imu_queue": 405,
+        "cloud_queue": 0,
+        "uwb_queue": 0
+      },
+      "resource_scope": "RSS sampled; device_used_bytes includes all device users",
+      "factor_counts": {
+        "A": {
+          "0": 3580
+        },
+        "map_priors": {
+          "0": 3580
+        },
+        "joint_map_priors": {
+          "0": 3580
+        },
+        "installation_observation_factors": {
+          "0": 3580
+        }
+      },
+      "accepted_raw_unique": 0,
+      "aa_accepted": 0,
+      "aa_disabled": 0,
+      "sha256": {
+        "metadata/config/phase1.json": "a4e9dbd3685aa536011fa96991158399f94e249d3ae39361e001a861475dace9",
+        "metadata/manifests/input_identity.json": "d76f3569de8f38bf8e049eef792b3df3bdcc9349c93e7e4e72190d2acf55d178",
+        "metadata/manifests/observation_audit.json": "7fa98c5b77abc5fca2b144ee078649691123f356e1a913b16580234da3f392b1",
+        "export/analysis/report.json": "8379c03648225a013a3189ea59fedd8558c6bea17d219087197a02730b545421",
+        "export/odometry/trajectory.csv": "d903f3e84b222d08020bd58a7312bf7a4ab4a1cea544802073b3cf32c130745e",
+        "export/odometry/graph.csv": "8155a934c24e5a3b2150ea9104347b03f1986aa25ed1a0a34943c850ae714815",
+        "export/odometry/covariance.csv": "8312db1250572520b940a66f6e79bfc19b7d7f611510d6db5476ae335d51ea26"
+      },
+      "online_bounds_map_m": [
+        [
+          -53.27679946042554,
+          -4500.571128795674,
+          -97.14678264106243
+        ],
+        [
+          4.827984045180647,
+          1189.519087288249,
+          72.71436358058372
+        ]
+      ]
+    },
+    "known_reference": {
+      "run": "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T162714Z_380",
+      "source": {
+        "git_commit": "bcf931b43312d0af7cd5e9dd18f3d677e41ce1d6",
+        "git_worktree_clean": true
+      },
+      "binary_sha256": "85974a6cef93b3207957930992e04f10850e3724495d9b1044dbaa318c6ef8bb",
+      "report": {
+        "evaluator_sha256": "33f73f51ea7f9e95017b3baad08a43d712f37728dd597986065ef14e2bebec7e",
+        "scope": "phase2_iteration_snapshot_gpu",
+        "estimator_mode": "fuse",
+        "accuracy_acceptance_scope": "phase2_accuracy_reference_only",
+        "result": "PASS",
+        "failures": [],
+        "accuracy_reference_exceedances": [],
+        "result_scope": "single_run_contracts_not_system_effectiveness",
+        "stage_acceptance": "NOT_ASSESSED",
+        "evaluation_policy": "representative_phase2_2026_10_22",
+        "map_evaluation_frame": null,
+        "calibrated_map_metrics": null,
+        "metrics": {
+          "entrance": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "transition": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "degenerate": {
+            "samples": 3410,
+            "position_rmse_m": 0.14755659693787634,
+            "axial_p95_m": 0.03956573440302691,
+            "axial_max_m": 0.06415714236226222
+          }
+        },
+        "position_rmse_m": 0.14755659693787634,
+        "axis_rmse_m": [
+          0.021720785354940046,
+          0.041574061896500196,
+          0.13990265959186585
+        ],
+        "velocity_axis_rmse_mps": [
+          0.014242136726423172,
+          0.0036593361733016226,
+          0.005343357169654779
+        ],
+        "first_output_stamp": 20.0,
+        "initialization_wait_s": 19.0,
+        "states": {
+          "DEGRADED": 3408,
+          "LOST": 2
+        },
+        "optimized_output_observed": true,
+        "attitude_p95_deg": 0.2180742987959729,
+        "processing_p95_ms": 34.9478,
+        "sim_time_latency_p95_s": 0.04,
+        "wall_end_to_end_p95_s": 0.040582583000000005,
+        "actual_input_hz": {
+          "imu": 199.99995627223177,
+          "cloud": 9.99999781361159,
+          "uwb": 74.1249837933959,
+          "clock": 199.99995627223177
+        },
+        "delivery_profile": false,
+        "delivered_input_verified": true,
+        "frozen_input_verified": true,
+        "max_vehicle_states": 101,
+        "simulation_runtime": {
+          "simulation_s": 360.0,
+          "input_prepare_s": 0.001225432,
+          "startup_buffer_records": 5,
+          "startup_buffer_bytes": 407894,
+          "wall_s": 360.00007871,
+          "real_time_factor": 0.9999997813611589,
+          "peak_rss_kib": 83656,
+          "scan_model": "snapshot",
+          "input_mode": "frozen_replay",
+          "published_counts": {
+            "imu": 72000,
+            "cloud": 3600,
+            "uwb": 26685,
+            "clock": 72000
+          },
+          "delivery_queue_peak": 1
+        },
+        "delivery_audit": null,
+        "raw_counts": {
+          "imu": 72000,
+          "cloud": 3600,
+          "uwb": 26685,
+          "clock": 72000
+        },
+        "covariance_diagnostics": {
+          "samples": 3410,
+          "position_nees_mean_3d": 3.3669621260051183,
+          "joint_nees_mean_9d": 25.485549244132145,
+          "position_95pct_ellipsoid_coverage": 0.9671554252199414,
+          "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Uses recorded truth orientation; legacy captures use identity."
+        },
+        "sessions": 1,
+        "gpu": "PASS",
+        "rolling_deskew": "NOT_VALIDATED",
+        "accuracy_thresholds": "Reference targets only; exceedances do not block the representative stage. PASS is not effectiveness or stage acceptance."
+      },
+      "raw_input_audit": {
+        "counts": {
+          "imu": 72000,
+          "cloud": 3600,
+          "uwb": 26685,
+          "clock": 72000
+        },
+        "violations": [],
+        "sessions": [
+          1792685689342531270
+        ],
+        "clock_resets": 0,
+        "cloud_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "time"
+        ],
+        "estimator_subscriptions": [
+          "/clock",
+          "/parameter_events",
+          "/sensors/imu",
+          "/sensors/lidar/points",
+          "/sensors/uwb/range"
+        ],
+        "clock_publishers": 0,
+        "duplicate_uwb": [],
+        "odometry_count": 3410,
+        "raw_sha256": {
+          "imu": "120887c46d7dd44b1c0233fb50099366bfc2a973a921b53d6565eaabf0b22db1",
+          "cloud": "e9bd22b96e417445f53958a320d547277c2f71cac00541c7b42c93146fa45154",
+          "uwb": "0829b79bf23e7fda5573b8b3173e7b8f68720816dc401e8f2519833c1607035d",
+          "clock": "2444af9f41847054396fa4b82dc87973eb47eb983ac412e5e5cf705f2097e149"
+        },
+        "observed_wall_duration_s": 359.99462854200004,
+        "imu_static_acc_z_mean": 9.80609330211005
+      },
+      "source_measurement_frames": 3600,
+      "published_frames": 3410,
+      "effective_frames": 3408,
+      "max_publication_gap_s": 0.10000000000002274,
+      "max_abs_axis_error_m": [
+        0.06415714236226222,
+        0.09052063253189907,
+        0.3885019532358638
+      ],
+      "max_abs_error_step_m": [
+        0.015057289575338473,
+        0.03415269217985614,
+        0.17096650370136368
+      ],
+      "final_axis_error_m": [
+        0.01738895744040292,
+        0.03342700559226941,
+        -0.1241931365841058
+      ],
+      "segments": {
+        "world_x_200_400": {
+          "samples": 1452,
+          "axis_rmse_m": [
+            0.021697287059332163,
+            0.05031839475871732,
+            0.1774206113916329
+          ]
+        },
+        "world_x_400_800": {
+          "samples": 868,
+          "axis_rmse_m": [
+            0.02591884796343651,
+            0.034614824690444475,
+            0.12421870145791636
+          ]
+        },
+        "world_x_800_1001": {
+          "samples": 1090,
+          "axis_rmse_m": [
+            0.017716946564557738,
+            0.03286683309798273,
+            0.08373966386714851
+          ]
+        }
+      },
+      "resources": {
+        "rss_kib": 341872,
+        "device_used_bytes": 1776680960,
+        "retained_cloud_frames": 101,
+        "imu_queue": 2,
+        "cloud_queue": 0,
+        "uwb_queue": 1
+      },
+      "resource_scope": "RSS sampled; device_used_bytes includes all device users",
+      "factor_counts": {
+        "A": {
+          "7": 3410
+        },
+        "map_priors": {
+          "1": 3410
+        },
+        "joint_map_priors": {
+          "0": 3410
+        },
+        "installation_observation_factors": {
+          "1": 3410
+        }
+      },
+      "accepted_raw_unique": 26678,
+      "aa_accepted": 2160,
+      "aa_disabled": 0,
+      "sha256": {
+        "metadata/config/phase1.json": "7232b17efadfd9238c195852149bf0ef84abf39dd4556764d9eaedb7df737980",
+        "metadata/manifests/input_identity.json": "740c3085408e20b90538783e6185b3ce4571802ca40fa3c6fdea05c6c4ed7fcb",
+        "metadata/manifests/observation_audit.json": "4022df97d9031dfb6a8022184fbfe35a81006d276c3d0fad3ef88cfd1cd58337",
+        "export/analysis/report.json": "39eb350e6184483f41bd8e3e3d2e5bf212795909304495fe52589e5661e4eac3",
+        "export/odometry/trajectory.csv": "664533be8888f43c5fe03f1a820858f81a386195bec106161f0a3e76073d85e8",
+        "export/odometry/graph.csv": "08f706681820e723c4df527afece5db4732f881a0e073906043f3bb27fe99030",
+        "export/odometry/covariance.csv": "946ee6392094561f49f11ed9575eb25fbc109211fece61a14dc9307a79d75e75",
+        "metadata/config/map.json": "68eb6929c3268a0087e390840f47091659f9e50d9eca5cb9b94af9ecffc118c5",
+        "metadata/manifests/frozen_input.json": "523006b91160fa39789880bb79986b888bb33763dbc8419a69d436b4cf9c43cb"
+      },
+      "online_bounds_map_m": [
+        [
+          219.9620971036883,
+          -1.342828558208498,
+          1.287967494974646
+        ],
+        [
+          1000.020041881327,
+          0.8950662509009777,
+          4.365048536940484
+        ]
+      ]
+    },
+    "first_ta_only": {
+      "run": "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T163326Z_401",
+      "source": {
+        "git_commit": "bcf931b43312d0af7cd5e9dd18f3d677e41ce1d6",
+        "git_worktree_clean": true
+      },
+      "binary_sha256": "85974a6cef93b3207957930992e04f10850e3724495d9b1044dbaa318c6ef8bb",
+      "report": {
+        "evaluator_sha256": "33f73f51ea7f9e95017b3baad08a43d712f37728dd597986065ef14e2bebec7e",
+        "scope": "phase3_iteration_snapshot_gpu",
+        "estimator_mode": "self_calibrate",
+        "accuracy_acceptance_scope": "phase2_accuracy_reference_only",
+        "result": "PASS",
+        "failures": [],
+        "accuracy_reference_exceedances": [
+          "known-map position RMSE >0.30m"
+        ],
+        "result_scope": "phase3_single_run_contracts_not_system_effectiveness",
+        "stage_acceptance": "NOT_ASSESSED",
+        "evaluation_policy": "phase3_fixed_first_run_gauge",
+        "map_evaluation_frame": "fixed original calibration run datum; no reuse-start alignment",
+        "calibrated_map_metrics": {
+          "scope": "observed initialized anchors only; fixed first-run gauge; no alignment",
+          "anchor_errors_world_m": {
+            "0": [
+              -0.016509053263803253,
+              -0.006509485332216958,
+              -0.14900340102748988
+            ],
+            "1": [
+              -0.01305925372304273,
+              -0.10612448696498955,
+              0.2546786737829452
+            ],
+            "2": [
+              -0.004078831617789547,
+              -0.13813943949988605,
+              1.5016744796585288
+            ],
+            "3": [
+              0.005094205582736322,
+              -0.18288269865502116,
+              3.6983126447244046
+            ]
+          },
+          "axis_rmse_m": [
+            0.011019082826571363,
+            0.12632632974320768,
+            2.001224993684102
+          ],
+          "adjacent_initialized_spacing_errors": [
+            {
+              "ids": [
+                0,
+                1
+              ],
+              "distance_error_m": 0.005059999537479598
+            },
+            {
+              "ids": [
+                1,
+                2
+              ],
+              "distance_error_m": -0.002167790053135832
+            },
+            {
+              "ids": [
+                2,
+                3
+              ],
+              "distance_error_m": 0.014579068872137668
+            }
+          ],
+          "estimated_longitudinal_order": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "joint_local_std": [
+            0.007934990671198787,
+            0.2162092291691055,
+            0.5041226455206625,
+            0.008440980518991512,
+            0.21407479653399578,
+            0.16539624218448434,
+            0.007921386153453164,
+            0.6282775680676091,
+            0.553186132801899,
+            0.01085987261100815,
+            1.0461899331278404,
+            1.1218602644007465,
+            1.045241001940388,
+            0.0039060184962397327
+          ],
+          "joint_order": [
+            "a0.xyz_m",
+            "a1.xyz_m",
+            "a2.xyz_m",
+            "a3.xyz_m",
+            "l0.angle_mrad",
+            "l0.offset_m"
+          ],
+          "anchor_reference_cross_covariance_norm": 1.3104654435300807,
+          "not_initialized": [
+            {
+              "id": 4,
+              "reason": "NOT_JOINTLY_INITIALIZED"
+            },
+            {
+              "id": 5,
+              "reason": "NOT_JOINTLY_INITIALIZED"
+            },
+            {
+              "id": 6,
+              "reason": "NOT_JOINTLY_INITIALIZED"
+            }
+          ],
+          "statistical_consistency": "NOT_CERTIFIED"
+        },
+        "metrics": {
+          "entrance": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "transition": {
+            "samples": 0,
+            "position_rmse_m": null,
+            "axial_p95_m": null,
+            "axial_max_m": null
+          },
+          "degenerate": {
+            "samples": 3163,
+            "position_rmse_m": 1.4259393558938818,
+            "axial_p95_m": 0.048777703039149856,
+            "axial_max_m": 0.08990861852043963
+          }
+        },
+        "position_rmse_m": 1.4259393558938818,
+        "axis_rmse_m": [
+          0.02522266566361627,
+          0.07177236620886912,
+          1.4239085614156055
+        ],
+        "velocity_axis_rmse_mps": [
+          0.017713419789497142,
+          0.004140026717807314,
+          0.013597611946503985
+        ],
+        "first_output_stamp": 44.7,
+        "initialization_wait_s": 43.7,
+        "states": {
+          "DEGRADED": 3160,
+          "LOST": 3
+        },
+        "optimized_output_observed": true,
+        "attitude_p95_deg": 0.3351694807500549,
+        "processing_p95_ms": 35.7837,
+        "sim_time_latency_p95_s": 0.04,
+        "wall_end_to_end_p95_s": 0.044785325,
+        "actual_input_hz": {
+          "imu": 199.99928350701126,
+          "cloud": 9.999964175350563,
+          "uwb": 73.92751293410552,
+          "clock": 199.99928350701126
+        },
+        "delivery_profile": false,
+        "delivered_input_verified": true,
+        "frozen_input_verified": true,
+        "max_vehicle_states": 101,
+        "simulation_runtime": {
+          "simulation_s": 360.0,
+          "input_prepare_s": 0.0012557830000000001,
+          "startup_buffer_records": 5,
+          "startup_buffer_bytes": 408294,
+          "wall_s": 360.001289692,
+          "real_time_factor": 0.9999964175350563,
+          "peak_rss_kib": 83676,
+          "scan_model": "snapshot",
+          "input_mode": "frozen_replay",
+          "published_counts": {
+            "imu": 72000,
+            "cloud": 3600,
+            "uwb": 26614,
+            "clock": 72000
+          },
+          "delivery_queue_peak": 1
+        },
+        "delivery_audit": null,
+        "raw_counts": {
+          "imu": 72000,
+          "cloud": 3600,
+          "uwb": 26614,
+          "clock": 72000
+        },
+        "covariance_diagnostics": {
+          "samples": 3163,
+          "position_nees_mean_3d": 9.905825506478946,
+          "joint_nees_mean_9d": 28.698771420873943,
+          "position_95pct_ellipsoid_coverage": 0.3284856149225419,
+          "interpretation": "Local linearized joint posterior; temporally correlated samples within one run. Report independent seeds separately; not a chi-square test on pooled frames. No noise retuning. Uses recorded truth orientation; legacy captures use identity."
+        },
+        "sessions": 1,
+        "gpu": "PASS",
+        "rolling_deskew": "NOT_VALIDATED",
+        "accuracy_thresholds": "Reference targets only; exceedances do not block the representative stage. PASS is not effectiveness or stage acceptance."
+      },
+      "raw_input_audit": {
+        "counts": {
+          "imu": 72000,
+          "cloud": 3600,
+          "uwb": 26614,
+          "clock": 72000
+        },
+        "violations": [],
+        "sessions": [
+          1792684104078114423
+        ],
+        "clock_resets": 0,
+        "cloud_fields": [
+          "x",
+          "y",
+          "z",
+          "intensity",
+          "time"
+        ],
+        "estimator_subscriptions": [
+          "/clock",
+          "/parameter_events",
+          "/sensors/imu",
+          "/sensors/lidar/points",
+          "/sensors/uwb/range"
+        ],
+        "clock_publishers": 0,
+        "duplicate_uwb": [],
+        "odometry_count": 3163,
+        "raw_sha256": {
+          "imu": "38bd4831948b3234fc07eef51971dff39738fb38d0ef52762724c8b6cceb770d",
+          "cloud": "59749c75ba6ab647a14e95595f086b8c83615a0da7d9c5bdb4c0413847c51416",
+          "uwb": "7cbcf52d76c76bb9fac64e1f5b1c1133776db418a53ea0efb469d1192ffac959",
+          "clock": "2444af9f41847054396fa4b82dc87973eb47eb983ac412e5e5cf705f2097e149"
+        },
+        "observed_wall_duration_s": 359.99448889300004,
+        "imu_static_acc_z_mean": 9.806800779677443
+      },
+      "source_measurement_frames": 3600,
+      "published_frames": 3163,
+      "effective_frames": 3160,
+      "max_publication_gap_s": 0.10000000000002274,
+      "max_abs_axis_error_m": [
+        0.08990861852043963,
+        0.12047153242672914,
+        2.444865939430211
+      ],
+      "max_abs_error_step_m": [
+        0.01838749029218434,
+        0.034487141743314347,
+        0.033743275722589505
+      ],
+      "final_axis_error_m": [
+        -0.014615348168831588,
+        -0.11402834709406368,
+        2.280306388112316
+      ],
+      "segments": {
+        "world_x_200_400": {
+          "samples": 1242,
+          "axis_rmse_m": [
+            0.019333272171145506,
+            0.014578109858007747,
+            0.11803631212496282
+          ]
+        },
+        "world_x_400_800": {
+          "samples": 843,
+          "axis_rmse_m": [
+            0.03258039124659144,
+            0.0621936895623407,
+            1.02528247018456
+          ]
+        },
+        "world_x_800_1001": {
+          "samples": 1078,
+          "axis_rmse_m": [
+            0.0246155617141187,
+            0.1088340691109757,
+            2.2607324877555057
+          ]
+        }
+      },
+      "resources": {
+        "rss_kib": 565776,
+        "device_used_bytes": 1946812416,
+        "retained_cloud_frames": 101,
+        "imu_queue": 5,
+        "cloud_queue": 0,
+        "uwb_queue": 2
+      },
+      "resource_scope": "RSS sampled; device_used_bytes includes all device users",
+      "factor_counts": {
+        "A": {
+          "3": 1954,
+          "4": 1209
+        },
+        "map_priors": {
+          "0": 3163
+        },
+        "joint_map_priors": {
+          "0": 3163
+        },
+        "installation_observation_factors": {
+          "1": 3163
+        }
+      },
+      "accepted_raw_unique": 21198,
+      "aa_accepted": 0,
+      "aa_disabled": 2160,
+      "sha256": {
+        "metadata/config/phase1.json": "eb6ecab9ca536caa8693a343e0e03f7fb22f02e42a93dfe6073b3d52f047afe4",
+        "metadata/manifests/input_identity.json": "17f9c51de367bf5caa24df013880f7389d9193b8287ea993caab619e75267a46",
+        "metadata/manifests/observation_audit.json": "6dc6df717ff2b0f8fd489dbcc9244f785746b9b8ef85782c55b7a83bfb491e48",
+        "export/analysis/report.json": "5028e5392486c0d93473a6fd7090ff59e3857fb38f2f4d674913aae658073997",
+        "export/odometry/trajectory.csv": "4b33f54f898ed72f34a4ecebb2cdeda67980a359d5808df75ade7aef27c91bfb",
+        "export/odometry/graph.csv": "3a57f0e58d8930bbaf843f44b4fe73a2902f31f55c5877419d49fcd30c2f7caa",
+        "export/odometry/covariance.csv": "14de04f3a1d79069cdacb87b2c34913af4303e2856974a504f217d146b975499",
+        "metadata/config/installation.json": "7ff25a7f022625805a8aad9c8f5603fb1cf997effbea38fc49b4f53f0bcfcdeb",
+        "metadata/manifests/frozen_input.json": "6395c1213e644bf8e0463568e21aca3a083afa77467d1e075a87c2ce4892d6ac",
+        "export/map/calibrated_map.json": "271f9dc2fd41278bf5d511c9c8797a2afd6ece5d58bafbb2e3a14f4a62ff1ca6",
+        "profiling/anchor_extension.csv": "787087097be5f420859da611d8d1970f826bfe3742f73c2a3a76b116c6a1e365"
+      },
+      "online_bounds_map_m": [
+        [
+          -0.02164805621943239,
+          -0.7132050488884424,
+          -0.03154734462188694
+        ],
+        [
+          799.9934986382704,
+          0.594584092449601,
+          4.748390253138688
+        ]
+      ]
+    }
+  },
+  "reuse_off_pair": {
+    "scope": "matched_online_stamps_snapshot_only",
+    "auditor_sha256": "b41ebe00eb35b2a45b94133092ca7005429666a5bc733e363cd914f0046137af",
+    "input_content_verified": true,
+    "lio_settings_matched": true,
+    "odometry_binary_matched": true,
+    "fused_uwb_settings_matched": true,
+    "controlled_estimator_comparison": true,
+    "settings_scope": "Raw input equality alone does not establish a mode-only comparison; estimator settings and binary are audited separately.",
+    "raw_sha256": {
+      "imu": "120887c46d7dd44b1c0233fb50099366bfc2a973a921b53d6565eaabf0b22db1",
+      "cloud": "e9bd22b96e417445f53958a320d547277c2f71cac00541c7b42c93146fa45154",
+      "uwb": "0829b79bf23e7fda5573b8b3173e7b8f68720816dc401e8f2519833c1607035d",
+      "clock": "2444af9f41847054396fa4b82dc87973eb47eb983ac412e5e5cf705f2097e149"
+    },
+    "counts": {
+      "imu": 72000,
+      "cloud": 3600,
+      "uwb": 26685,
+      "clock": 72000
+    },
+    "common_samples": 3412,
+    "common_first": [
+      0,
+      19.8
+    ],
+    "common_last": [
+      0,
+      360.9
+    ],
+    "alignment": "Known-map ON in world; calibrated modes use fixed first-calibration datum; OFF uses its initial datum; no fitted transforms",
+    "results": [
+      {
+        "run_id": "20261022T162059Z_880",
+        "mode": "reuse_map",
+        "map_id": "20261022T160635Z_994_session_1",
+        "common_position_rmse_m": 1.0355857857027495,
+        "common_axis_rmse_m": [
+          0.019097212785323225,
+          0.05284844321712546,
+          1.0340600843582248
+        ],
+        "common_velocity_axis_rmse_mps": [
+          0.016285130639524463,
+          0.0038415837931948782,
+          0.0071366493398979085
+        ],
+        "common_axial_p95_m": 0.03591011720186543,
+        "common_axial_max_m": 0.05593943778785615,
+        "common_attitude_p95_deg": 0.18571445518521534,
+        "processing_p95_ms": 34.105,
+        "wall_end_to_end_p95_s": 0.039902240000000005,
+        "run_result": "PASS",
+        "failures": []
+      },
+      {
+        "run_id": "20261022T161447Z_132",
+        "mode": "record_only",
+        "map_id": null,
+        "common_position_rmse_m": 1285.136522722865,
+        "common_axis_rmse_m": [
+          1284.7289331802424,
+          20.220094131662172,
+          25.27049819612068
+        ],
+        "common_velocity_axis_rmse_mps": [
+          20.315172224308526,
+          0.19343116101220967,
+          0.8696178487933696
+        ],
+        "common_axial_p95_m": 3311.7467001669884,
+        "common_axial_max_m": 3720.5711290844174,
+        "common_attitude_p95_deg": 4.250968853455826,
+        "processing_p95_ms": 29.8233,
+        "wall_end_to_end_p95_s": 0.051304881000000004,
+        "run_result": "PASS",
+        "failures": []
+      }
+    ]
+  },
+  "three_way_reference": {
+    "scope": "matched_online_stamps_snapshot_only",
+    "auditor_sha256": "b41ebe00eb35b2a45b94133092ca7005429666a5bc733e363cd914f0046137af",
+    "input_content_verified": true,
+    "lio_settings_matched": true,
+    "odometry_binary_matched": true,
+    "fused_uwb_settings_matched": false,
+    "controlled_estimator_comparison": false,
+    "settings_scope": "Raw input equality alone does not establish a mode-only comparison; estimator settings and binary are audited separately.",
+    "raw_sha256": {
+      "imu": "120887c46d7dd44b1c0233fb50099366bfc2a973a921b53d6565eaabf0b22db1",
+      "cloud": "e9bd22b96e417445f53958a320d547277c2f71cac00541c7b42c93146fa45154",
+      "uwb": "0829b79bf23e7fda5573b8b3173e7b8f68720816dc401e8f2519833c1607035d",
+      "clock": "2444af9f41847054396fa4b82dc87973eb47eb983ac412e5e5cf705f2097e149"
+    },
+    "counts": {
+      "imu": 72000,
+      "cloud": 3600,
+      "uwb": 26685,
+      "clock": 72000
+    },
+    "common_samples": 3410,
+    "common_first": [
+      0,
+      20.0
+    ],
+    "common_last": [
+      0,
+      360.9
+    ],
+    "alignment": "Known-map ON in world; calibrated modes use fixed first-calibration datum; OFF uses its initial datum; no fitted transforms",
+    "results": [
+      {
+        "run_id": "20261022T162059Z_880",
+        "mode": "reuse_map",
+        "map_id": "20261022T160635Z_994_session_1",
+        "common_position_rmse_m": 1.0358853404374069,
+        "common_axis_rmse_m": [
+          0.01908523236776416,
+          0.052860205897104,
+          1.0343597010088448
+        ],
+        "common_velocity_axis_rmse_mps": [
+          0.0162741091251784,
+          0.003841410120885528,
+          0.007136497609571403
+        ],
+        "common_axial_p95_m": 0.03587203426928909,
+        "common_axial_max_m": 0.05593943778785615,
+        "common_attitude_p95_deg": 0.18571445518521534,
+        "processing_p95_ms": 34.105,
+        "wall_end_to_end_p95_s": 0.039902240000000005,
+        "run_result": "PASS",
+        "failures": []
+      },
+      {
+        "run_id": "20261022T161447Z_132",
+        "mode": "record_only",
+        "map_id": null,
+        "common_position_rmse_m": 1285.5127687486545,
+        "common_axis_rmse_m": [
+          1285.1050595151144,
+          20.226022908794278,
+          25.277907780883904
+        ],
+        "common_velocity_axis_rmse_mps": [
+          20.320559579367515,
+          0.1934878765891778,
+          0.8698702612011464
+        ],
+        "common_axial_p95_m": 3311.7467001669884,
+        "common_axial_max_m": 3720.5711290844174,
+        "common_attitude_p95_deg": 4.250968853455826,
+        "processing_p95_ms": 29.8233,
+        "wall_end_to_end_p95_s": 0.051304881000000004,
+        "run_result": "PASS",
+        "failures": []
+      },
+      {
+        "run_id": "20261022T162714Z_380",
+        "mode": "fuse",
+        "map_id": "rail_synthetic_survey_v5_high_first_four_corner_400m",
+        "common_position_rmse_m": 0.14755659693787634,
+        "common_axis_rmse_m": [
+          0.021720785354940046,
+          0.041574061896500196,
+          0.13990265959186585
+        ],
+        "common_velocity_axis_rmse_mps": [
+          0.014242136726423172,
+          0.0036593361733016226,
+          0.005343357169654779
+        ],
+        "common_axial_p95_m": 0.03956573440302691,
+        "common_axial_max_m": 0.06415714236226222,
+        "common_attitude_p95_deg": 0.2180742987959729,
+        "processing_p95_ms": 34.9478,
+        "wall_end_to_end_p95_s": 0.040582583000000005,
+        "run_result": "PASS",
+        "failures": []
+      }
+    ],
+    "interpretation": "Same raw input/binary/LIO settings; different map priors and deliberate initialization settings. Not a mode-only comparison across reference and reuse."
+  },
+  "aa_pair": {
+    "scope": "matched_online_stamps_snapshot_only",
+    "auditor_sha256": "b41ebe00eb35b2a45b94133092ca7005429666a5bc733e363cd914f0046137af",
+    "input_content_verified": true,
+    "lio_settings_matched": true,
+    "odometry_binary_matched": true,
+    "fused_uwb_settings_matched": false,
+    "controlled_estimator_comparison": false,
+    "settings_scope": "Raw input equality alone does not establish a mode-only comparison; estimator settings and binary are audited separately.",
+    "raw_sha256": {
+      "imu": "38bd4831948b3234fc07eef51971dff39738fb38d0ef52762724c8b6cceb770d",
+      "cloud": "59749c75ba6ab647a14e95595f086b8c83615a0da7d9c5bdb4c0413847c51416",
+      "uwb": "7cbcf52d76c76bb9fac64e1f5b1c1133776db418a53ea0efb469d1192ffac959",
+      "clock": "2444af9f41847054396fa4b82dc87973eb47eb983ac412e5e5cf705f2097e149"
+    },
+    "counts": {
+      "imu": 72000,
+      "cloud": 3600,
+      "uwb": 26614,
+      "clock": 72000
+    },
+    "common_samples": 3085,
+    "common_first": [
+      0,
+      52.5
+    ],
+    "common_last": [
+      0,
+      360.9
+    ],
+    "alignment": "Known-map ON in world; calibrated modes use fixed first-calibration datum; OFF uses its initial datum; no fitted transforms",
+    "results": [
+      {
+        "run_id": "20261022T160635Z_994",
+        "mode": "self_calibrate",
+        "map_id": "20261022T160635Z_994_session_1",
+        "common_position_rmse_m": 1.1814249888005581,
+        "common_axis_rmse_m": [
+          0.023047590018869604,
+          0.054740868771431105,
+          1.1799310361384983
+        ],
+        "common_velocity_axis_rmse_mps": [
+          0.017972865822435884,
+          0.004065632321120533,
+          0.012336127538913144
+        ],
+        "common_axial_p95_m": 0.04420781938893015,
+        "common_axial_max_m": 0.07378824766715297,
+        "common_attitude_p95_deg": 0.3128146752610987,
+        "processing_p95_ms": 34.9999,
+        "wall_end_to_end_p95_s": 0.042113402,
+        "run_result": "PASS",
+        "failures": []
+      },
+      {
+        "run_id": "20261022T163326Z_401",
+        "mode": "self_calibrate",
+        "map_id": "20261022T163326Z_401_session_1",
+        "common_position_rmse_m": 1.4438415065964654,
+        "common_axis_rmse_m": [
+          0.02547656898058198,
+          0.07261962255581675,
+          1.4417890383213416
+        ],
+        "common_velocity_axis_rmse_mps": [
+          0.0179198010848123,
+          0.00403825634565575,
+          0.013767486450569057
+        ],
+        "common_axial_p95_m": 0.04915110264403211,
+        "common_axial_max_m": 0.08990861852043963,
+        "common_attitude_p95_deg": 0.33605825402567324,
+        "processing_p95_ms": 35.7837,
+        "wall_end_to_end_p95_s": 0.044785325,
+        "run_result": "PASS",
+        "failures": []
+      }
+    ],
+    "config_equal_except_use_aa": true
+  },
+  "map_scope": {
+    "map_path": "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T160635Z_994/export/map/calibrated_map.json",
+    "sha256": "6ffc91bf57fe1a5aaf0e380f7b79e694ddf7a380229597d07359f6443fa8afe9",
+    "status": "PROVISIONAL_INITIALIZED; representative-use evidence only",
+    "conditions": "Straight snapshot tunnel, original seven-anchor deployment, tested first/second motions only; bounds are observed estimates, not a certified volume. Weak height and local covariance are not certified.",
+    "validated_source_input": "20261022T154821Z_851",
+    "validated_reuse_input": "20261022T161447Z_132",
+    "uninitialized_ids": [
+      4,
+      5,
+      6
+    ],
+    "reference_frame": "Fixed original calibration datum; no reuse-start or best-fit alignment",
+    "validation_sidecar": "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T160635Z_994/export/map/representative_validation.json",
+    "validation_sidecar_sha256": "fdba5e21cadedfb12c1c58f87fc243ea5b7503ee3269b6dcbfe9c43a5ddb37a9"
+  },
+  "integrity_audit": {
+    "first_ta_aa": {
+      "joint_xv_samples": 3085,
+      "finite": true,
+      "max_asymmetry": 1.3010426069826053e-18,
+      "min_eigenvalue": 3.7310330142983444e-08
+    },
+    "reuse": {
+      "joint_xv_samples": 3412,
+      "finite": true,
+      "max_asymmetry": 1.3010426069826053e-18,
+      "min_eigenvalue": 3.771402805653401e-08
+    },
+    "off": {
+      "joint_xv_samples": 3579,
+      "finite": true,
+      "max_asymmetry": 2.6645352591003757e-15,
+      "min_eigenvalue": 7.71151034085425e-09
+    },
+    "known_reference": {
+      "joint_xv_samples": 3410,
+      "finite": true,
+      "max_asymmetry": 1.6263032587282567e-19,
+      "min_eigenvalue": 3.7516481259158863e-08
+    },
+    "first_ta_only": {
+      "joint_xv_samples": 3163,
+      "finite": true,
+      "max_asymmetry": 1.3010426069826053e-18,
+      "min_eigenvalue": 3.669303514418205e-08
+    },
+    "map": {
+      "dimension": 14,
+      "map_sha256": "6ffc91bf57fe1a5aaf0e380f7b79e694ddf7a380229597d07359f6443fa8afe9",
+      "reuse_bytes_identical": true,
+      "no_first_run_coordinate_map_parameter": true,
+      "no_reused_installation_parameter": true,
+      "field_validation": "PROVISIONAL_INITIALIZED, deployment_validated=false; local single-basin covariance only"
+    }
+  }
+}

@@ -1,7 +1,112 @@
 # 第三阶段实施与代表性证据
 
-状态：进行中，尚未完成首次自标定、地图导出或独立复用。2026-10-22。
+状态：代表性范围交付完成；当前结论与复现见下节。2026-10-22。
 主需求为 phase3_requirements.md；第二阶段结果与失败保持原样。
+
+## 当前交付结论（2026-10-22）
+
+**代表性仿真中首次自标定及独立地图复用有效。** 此结论仅覆盖下面冻结的直隧道、两条360秒snapshot输入和已验证轨迹，不是全面可部署、精确三维地图、任意启动或统计一致性认证。原0.30/0.50m等参考精度未全部达到，没有修改噪声或放宽为另一套精度门槛。
+
+首轮seed0从(200,0,1.2,0)启动，次轮seed1从(220,.2,1.6,π/2)启动；这些坐标只在仿真/评估端。前60秒局部闭合激励，随后300秒平滑行进至x≈1000m，含横向/高度变化。首次实际在线轨迹约覆盖200–1000m，次轮220–1000m；不宣称覆盖2.4km全隧道或该范围内任意体积/起点。原七站/400m、任意连续1km最多三站、800m真实三维量程、LOS及σ=.10m均保持。
+
+### 按目标逐项核查
+
+| 要求 | 结果及实际证据 |
+|---|---|
+| 首次未知基站同图估计 | PASS：仅加载无坐标installation文件；原始GPU VGICP/IMU/TA/AA与X/V/B/A/L同图，未读取surveyed/oracle坐标或真值位姿 |
+| 延迟初始化及跨窗口信息 | PASS（声明实例）：站3在190.4秒确认，193条TA及190条历史AA一次移交；候选或轨迹结果不作为独立位姿先验；站4分支未决，5/6未初始化 |
+| 地图导出与相关信息 | PASS：四个Point3＋共享L，共14维联合高斯边缘协方差；车辆被联合边缘化，保留A–A/A–L交叉项；声明局部单峰近似，未认证统计一致性 |
+| 独立复用 | PASS（声明路线）：指定首轮地图字节完全一致地加载；不同起点/朝向及独立噪声；实际初始化并连续定位，无二次起点对齐 |
+| 旧信息不重复 | PASS：首轮安装因子始终1；复用联合地图先验始终1、surveyed先验0、旧安装观测因子0；新会话原始观测是新数据 |
+| 同输入ON/OFF及已知地图参照 | PASS：同原始话题哈希/数量、同二进制和LIO设置；复用/OFF严格配对；已知地图参照明确使用不同地图先验/启动设置，不称三者仅模式不同 |
+| 首轮TA-only/TA+AA | PASS（对照执行）：同原包/二进制，配置仅use_aa不同；AA关闭后接受/摘要均0；结果不强求AA优于所有指标 |
+| 地图往返/损坏/泄漏拒绝 | PASS：联合代价与信息往返、非SPD/多解/外参冲突/仿真命令来源拒绝；安装接口拒绝坐标和未经授权先验 |
+| 实时、连续、有界、状态诚实 | PASS（本硬件/路线）：1×GPU、窗口101，完整输出/资源见下表；无TRACKING；失效后恢复未认证保持降级 |
+| 高度精度与严格统计一致性 | FAIL/后移：高度误差和局部过度自信明确保留，不属于本阶段硬完成门槛 |
+| 任意启动、完整无人机、弯道/全隧道、rolling、真实Mid-360、自动恢复、部署认证 | 未验证；不以snapshot或本次局部规范代替 |
+
+### 冻结运行与数字
+
+正式数字均绑定二进制SHA256 `85974a6cef93b3207957930992e04f10850e3724495d9b1044dbaa318c6ef8bb`（生产算法226f3a5）。源码/配置/依赖/原始输入及产物SHA256在[完整证据JSON](phase3_representative_evidence.json)及各run manifest中；运行器均使用480秒墙钟总上限和既有无进度保护，无无限重试。
+
+| 用途 | run（均在log/） | 轴/横/高RMSE m | 首次输出stamp | 输出状态 |
+|---|---|---|---|---|
+| 首轮TA+AA与导出 | 20261022T160635Z_994 | .02305/.05474/1.17993 | 52.5 | 3082 DEGRADED，3 LOST |
+| 独立地图复用 | 20261022T162059Z_880 | .01910/.05285/1.03406 | 19.8 | 3410 DEGRADED，2 LOST |
+| 同输入已知地图参照 | 20261022T162714Z_380 | .02172/.04157/.13990 | 20.0 | 3408 DEGRADED，2 LOST |
+| 同输入LIO-only | 20261022T161447Z_132 | 配对见下文；明显失效 | 3.1 | 仅基线，不作融合有效性唯一证据 |
+| 首轮TA-only | 20261022T163326Z_401 | .02522/.07177/1.42391 | 44.7 | 3160 DEGRADED，3 LOST |
+
+复用/OFF共同3412帧，轴/横/高RMSE分别(.01910,.05285,1.03406)m与(1284.729,20.220,25.270)m。三方共同3410帧的完整数值也保留于JSON；不得混用OFF全部3579帧统计。既有场景退化区与本路线交集x=300–1000m，完整曲线和200–400/400–800/800–1000分段都保留，未挑选最佳区间。
+
+有效性不只依赖OFF更差：复用自身最大轴/横误差.05594/.08798m，最大高度误差1.95673m；扣除真实运动后的最大相邻分轴误差变化.01502/.03476/.06813m。高度在后半程增长并在约2m附近趋稳，已知地图参照高度最大.38850m、RMSE.13990m明显更好。**这支持地图高度弱约束是主要限制，不支持精确高度/净空认证；不能把原始图里没有健康标签当作精度问题已解决。** 复用姿态P95 .18571°，速度xyz RMSE .01629/.00384/.00714m/s；首轮速度RMSE .01797/.00407/.01234m/s。参照的完整姿态/速度与分段指标见JSON。
+
+![第二轮同输入分轴误差；OFF明确使用独立纵轴尺度](figures/phase3_second_run_errors.png)
+
+首轮在线3085/3600输入帧，初始化等待51.5s；初始化后全部预期时刻有输出，其中3082帧非LOST。复用3412/3600帧，初始化等待18.8s；初始化后3410/3412非LOST，最大发布间隔.1s。启动期间无伪造里程计，不隐藏等待分母。首轮处理/端到端P95=35.00/42.11ms，复用34.11/39.90ms，已知参照34.95/40.58ms。RSS采样峰值首轮648088KiB、复用338540KiB；车辆窗口最多101，复用IMU/cloud/UWB队列峰值2/0/1。显存设备采样峰值首轮2049507328bytes、复用1798373376bytes，包含设备其他使用者，不全部归本进程。
+
+### 地图内容、范围与高度限制
+
+指定地图为 `log/20261022T160635Z_994/export/map/calibrated_map.json`，SHA256 `6ffc91bf57fe1a5aaf0e380f7b79e694ddf7a380229597d07359f6443fa8afe9`，map ID为`20261022T160635Z_994_session_1`。复用输入副本的字节哈希完全一致，没有按第二次结果挑选其他首轮地图。
+
+校准四站的分轴地图RMSE .00799/.10092/1.96758m。站0/1/2/3高度误差分别−.243/.174/1.324/3.694m；对应局部高度标准差约.394/.168/.569/1.084m，明显不能当作经过校准的全球置信度。相邻已初始化基站距离误差约.00301/−.00351/.01343m，估计纵向顺序为0→1→2→3；该顺序由估计坐标得到，不是从ID或400m间隔输入。站4已收到TA但有限分支未确认、减速后基线不足；5/6未获得可初始化的TA几何。它们保持not_initialized，不虚构坐标。
+
+地图仍为PROVISIONAL_INITIALIZED、deployment_validated=false，包含完整A/L联合协方差、变量顺序/单位/坐标规范、来源身份及安装资料已吸收标记。单个JSON的estimated_vehicle_bounds只指其最后保留车辆窗口，并非全路线有效区。新增**只供评估的**`export/map/representative_validation.json`以地图SHA绑定首轮/复用轨迹的观测范围和限制；它不作为估计器先验，也不把包围盒当任意可行体积认证。实际已验证条件是两条冻结轨迹及其共同直隧道安装参考，不能推广到整条2.4km、任意空间起点或飞行净空。
+
+首轮位置NEES均值7.64、95%覆盖61.62%；复用8.14、58.50%，严格统计一致性未通过/后移。五个run的输出联合9D协方差逐样本有限、对称、正定，仅证明数值输出合同，不证明统计覆盖。失效记录不被新数据或计时器单独清除；本阶段没有独立自动恢复认证。
+
+### AA有限对照与生命周期
+
+TA+AA/TA-only同一首轮360秒输入、同二进制，配置去掉use_aa后逐值一致。TA+AA接受1080条AA，测量身份全部唯一、图累计数一致；TA-only禁用2160条原始AA，AA接受与摘要因子均0。TA+AA新站3在190.4秒入图，TA-only在240.1秒入图；首轮启动等待反而为51.5s/43.7s。地图高度RMSE 1.96758/2.00122m、车辆高度RMSE1.17993/1.42391m：本例AA提前扩图、精度变化有限，不宣称普遍收益或统计提升。
+
+关键修复是未知端点AA不随车辆窗口淘汰：AA没有车辆键，候选使用精确高斯摘要，正式提交仍按原始身份一次吸收。TA只能使用仍有状态的窗口；不将旧LIO轨迹作为新独立观测。未知AA原始缓存仍有6000条硬上限，满则明确失败；本例待定记录峰值982。长期不可初始化会触及此上限，长时部署需进一步验证/改进，不能声称无限运行资源已认证。
+
+### 可复制命令
+
+```bash
+cd /home/dev/code/ws_tunnel/src/liuo_tunnel
+./tools/build.sh
+export LIUO_RUN_ROOT="$PWD/log"
+# 首轮：只加载无坐标安装记录。地图自动输出到打印run路径/export/map/calibrated_map.json。
+./tools/run.sh --replay log/20261022T154821Z_851 \
+  --config packages/liuo_tunnel/config/phase3_self_calibrate.json \
+  --installation packages/liuo_tunnel/config/installation/straight_simulated.json \
+  --formal --wall-timeout 480
+# 独立次轮：下方使用本报告实际首轮地图；复现新首轮时替换此路径。
+./tools/run.sh --replay log/20261022T161447Z_132 \
+  --config packages/liuo_tunnel/config/phase3_reuse_map.json \
+  --map log/20261022T160635Z_994/export/map/calibrated_map.json \
+  --formal --wall-timeout 480
+# 同输入OFF与已知地图参照。
+./tools/run.sh --replay log/20261022T161447Z_132 \
+  --config packages/liuo_tunnel/config/phase2_continuous_walls_off.json \
+  --formal --wall-timeout 480
+./tools/run.sh --replay log/20261022T161447Z_132 \
+  --config packages/liuo_tunnel/config/phase3_known_map_reference.json \
+  --map packages/liuo_tunnel/config/maps/surveyed_map_installation.json \
+  --formal --wall-timeout 480
+# 首轮有限AA消融。
+./tools/run.sh --replay log/20261022T154821Z_851 \
+  --config packages/liuo_tunnel/config/phase3_self_calibrate_ta_only.json \
+  --installation packages/liuo_tunnel/config/installation/straight_simulated.json \
+  --formal --wall-timeout 480
+python3 tools/compare_runs.py log/20261022T162059Z_880 log/20261022T161447Z_132 --strict-estimator-settings
+```
+
+需要重新生成输入时，分别使用`--duration 360 --seed 0 --sim-start 200 0 1.2 0 --calibration-route --capture`和`--duration 360 --seed 1 --sim-start 220 .2 1.6 1.5707963267948966 --calibration-route --capture`，配OFF配置及`--formal --wall-timeout 480`。重生成不冒充原包严格配对。首轮原包72000 IMU/clock、3600点云、26614 UWB；次轮72000 IMU/clock、3600点云、26685 UWB。来源run须保留，离线评估从首轮声明规范建立固定世界变换，不使用第二起点或全轨迹最佳拟合。
+
+### 验证、提交与保留失败
+
+关键源码提交：2525d18（联合地图导出）、f5a8cae（安全来源与固定首轮评估规范）、50f9c77（延迟新站/相关安装子集替换）、0ab9b82（避免常数背景成本提前停止）、226f3a5（保留静态未知AA）。来源IAP fbccae16802402d7300bb817d2627f86e6a495df及第三方版本/许可证见THIRD_PARTY_NOTICES.md；不修改或运行依赖IAP。
+
+复用已通过且未受影响的无坐标安装/候选、Schur联合边缘化、地图代价/信息往返、固定评估规范、轨迹导数和运行保护测试；新增/相关检查日志为`phase3-delayed-installation-tests.txt`、`phase3-extension-absolute-tests.txt`、`phase3-static-aa-retention-tests.txt`、`phase3-final-map-interface-tests.txt`。五个run的产物哈希、数值协方差、原始接受身份、实际先验数量和地图副本完整性见`log/phase3-completion-integrity-audit.json`及证据JSON。汇总脚本位于`log/phase3_final_evidence.py`；不把聚合器退出码当作有效性证明。
+
+最终小修正将首轮轨迹map_id与导出地图ID统一：原实现初始化后仍写PENDING_SELF_CALIBRATION，历史源run保持原值，以其export地图/来源身份为准；复用run原本已正确引用该地图ID。修正仅日志标签，独立三包构建通过（phase3-final-map-label-build.txt），不改估计图/数值，不将旧run伪称新二进制运行，也不重复未受影响的全路线。
+
+所有旧失败继续保留。包括启动参数解析失败、扩图未决、候选数值/边缘化试验和20261022T154040Z_643的60秒初始化超时；后者一次不改配置的受控复跑成功，说明启动时序仍敏感，不认证普遍启动可靠性。下文是按时间保留的开发记录，其中“尚未实现/未完成”仅描述当时状态，不覆盖本节冻结结论。
+
+
+## 历史开发记录
 
 ## 起始核查与当前实现
 

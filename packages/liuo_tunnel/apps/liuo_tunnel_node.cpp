@@ -655,10 +655,13 @@ private:
     std::ifstream identity_file(logs.run_dir() / "metadata/manifests/map_source_identity.json");
     if (!identity_file) throw std::runtime_error("MAP_EXPORT_INPUT_IDENTITY_MISSING");
     const auto identity = nlohmann::json::parse(identity_file);
+    // First export precedes the first published estimate, including after a
+    // session reset. Use the same identity for trajectory rows and map bytes.
+    map.id = logs.run_dir().filename().string()+"_session_"+std::to_string(session);
     nlohmann::json document = {
       {"schema_version", "liuo_joint_map_v1"}, {"frame", "map"}, {"anchor_units", "m"},
       {"reference_units", {"mrad", "m"}}, {"reference_origin_m", {0,0,0}},
-      {"map_id", logs.run_dir().filename().string()+"_session_"+std::to_string(session)},
+      {"map_id", map.id},
       {"coordinate_gauge", "first IMU gravity alignment; initial translation zero; yaw is coordinate convention"},
       {"status", "PROVISIONAL_INITIALIZED"}, {"deployment_validated", false},
       {"unresolved_branches", nlohmann::json::array()},
