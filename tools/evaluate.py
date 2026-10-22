@@ -219,6 +219,7 @@ def evaluate(run, output_dir=None):
     sections = {name: [] for name in ["entrance", "transition", "degenerate"]}
     attitude = []
     errors = []
+    axis_errors, velocity_errors = [], []
     for r in run_world_estimates(run, trajectory, truth, mode):
         key = (est_sessions.index(r["session"]), round(float(r["stamp"]), 5))
         q = truth_map.get(key)
@@ -238,6 +239,8 @@ def evaluate(run, output_dir=None):
         )
         sections[name].append((e, abs(dx)))
         errors.append(e)
+        axis_errors.append([dx, dy, dz])
+        velocity_errors.append([float(r[k]) - float(q[k]) for k in ["vx", "vy", "vz"]])
         # Old capture schema has identity truth; new starts record full orientation.
         dot = sum(
             float(r[k]) * float(q.get(k, 1 if k == "qw" else 0))
@@ -411,6 +414,11 @@ def evaluate(run, output_dir=None):
         "position_rmse_m": (
             math.sqrt(statistics.mean(e * e for e in errors)) if errors else None
         ),
+        "axis_rmse_m": [math.sqrt(statistics.mean(v[i] ** 2 for v in axis_errors)) for i in range(3)] if axis_errors else None,
+        "velocity_axis_rmse_mps": [math.sqrt(statistics.mean(v[i] ** 2 for v in velocity_errors)) for i in range(3)] if velocity_errors else None,
+        "first_output_stamp": float(trajectory[0]["stamp"]) if trajectory else None,
+        "initialization_wait_s": float(trajectory[0]["stamp"]) - float(truth[0]["stamp"]) if trajectory and truth else None,
+        "states": {state: sum(r["state"] == state for r in trajectory) for state in sorted(set(r["state"] for r in trajectory))},
         "optimized_output_observed": bool(trajectory),
         "attitude_p95_deg": quantile(attitude, 0.95),
         "processing_p95_ms": quantile(elapsed, 0.95),
@@ -441,7 +449,7 @@ def evaluate(run, output_dir=None):
         ),
         "rolling_deskew": "NOT_VALIDATED",
         "accuracy_thresholds": (
-            "Reference targets only; exceedances do not block phase two. PASS is not effectiveness or stage acceptance."
+            "Reference targets only; exceedances do not block the representative stage. PASS is not effectiveness or stage acceptance."
             if phase2
             else "Fused-navigation thresholds not applied to phase-one LIO observation baseline."
         ),

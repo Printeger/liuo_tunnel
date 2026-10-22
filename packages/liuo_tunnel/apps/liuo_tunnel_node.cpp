@@ -328,7 +328,7 @@ private:
     const std::string& anchor_key = "",
     double residual = NAN,
     const std::string& category = "NONE") {
-    if (fuse && reason != "ACCEPT_TA" && reason != "ACCEPT_AA" && reason != "ORACLE_AA_CHECK" && reason != "CLOCK_RESET" && reason != "SHUTDOWN_PENDING" && reason != "PENDING_CALIBRATION") {
+    if (fuse && reason != "ACCEPT_TA" && reason != "ACCEPT_AA" && reason != "ORACLE_AA_CHECK" && reason != "CLOCK_RESET" && reason != "SHUTDOWN_PENDING" && reason != "PENDING_CALIBRATION" && reason != "AA_ABLATION_DISABLED") {
       ++rejected_total;
       last_rejected = now().seconds();
       last_rejection = reason;
@@ -391,9 +391,11 @@ private:
       stationary_seed_ranges[o.b].add(o.range, o.variance);
   }
   std::optional<gtsam::Values> solve_bootstrap_branches(double t, const gtsam_points::LevenbergMarquardtExtParams& params) {
-    if (t - first_imu >= (self_calibrate ? 60. : 20.)) {
+    const double bootstrap_timeout = cfg.at("uwb").value("bootstrap_timeout_s", self_calibrate ? 60. : 20.);
+    if (!std::isfinite(bootstrap_timeout) || bootstrap_timeout <= 0 || bootstrap_timeout > 60.) throw std::invalid_argument("BOOTSTRAP_TIMEOUT_MUST_BE_IN_0_60_SECONDS");
+    if (t - first_imu >= bootstrap_timeout) {
       failure_context = "INITIALIZATION_AMBIGUOUS_TIMEOUT";
-      throw std::runtime_error("finite bootstrap search did not certify a branch within 20 s");
+      throw std::runtime_error("finite bootstrap search did not certify a branch within " + std::to_string(bootstrap_timeout) + " s");
     }
     if (!bootstrap_batch && bootstrap_last_attempt >= 0 && t < bootstrap_last_attempt + 2. - 1e-8) return std::nullopt;
     if (!bootstrap_batch) bootstrap_last_attempt = t;
@@ -776,6 +778,7 @@ private:
     for (const auto& frame : frames) poses[frame.t] = X(frame.id);
     poses[t] = X(count);
     for (const auto& observation : range_queue.take_until(t)) {
+      if (observation.a_type == 1 && !cfg.at("uwb").value("use_aa", true)) { log_range(observation, "AA_ABLATION_DISABLED"); continue; }
       auto bracket = count == 0
           ? static_alignment_bracket(poses, observation.stamp, first_imu, first_imu + cfg.at("odometry").at("initialization_s").get<double>())
           : range_bracket(poses, observation.stamp);
@@ -800,6 +803,7 @@ private:
     for (const auto& frame : frames) poses[frame.t] = X(frame.id);
     poses[t] = X(count);
     for (const auto& o : range_queue.take_until(t)) {
+      if (o.a_type == 1 && !cfg.at("uwb").value("use_aa", true)) { log_range(o, "AA_ABLATION_DISABLED"); continue; }
       auto bracket = count == 0 && cfg.at("uwb").value("use_static_alignment_ranges", false)
                        ? static_alignment_bracket(poses, o.stamp, first_imu, first_imu + cfg.at("odometry").at("initialization_s").get<double>())
                        : range_bracket(poses, o.stamp);
