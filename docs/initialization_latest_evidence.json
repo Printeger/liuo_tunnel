@@ -1,0 +1,120 @@
+[
+  {
+    "run": "20261022T040638Z_195",
+    "source": {
+      "git_commit": "3604bbf039f7945e122ef4eb8a6a1c2d3656c343",
+      "git_worktree_clean": true
+    },
+    "samples": 80,
+    "first_output_stamp": "13",
+    "axis_rmse_m": {
+      "x": 0.032599281746844296,
+      "y": 0.055450606859995866,
+      "z": 0.42600912006487224
+    },
+    "final_error_m": {
+      "x": -0.03950250043669712,
+      "y": 0.05258486463610703,
+      "z": -0.29199725850268365
+    },
+    "states": {
+      "DEGRADED": 80
+    },
+    "frozen_input_verified": true,
+    "evidence_sha256": {
+      "profiling/bootstrap_branches.csv": "90c806d437f549df083f2bce1b98b67cfe51343a412b8ca616763abce57ade12",
+      "export/analysis/report.json": "0f80d1eef76eddc714f814553943ddcc18eabfb5259bd7795f757e1bc411991b",
+      "metadata/config/phase1.json": "986132dfb7decbaf7fede25bb2b4199a72f206a38d9e2c303fdf1fd921bcafd0",
+      "metadata/config/map.json": "68eb6929c3268a0087e390840f47091659f9e50d9eca5cb9b94af9ecffc118c5"
+    }
+  },
+  {
+    "run": "20261022T040737Z_906",
+    "source": {
+      "git_commit": "3604bbf039f7945e122ef4eb8a6a1c2d3656c343",
+      "git_worktree_clean": true
+    },
+    "samples": 65,
+    "first_output_stamp": "14.5",
+    "axis_rmse_m": {
+      "x": 0.07411726829010945,
+      "y": 0.06461729228509447,
+      "z": 0.2891510734033676
+    },
+    "final_error_m": {
+      "x": -0.05987916732806298,
+      "y": -0.07434264804054047,
+      "z": 0.011360913611718981
+    },
+    "states": {
+      "DEGRADED": 65
+    },
+    "frozen_input_verified": true,
+    "evidence_sha256": {
+      "profiling/bootstrap_branches.csv": "29adace59948df5d8fe493c892ff2dd08be3bab6807feac50ca12b5e143ab5b5",
+      "export/analysis/report.json": "8f472bfe4f489d0fc2f1c24ef207ef9823622d3fc9819ba8e7bea9ba82b3db20",
+      "metadata/config/phase1.json": "986132dfb7decbaf7fede25bb2b4199a72f206a38d9e2c303fdf1fd921bcafd0",
+      "metadata/config/map.json": "68eb6929c3268a0087e390840f47091659f9e50d9eca5cb9b94af9ecffc118c5"
+    }
+  },
+  {
+    "run": "20261022T040502Z_331",
+    "source": {
+      "git_commit": "3604bbf039f7945e122ef4eb8a6a1c2d3656c343",
+      "git_worktree_clean": true
+    },
+    "samples": 82,
+    "first_output_stamp": "12.8",
+    "axis_rmse_m": {
+      "x": 0.04020814191527815,
+      "y": 0.05472574307125781,
+      "z": 0.333145569137253
+    },
+    "final_error_m": {
+      "x": -0.03201887626801181,
+      "y": 0.05240221701092673,
+      "z": 0.48000732921047895
+    },
+    "states": {
+      "DEGRADED": 82
+    },
+    "frozen_input_verified": true,
+    "evidence_sha256": {
+      "profiling/bootstrap_branches.csv": "cb2a149b950cda2f005fbf2060ebc88f21dc728dc07c26231accdf2da886486f",
+      "export/analysis/report.json": "8b6436fa1ddaa44960f0905e307ff98693378ff71f21e7a6737a3be963172715",
+      "metadata/config/phase1.json": "986132dfb7decbaf7fede25bb2b4199a72f206a38d9e2c303fdf1fd921bcafd0",
+      "metadata/config/map.json": "68eb6929c3268a0087e390840f47091659f9e50d9eca5cb9b94af9ecffc118c5"
+    }
+  },
+  {
+    "run": "20261022T041540Z_602",
+    "source": {
+      "git_commit": "2e8f424920465bf89126952a158a228de530d8e5",
+      "git_worktree_clean": true
+    },
+    "samples": 4882,
+    "first_output_stamp": "12.8",
+    "axis_rmse_m": {
+      "x": 0.04525206499266484,
+      "y": 1.0792604142300857,
+      "z": 4.108283810989406
+    },
+    "final_error_m": {
+      "x": -0.005358796599011839,
+      "y": -2.102920661128368,
+      "z": 3.4978089881548744
+    },
+    "states": {
+      "DEGRADED": 104,
+      "LOST": 13,
+      "TRACKING": 4765
+    },
+    "frozen_input_verified": false,
+    "evidence_sha256": {
+      "profiling/bootstrap_branches.csv": "fd4135e5c20f09ea5d100dd9a99e4b1a870f46518bc53a9e57afd020bbb97368",
+      "export/analysis/report.json": "116ec2667286ed1808d46b92af9729d0726f1684bdbfa144809de61f934f7328",
+      "metadata/config/phase1.json": "4e08f690dad895a3c8fe623ec55b7ef3030ffe7e5c708e2fcc659913c71c95e4",
+      "metadata/config/map.json": "68eb6929c3268a0087e390840f47091659f9e50d9eca5cb9b94af9ecffc118c5"
+    }
+  }
+]
