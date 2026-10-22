@@ -197,6 +197,7 @@ private:
     pending_calibration_ranges.clear();
     calibration_prepared = false;
     calibration_previous.reset();
+    bootstrap_idle_failure = nullptr;
     calibration_solved.clear();
     if (self_calibrate) { map.ids = installation_input->ids; map.means.clear(); }
     bootstrap_factors.resize(0);
@@ -475,6 +476,11 @@ private:
       std::string event = "SOLVED";
       bool done = false;
       try {
+        if (bootstrap_idle_failure) {
+          auto failure = bootstrap_idle_failure;
+          bootstrap_idle_failure = nullptr;
+          std::rethrow_exception(failure);
+        }
         if (!batch.optimizer) {
           const auto first = bootstrap_branches[i].at<gtsam::Pose3>(X(0));
           auto initial = transform_bootstrap_seed(batch.initial, X(0), first);
@@ -788,6 +794,14 @@ private:
     aa_removed.clear();
   }
   void drain() {
+    if (clouds.empty() && self_calibrate && bootstrap_batch && bootstrap_batch->optimizer &&
+        !bootstrap_batch->optimizer->finished() && !bootstrap_idle_failure) {
+      // One original LM damping attempt on the existing frozen snapshot.
+      // No graph mutation, new observations or second initialization pathway.
+      try { bootstrap_batch->optimizer->advance(); }
+      catch (...) { bootstrap_idle_failure = std::current_exception(); }
+      return;
+    }
     while (!clouds.empty()) {
       double t = rclcpp::Time(clouds.front()->header.stamp).seconds();
       if (latest_imu < t + 1e-8) return;
@@ -1496,6 +1510,7 @@ private:
     std::unique_ptr<SteppedBootstrapLM> optimizer;
   };
   std::unique_ptr<BootstrapBatch> bootstrap_batch;
+  std::exception_ptr bootstrap_idle_failure;
   double bootstrap_last_attempt = -1;
   std::optional<gtsam::Pose3> bootstrap_previous_winner;
   gtsam::FixedLagSmoother::KeyTimestampMap bootstrap_times;

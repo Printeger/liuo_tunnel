@@ -15,6 +15,7 @@ public:
     optimization_start_time_ = std::chrono::high_resolution_clock::now();
     initTime();
   }
+  bool finished() const { return complete_; }
   bool advance() {
     if (complete_) return true;
     double before = error();
