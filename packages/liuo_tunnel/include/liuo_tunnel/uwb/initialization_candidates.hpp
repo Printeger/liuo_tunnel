@@ -18,7 +18,7 @@ struct RangeSeedResult {
   std::vector<gtsam::Point3> tags;
   std::string reason;
 };
-inline RangeSeedResult intersect_range_seeds(const std::array<RangeSeedSphere, 3>& spheres) {
+inline RangeSeedResult intersect_range_seeds(const std::array<RangeSeedSphere, 3>& spheres, bool allow_nonintersecting_proposals = false) {
   for (const auto& s : spheres)
     if (!s.anchor.allFinite() || !std::isfinite(s.radius) || s.radius <= 0) return {{}, "INVALID_SEED_SPHERE"};
   const auto& a = spheres[0].anchor;
@@ -37,8 +37,18 @@ inline RangeSeedResult intersect_range_seeds(const std::array<RangeSeedSphere, 3
   const double z2 = r0 * r0 - x * x - y * y;
   // Roundoff tolerance only; no noise inflation or clipped physical likelihood.
   const double tolerance = 1e-12 * std::max(1., r0 * r0 + x * x + y * y);
-  if (z2 < -tolerance) return {{}, "SEED_SPHERES_DO_NOT_INTERSECT"};
   const gtsam::Point3 center = a + x * ex + y * ey;
+  if (z2 < -tolerance) {
+    if (!allow_nonintersecting_proposals) return {{}, "SEED_SPHERES_DO_NOT_INTERSECT"};
+    // A noisy, jointly uncertain map need not intersect three measured spheres.
+    // Reflect the negative radicand only to choose a finite numerical search
+    // scale on BOTH sides of the radical plane. These are not intersections,
+    // feasible poses, likelihood modifications or a uniqueness certificate.
+    // Joint A/L uncertainty and every raw observation remain in the solver.
+    const double search_scale = std::sqrt(-z2);
+    return {{gtsam::Point3(center + search_scale * ez), gtsam::Point3(center - search_scale * ez)},
+            "NONINTERSECTING_MIRROR_PROPOSALS_NOT_SOLUTIONS"};
+  }
   if (z2 <= tolerance) return {{center}, "TANGENT_SEED_SPHERES"};
   const double z = std::sqrt(z2);
   return {{gtsam::Point3(center + z * ez), gtsam::Point3(center - z * ez)}, "MIRROR_SEED_PAIR"};

@@ -422,7 +422,8 @@ private:
         status("INITIALIZING", "INSUFFICIENT_SEED_GEOMETRY", t);
         return std::nullopt;
       }
-      const auto tags = intersect_range_seeds(selected);
+      const auto tags = intersect_range_seeds(selected, reuse_map);
+      logger->info("bootstrap seed strategy={} proposals={}", tags.reason, tags.tags.size());
       if (tags.tags.empty()) {
         status("INITIALIZING", tags.reason, t);
         return std::nullopt;

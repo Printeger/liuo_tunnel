@@ -448,3 +448,22 @@ TEST(InitializationCandidates, MilliradianLineCoordinatesAvoidObservedPivotScale
   EXPECT_TRUE(gtsam::choleskyPartial(factored, 2));
   EXPECT_LT((P * scaled.inverse() * P.transpose() - H.inverse()).norm(), 1e-12);
 }
+
+// Actual independent reuse input, map export 20261022T140915Z_798,
+// stationary range means from 20261022T141224Z_012 (39 samples per anchor).
+TEST(InitializationCandidates, UncertainMapNonintersectionRetainsFiniteSearch) {
+  std::array<RangeSeedSphere, 3> input{{
+    {{-200.03045512147105, 2.4187071017307664, 1.901784427815304}, 219.85162991174903},
+    {{200.00553151594167, -2.5598898641866845, 3.048282937511212}, 180.19665722327616},
+    {{600.000231078469, -1.8360578816784716, -1.6466783019381377}, 580.1463911391492}}};
+  EXPECT_EQ(intersect_range_seeds(input).reason, "SEED_SPHERES_DO_NOT_INTERSECT");
+  const auto proposals = intersect_range_seeds(input, true);
+  ASSERT_EQ(proposals.tags.size(), 2);
+  EXPECT_EQ(proposals.reason, "NONINTERSECTING_MIRROR_PROPOSALS_NOT_SOLUTIONS");
+  for (const auto& tag : proposals.tags) {
+    EXPECT_TRUE(tag.allFinite());
+    // These are deliberately NOT exact intersections or pose observations.
+    EXPECT_GT(std::abs((tag-input[0].anchor).norm()-input[0].radius), .01);
+  }
+  EXPECT_GT((proposals.tags[0]-proposals.tags[1]).norm(), 1.);
+}
