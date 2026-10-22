@@ -671,6 +671,7 @@ private:
       {"absorbed_information", "all accepted first-session raw factors up to measurement_stamp; do not reload installation or first-run ranges as independent observations"}
     };
     CalibratedMap::parse(document, cfg.at("sensors")).save_atomic(logs.export_path("map/calibrated_map.json"));
+    map_export_session = session;
   }
   bool variable_anchors() const { return reuse_map || map.surveyed() || (self_calibrate && calibration_prepared); }
 
@@ -1405,7 +1406,7 @@ private:
     }
     state = gtsam::NavState(smoother->calculateEstimate<gtsam::Pose3>(X(count)), smoother->calculateEstimate<gtsam::Vector3>(V(count)));
     bias = smoother->calculateEstimate<gtsam::imuBias::ConstantBias>(B(count));
-    if (self_calibrate && count % 10 == 0) export_calibrated_map(t);
+    if (self_calibrate && (count % 10 == 0 || map_export_session != session)) export_calibrated_map(t);
     if (!state.pose().matrix().allFinite() || !state.velocity().allFinite()) throw std::runtime_error("nonfinite optimized state");
     failure_context = "COVARIANCE_FAILED";
     const auto covariance_start = std::chrono::steady_clock::now();
@@ -1563,6 +1564,7 @@ private:
   std::string backend, gpu_name;
   bool fuse = false, bootstrapped = true, self_calibrate = false, calibration_prepared = false, reuse_map = false, bounded_bootstrap_work = false;
   std::optional<CalibratedMap> calibrated_map;
+  size_t map_export_session = 0;
   std::optional<gtsam::Values> calibration_previous;
   std::set<size_t> calibration_solved;
   std::optional<InstallationInput> installation_input;

@@ -57,7 +57,7 @@ def compare(runs, strict_estimator_settings=False):
     ]
     settings_equal = all(s == settings[0] for s in settings)
     binaries_equal = all(b == binaries[0] for b in binaries)
-    fused_settings = [dict(c["uwb"]) for c in configs if c["uwb"]["mode"] == "fuse"]
+    fused_settings = [dict(c["uwb"]) for c in configs if c["uwb"]["mode"] in ("fuse", "reuse_map", "self_calibrate")]
     fused_equal = not fused_settings or all(c == fused_settings[0] for c in fused_settings)
     if strict_estimator_settings and not (settings_equal and binaries_equal and fused_equal):
         raise ValueError(
@@ -72,13 +72,15 @@ def compare(runs, strict_estimator_settings=False):
         truth_rows = rows(run / "export/simulation/truth.csv")
         truth = keyed(truth_rows)
         config = load(run / "metadata/config/phase1.json")
-        fused = config["uwb"]["mode"] == "fuse"
+        fused = config["uwb"]["mode"] in ("fuse", "reuse_map", "self_calibrate")
         trajectory = keyed(run_world_estimates(run, list(trajectory.values()), truth_rows, config["uwb"]["mode"]))
-        error, axial, attitude = [], [], []
+        error, axial, attitude, component_errors, velocity_errors = [], [], [], [], []
         for key in sorted(common):
             p, q = trajectory[key], truth[key]
             d = [float(p[k]) - float(q[k]) for k in ["x", "y", "z"]]
             error.append(sum(v * v for v in d))
+            component_errors.append(d)
+            velocity_errors.append([float(p[k])-float(q[k]) for k in ["vx", "vy", "vz"]])
             axial.append(abs(d[0]))
             dot = sum(
                 float(p[k]) * float(q.get(k, 1 if k == "qw" else 0))
@@ -91,8 +93,10 @@ def compare(runs, strict_estimator_settings=False):
             {
                 "run_id": run.name,
                 "mode": config["uwb"]["mode"],
-                "map_id": load(run / "metadata/config/map.json")["map_id"] if fused else None,
+                "map_id": load(run / ("export/map/calibrated_map.json" if config["uwb"]["mode"] == "self_calibrate" else "metadata/config/map.json"))["map_id"] if fused else None,
                 "common_position_rmse_m": math.sqrt(statistics.mean(error)),
+                "common_axis_rmse_m": [math.sqrt(statistics.mean(e[i]**2 for e in component_errors)) for i in range(3)],
+                "common_velocity_axis_rmse_mps": [math.sqrt(statistics.mean(e[i]**2 for e in velocity_errors)) for i in range(3)],
                 "common_axial_p95_m": quantile(axial),
                 "common_axial_max_m": max(axial),
                 "common_attitude_p95_deg": quantile(attitude),
@@ -116,7 +120,7 @@ def compare(runs, strict_estimator_settings=False):
         "common_samples": len(common),
         "common_first": min(common),
         "common_last": max(common),
-        "alignment": "ON map frame; OFF evaluation-only initial translation/yaw datum, no fitted trajectory transform",
+        "alignment": "Known-map ON in world; calibrated modes use fixed first-calibration datum; OFF uses its initial datum; no fitted transforms",
         "results": results,
     }
 
