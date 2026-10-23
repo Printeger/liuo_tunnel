@@ -35,7 +35,7 @@ def description(root, reuse):
         return [RegisterEventHandler(OnProcessExit(target_action=process, on_exit=exited)), process]
 
     defaults = dict(duration='360', seed='1' if reuse else '0', wall_timeout='600', rviz='true', capture='false', formal='false', replay='',
-                    sim_start='220 0.2 1.6 1.5707963267948966' if reuse else '200 0 1.2 0')
+                    sim_start='0 0 1.2 0')
     if reuse:
         defaults['map'] = ''
     return LaunchDescription([DeclareLaunchArgument(k, default_value=v) for k, v in defaults.items()] + [OpaqueFunction(function=start)])

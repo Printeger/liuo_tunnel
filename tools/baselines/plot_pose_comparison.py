@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Plot recorded body poses, without whole-trajectory fitting or estimator reruns."""
+import argparse
 import hashlib
 import json
 
@@ -8,12 +9,17 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.spatial.transform import Rotation, Slerp
+from pathlib import Path
 
 from evaluate_ape import ROOT, NAMES, load
 
 
 def main():
-    spec = json.loads((ROOT / 'tools/baselines/runs.json').read_text())
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--runs', type=Path, default=ROOT / 'tools/baselines/runs.json')
+    parser.add_argument('--prefix', default='pose_four')
+    args = parser.parse_args()
+    spec = json.loads(args.runs.read_text())
     truth_path = ROOT / spec['source'] / 'export/simulation/truth.csv'
     truth = load(truth_path)
     truth_rot = Slerp(truth[:, 0], Rotation.from_quat(truth[:, 4:8]))
@@ -65,7 +71,7 @@ def main():
             axes[-1].set_xlabel('ROS measurement stamp [s]')
             fig.suptitle(title)
             fig.tight_layout()
-            fig.savefig(out / f'pose_four_{mode}_{quantity}.png')
+            fig.savefig(out / f'{args.prefix}_{mode}_{quantity}.png')
             plt.close(fig)
         fig = plt.figure(figsize=(12, 8))
         ax = fig.add_subplot(111, projection='3d')
@@ -81,9 +87,9 @@ def main():
         ax.legend(fontsize=9, loc='upper left')
         fig.suptitle(title + '\nUnequal axis scales for visibility; dots = first available output')
         fig.tight_layout()
-        fig.savefig(out / f'pose_four_{mode}_3d.png')
+        fig.savefig(out / f'{args.prefix}_{mode}_3d.png')
         plt.close(fig)
-    (ROOT / 'docs/pose_four_plot_metadata.json').write_text(json.dumps(dict(
+    (ROOT / f'docs/{args.prefix}_plot_metadata.json').write_text(json.dumps(dict(
         truth_path=str(truth_path.relative_to(ROOT)), truth_sha256=hashlib.sha256(truth_path.read_bytes()).hexdigest(),
         protocol='All recorded samples; native and first-pose only; no full-window fit; no scale; no estimator changes',
         rpy='body-to-reference rotation Rz(yaw) Ry(pitch) Rx(roll), degrees, unwrapped', methods=metadata), indent=2) + '\n')

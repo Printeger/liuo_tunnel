@@ -230,3 +230,13 @@ TEST(FirstHitLidarRenderer, ParallelRaysPreserveEveryHitAndBeamOrder) {
     std::cout << "render x=" << x << " serial_ms=" << a.stats.render_latency_ms << " parallel_ms=" << b.stats.render_latency_ms << std::endl;
   }
 }
+
+TEST(EmptyTunnel, ContainsOnlyBoundarySurfacesIncludingEntrance) {
+  for (int block : {0, 2, 50}) {
+    const auto points = liuo_tunnel_sim::rail_world(block);
+    ASSERT_FALSE(points.empty());
+    for (const auto& p : points) {
+      EXPECT_TRUE(std::abs(std::abs(p.y) - 3.05f) < 1e-5f || std::abs(p.z + .05f) < 1e-5f || std::abs(p.z - 5.05f) < 1e-5f);
+    }
+  }
+}

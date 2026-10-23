@@ -265,11 +265,11 @@ def main():
         rd._atomic_write_json(
             run / "metadata/config/scenario.json",
             {
-                "scene": "rail_tunnel_straight_v1",
+                "scene": "empty_tunnel_straight_v2",
                 "length_m": 2400,
                 "width_m": 6,
                 "height_m": 5,
-                "gauge_m": 1.435,
+                "geometry_features": {"rails": False, "sleepers": False, "cabinets": False},
                 "anchor_layout": LAYOUT,
                 "duration_s": args.duration,
                 "requested_rate": args.rate,

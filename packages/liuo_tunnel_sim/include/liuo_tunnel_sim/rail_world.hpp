@@ -21,17 +21,7 @@ inline pcl::PointCloud<pcl::PointXYZ> rail_world(int block) {
       p.emplace_back(xx, (iy + .5f) * .1f, -.05f);
       p.emplace_back(xx, (iy + .5f) * .1f, 5.05f);
     }
-    for (float yy : {-.7175f, .7175f}) p.emplace_back(xx, yy, .15f);
-    if (ix % 6 == 0)
-      for (int iy = -12; iy <= 12; iy++) p.emplace_back(xx, (iy + .5f) * .1f, .05f);
-    // Nonperiodic cabinets only at the entrance; adapted corridor surface generation from IAP demo11.
-    if (xx >= 0 && xx < 50)
-      for (int k = 0; k < 8; k++) {
-        auto box = cabinet_bounds(k);
-        if (xx >= box.first.x() && xx < box.second.x())
-          for (int iz = 3; iz < 23; iz++)
-            for (int iy = 22; iy < 30; iy++) p.emplace_back(xx, (k % 2 ? 1 : -1) * (iy + .5f) * .1f, (iz + .5f) * .1f);
-      }
+
   }
   return p;
 }

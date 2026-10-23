@@ -140,32 +140,10 @@ inline Eigen::Vector3d anchor(int i) {
 inline bool prefer_anchor_exchange(uint64_t slot) {
   return slot % 10 == 9;
 }
-inline std::pair<Eigen::Vector3d, Eigen::Vector3d> cabinet_bounds(int k) {
-  double center = 3.1 + k * 5.7 + std::sin(k * 1.7);
-  double lo = std::ceil((center - .4) * 10 - .5) * .1, hi = std::ceil((center + .4) * 10 - .5) * .1;
-  return {{lo, k % 2 ? 2.2 : -3.0, .3}, {hi, k % 2 ? 3.0 : -2.2, 2.3}};
-}
+// Empty rectangular corridor: no rails, sleepers or cabinet occluders.
+// The convex interior makes endpoint containment sufficient for LOS.
 inline bool line_of_sight(const Eigen::Vector3d& a, const Eigen::Vector3d& b) {
-  if (std::abs(a.y()) >= 3 || std::abs(b.y()) >= 3 || a.z() <= 0 || b.z() <= 0 || a.z() >= 5 || b.z() >= 5) return false;
-  // Slab intersections against the same voxel-aligned cabinets used by LiDAR.
-  for (int k = 0; k < 8; k++) {
-    auto box = cabinet_bounds(k);
-    double near = 0, far = 1;
-    bool intersects = true;
-    for (int j = 0; j < 3; j++) {
-      double d = b[j] - a[j];
-      if (std::abs(d) < 1e-12) {
-        if (a[j] < box.first[j] || a[j] > box.second[j]) intersects = false;
-        continue;
-      }
-      double u = (box.first[j] - a[j]) / d, v = (box.second[j] - a[j]) / d;
-      if (u > v) std::swap(u, v);
-      near = std::max(near, u);
-      far = std::min(far, v);
-    }
-    if (intersects && near <= far) return false;
-  }
-  return true;
+  return std::abs(a.y()) < 3 && std::abs(b.y()) < 3 && a.z() > 0 && b.z() > 0 && a.z() < 5 && b.z() < 5;
 }
 inline bool reachable(const Eigen::Vector3d& a, const Eigen::Vector3d& b) {
   return (a - b).norm() <= 800.0;

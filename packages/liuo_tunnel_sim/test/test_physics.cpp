@@ -48,8 +48,8 @@ TEST(Uwb, GaussianAndIndependentStreams) {
   EXPECT_EQ(sample, normal(0, 3, 100));
   EXPECT_NE(sample, normal(1, 3, 100));
 }
-TEST(Uwb, WorldLosIncludesCabinetsOutsideLidarCache) {
-  EXPECT_FALSE(line_of_sight({0, 2.8, 2}, {400, 2.8, 2}));
+TEST(Uwb, EmptyWorldLosHasNoCabinetOcclusion) {
+  EXPECT_TRUE(line_of_sight({0, 2.8, 2}, {400, 2.8, 2}));
   EXPECT_TRUE(line_of_sight(anchor(2), anchor(4)));
   EXPECT_FALSE(line_of_sight({100, 0, 1.2}, {100, 4, 2}));
   EXPECT_TRUE(line_of_sight({100, 0, 1.2}, {100, 2.8, 2}));
