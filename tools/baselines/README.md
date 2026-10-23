@@ -37,6 +37,14 @@ LIUO_RUN_ROOT="$PWD/log" ./tools/run.sh \
 
 运行器总墙钟上限为输入长度+120 s，45 s 无输出即失败，退出只向自己创建的进程组发送信号，无无限重试。配置、原始文件哈希、适配后消息哈希、二进制哈希、源码身份、轨迹及失败原因与同一 run 保存。源码下载每份最多 300 s，无无限重试。
 
+本轮原始运行的 CDR 点云哈希不一致；用同一个消息连续序列化已复现对齐填充字节变化，反序列化后的所有字段与点数据相等。保留原字节哈希，使用 `audit_canonical_input.py` 从两次各自的干净提交重建转换器，对相同原始文件分别计算规范化消息哈希并核对发布总数。审计 sidecar 是事后发布侧确定性重建，不是接收侧录包，不能证明算法消费了所有消息。后续运行器同时直接记录规范化哈希。复核命令：
+
+```bash
+source /opt/ros/jazzy/setup.bash
+python3 tools/baselines/audit_canonical_input.py \
+  log/20261023T021753Z_515 log/20261023T022435Z_656
+```
+
 ## 来源与许可证
 
 - [FAST-LIO ROS2](https://github.com/hku-mars/FAST_LIO/tree/a4743b095409588842a5b30ddfa27e29d2f99164)：实际 LICENSE 为 GPL v2（package.xml 的 BSD 标注不能覆盖 LICENSE），保留原源码许可证。
