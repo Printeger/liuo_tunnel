@@ -1,5 +1,7 @@
 # LIUO Tunnel
 
+TA 已作为基础能力，AA 默认关闭，可通过 `uwb.use_aa: true` 启用。[最新 TA-only 配对报告](docs/aa_optional_comparison.md)复用此前其他方法结果；新增无图运行存在漂移，有图初始化失败，包含完整图表和失败证据。
+
 最新空隧道入口启动对比（移除钢轨、枕木、柜体）：[FAST-LIO / 无图 / 有图的 APE、XYZ、三维轨迹与 RPY](docs/empty_tunnel_comparison.md)。主指标使用固定原始坐标约定，不拟合轨迹；保留初始化失败和有图漂移证据。
 
 五组同输入精度实验已保存为[图文 APE 对比报告](docs/ape_five_method_comparison.md)：FAST-LIO2、LIO-SAM 六轴适配、本方法无图/有图 UWB、本方法 UWB OFF。包含共同时间 APE、分轴误差、轨迹、覆盖率、失败状态和可复现命令；不是全面部署或算法普遍排名。

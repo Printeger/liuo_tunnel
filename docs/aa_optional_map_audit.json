@@ -1,0 +1,17 @@
+{
+  "run": "log/20261023T061415Z_161",
+  "graph_rows": 3064,
+  "graph_max": {
+    "uwb_aa": 0,
+    "aa_summary_factors": 0,
+    "aa_accumulated_measurements": 0
+  },
+  "accepted_aa": 0,
+  "accepted_ta": 18874,
+  "map_information": {
+    "accepted_aa_measurements": 0,
+    "ta_enabled": true,
+    "use_aa": false
+  },
+  "configs_equal_except_use_aa_and_raw_bag": true
+}

@@ -1,0 +1,12 @@
+{
+  "source": "log/20261023T034937Z_071",
+  "calibration": "log/20261023T061415Z_161",
+  "legacy_calibration": "log/20261023T033506Z_462",
+  "runs": {
+    "fastlio": "log/20261023T040819Z_553",
+    "self": "log/20261023T035548Z_992",
+    "reuse": "log/20261023T040208Z_950",
+    "self_ta": "log/20261023T062039Z_641",
+    "reuse_ta": "log/20261023T062815Z_413"
+  }
+}
