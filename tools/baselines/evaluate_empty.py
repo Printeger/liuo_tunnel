@@ -31,7 +31,17 @@ def main():
         raw[key] = values
         matched[key], masks[key] = associate(values, grid)
         manifest = json.loads((run / 'metadata/run_manifest.json').read_text())
-        result = dict(run=rel, lifecycle=manifest['lifecycle'], poses=len(values),
+        identity_path = run / 'metadata/manifests' / ('baseline_input.json' if key == 'fastlio' else 'input_identity.json')
+        identity = json.loads(identity_path.read_text())
+        declared_source = identity['source'] if key == 'fastlio' else identity['frozen_input']['source_run']
+        if Path(declared_source).resolve() != (ROOT / spec['source']).resolve():
+            raise ValueError('different raw input source: ' + key)
+        expected = identity['capture_sha256'] if key == 'fastlio' else identity['frozen_input']['capture_sha256']
+        raw_hashes = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in (ROOT / spec['source'] / 'export/capture/raw').glob('*.mcap')}
+        if {Path(k).name:v for k,v in expected.items() if k.endswith('.mcap')} != raw_hashes:
+            raise ValueError('different raw input hash: ' + key)
+        result = dict(run=rel, input_identity_path=str(identity_path.relative_to(ROOT)), raw_input_sha256=raw_hashes,
+                      lifecycle=manifest['lifecycle'], poses=len(values),
                       coverage_percent=float(100 * masks[key].mean()),
                       trajectory_sha256=hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None)
         failure = run / 'metadata/manifests/input_failure.json'

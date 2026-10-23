@@ -1,5 +1,7 @@
 # LIUO Tunnel
 
+最新空隧道入口启动对比（移除钢轨、枕木、柜体）：[FAST-LIO / 无图 / 有图的 APE、XYZ、三维轨迹与 RPY](docs/empty_tunnel_comparison.md)。主指标使用固定原始坐标约定，不拟合轨迹；保留初始化失败和有图漂移证据。
+
 五组同输入精度实验已保存为[图文 APE 对比报告](docs/ape_five_method_comparison.md)：FAST-LIO2、LIO-SAM 六轴适配、本方法无图/有图 UWB、本方法 UWB OFF。包含共同时间 APE、分轴误差、轨迹、覆盖率、失败状态和可复现命令；不是全面部署或算法普遍排名。
 
 第三阶段已按代表性范围交付：**代表性仿真中首次自标定及独立地图复用有效**。完整360秒首轮/次轮、四站联合地图、同输入ON/OFF/已知地图参照及AA消融见[交付报告与完整命令](docs/phase3_representative_results.md)。地图高度和局部后验仍弱，不是全面部署认证。
