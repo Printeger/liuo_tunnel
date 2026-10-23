@@ -87,8 +87,19 @@ def main():
         failure=run/'metadata/manifests/input_failure.json'
         if failure.exists():
             result['failure']=json.loads(failure.read_text())
+        if key=='liosam':
+            runtime_log=(run/'runtime/lio_sam_imuPreintegration.log').read_text()
+            result['imu_velocity_resets']=runtime_log.count('Large velocity, reset IMU-preintegration')
+            result['imu_bias_resets']=runtime_log.count('Large bias, reset IMU-preintegration')
+        state_file=run/'export/odometry/trajectory.csv'
+        if key in ('self','reuse','off') and state_file.exists():
+            states={}
+            for row in csv.DictReader(state_file.open()):
+                state=row.get('state','UNKNOWN');states[state]=states.get(state,0)+1
+            result['state_counts']=states
         results[key]=result
-    active=[k for k in NAMES if k in results and valid[k].sum() >= 10]
+    # An early failure must not silently crop every method to an easy prefix.
+    active=[k for k in NAMES if k in results and valid[k].sum() >= 10 and results[k].get('last_stamp',0)>=360.]
     if len(active)<2:
         raise RuntimeError('fewer than two evaluable trajectories; cannot compare APE')
     common=np.logical_and.reduce([valid[k] for k in active])
@@ -219,6 +230,8 @@ APE 范数采用对数纵轴，以同时保留小误差和大漂移；分轴曲�
 {chr(10).join(coverage)}
 
 `completed` 只代表输入回放和进程收尾完成，不表示定位健康或精度合格。N/A 表示缺少足够轨迹，不能按零误差处理。各组自身窗口指标与共同采样指标均在 JSON 中保留；稀疏输出会缩小共同集合，必须结合覆盖率阅读排名。
+
+LIO-SAM 日志记录 **{results['liosam'].get('imu_velocity_resets',0)} 次速度过大重置**、**{results['liosam'].get('imu_bias_resets',0)} 次偏置过大重置**。这些失效迹象保留在评价中，未因重新输出轨迹而清除。本方法状态计数见 JSON；DEGRADED/LOST 不改写成 TRACKING。若轨迹没有覆盖到至少 stamp 360 s，不进入全程主表，也不让其早期前缀缩短其余方法的评测路线。
 
 ## 6. 可追溯运行与复现
 
