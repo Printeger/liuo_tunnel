@@ -19,7 +19,7 @@ class AdapterTest(unittest.TestCase):
         converted = adapter.cloud(source)
         for key in ('x','y','z','intensity','time'):
             np.testing.assert_array_equal(point_cloud2.read_points_numpy(source,field_names=(key,)), point_cloud2.read_points_numpy(converted,field_names=(key,)))
-        np.testing.assert_array_equal(point_cloud2.read_points_numpy(converted,field_names=('ring',)).reshape(-1),np.arange(40))
+        np.testing.assert_array_equal(point_cloud2.read_points(converted,field_names=('ring',))['ring'],np.arange(40))
         m=Imu();m.linear_acceleration.z=9.80665;m.angular_velocity.z=.01;m.header.stamp.sec=1
         adapter.imu(m)
         self.assertEqual(m.linear_acceleration.z,9.80665)
