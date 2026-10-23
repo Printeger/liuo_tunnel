@@ -220,6 +220,7 @@ export ROS_LOG_DIR="$PWD/log/launch"
 source /opt/ros/jazzy/setup.bash
 source install/local_setup.bash
 export LIUO_RUN_ROOT="$PWD/log"
+export ROS_LOG_DIR="$PWD/log/launch"
 
 # 第一次：无基站坐标地图，联合估计轨迹、基站及安装参考
 ros2 launch liuo_tunnel first_mapping.launch.py

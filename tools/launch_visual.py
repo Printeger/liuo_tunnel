@@ -1,7 +1,8 @@
 """Both launch entrypoints retain run.py as sole run/process owner."""
 from pathlib import Path
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction, RegisterEventHandler
+from launch.event_handlers import OnProcessExit
 from launch.substitutions import LaunchConfiguration
 
 
@@ -24,7 +25,14 @@ def description(root, reuse):
         for key in ('rviz', 'capture', 'formal'):
             if value(key).lower() == 'true':
                 command.append('--' + key)
-        return [ExecuteProcess(cmd=command, cwd=str(root), output='screen', sigterm_timeout='15', sigkill_timeout='25')]
+        process = ExecuteProcess(cmd=command, cwd=str(root), output='screen', sigterm_timeout='15', sigkill_timeout='25')
+
+        def exited(event, context):
+            if event.returncode != 0:
+                raise RuntimeError(f'LIUO run failed ({event.returncode}); inspect the printed run directory')
+            return []
+
+        return [RegisterEventHandler(OnProcessExit(target_action=process, on_exit=exited)), process]
 
     defaults = dict(duration='360', seed='1' if reuse else '0', wall_timeout='600', rviz='true', capture='false', formal='false', replay='',
                     sim_start='220 0.2 1.6 1.5707963267948966' if reuse else '200 0 1.2 0')
