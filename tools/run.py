@@ -119,8 +119,8 @@ def main():
         p.error("frozen replay requires 1x and cannot recapture")
     if args.calibration_route:
         args.local_calibration = True
-        if not args.sim_start or not 200 <= args.sim_start[0] < 1000:
-            p.error("representative calibration route requires start x in [200,1000)")
+        if not args.sim_start or not 0 <= args.sim_start[0] < 1000:
+            p.error("representative calibration route requires start x in [0,1000)")
     if args.local_calibration and (args.replay or args.return_trip):
         p.error("--local-calibration is a live-only alternative to return trip")
     if args.local_calibration:
@@ -142,7 +142,7 @@ def main():
         p.error("debugger runs are diagnostic, not formal timing evidence")
     if not 0 < args.rate <= 1:
         p.error("--rate must be in (0,1]")
-    run = rd.resolve_run_directory(entrypoint="rail_sim", scenario="rail_tunnel_straight_v1")
+    run = rd.resolve_run_directory(entrypoint="rail_sim", scenario="empty_tunnel_straight_v2")
     if args.formal:
         path = run / "metadata/run_manifest.json"
         manifest = json.loads(path.read_text())
