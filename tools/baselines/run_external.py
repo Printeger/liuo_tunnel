@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import shutil
 import subprocess
 import sys
 import time
@@ -235,6 +236,14 @@ def main():
                 lifecycle, failure = 'failed', 'owned child required forced shutdown'
         for f in handles:
             f.close()
+        if args.algorithm == 'fastlio':
+            # Upstream also writes auxiliary debug files under its compiled-in
+            # source root. Preserve each run's copy before a subsequent replay.
+            native = ROOT / 'log/baseline_sources/fastlio/Log'
+            destination = run / 'runtime/fastlio_native_debug'
+            destination.mkdir(exist_ok=True)
+            for path in native.glob('*.txt'):
+                shutil.copy2(path, destination / path.name)
         if node:
             node.destroy_node()
             if rclpy.ok():

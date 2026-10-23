@@ -1,0 +1,1956 @@
+{
+  "protocol": "same source; body origin; no scale; nearest timestamps <=51ms; common ROS stamps [61,360.9]",
+  "source": "log/20261022T161447Z_132",
+  "source_capture_sha256": {
+    "raw_0.mcap": "0de2c25af0bac745ebd7e16b1ef3a3fa0bbcf6de52e710d65900125fe7d740bc"
+  },
+  "requested_grid_samples": 3000,
+  "common_samples": 571,
+  "common_coverage_percent": 19.03333333333333,
+  "external_adapted_inputs_equal": true,
+  "external_input_checks": [
+    {
+      "adapted_sha256": {
+        "cloud": "e073156dcd2864aa1dad10f223a50233981bdadb5570f05742d2498cb2d8f4e8",
+        "imu": "24b6d1c31728bb32d0fab8c67078c5e702b14d551a3630e36390010369d070bd"
+      },
+      "counts": {
+        "clock": 72000,
+        "cloud": 3600,
+        "imu": 72000
+      },
+      "exit_codes": [
+        0
+      ],
+      "failure": null,
+      "max_ring_residual_deg": 0.0003452301025390625,
+      "poses": 3596
+    },
+    {
+      "adapted_sha256": {
+        "cloud": "11cc7cbb3f8a340cb0cedefc7cb3b0ac07b0fb1b0d3ae6437d79af08d12fed57",
+        "imu": "24b6d1c31728bb32d0fab8c67078c5e702b14d551a3630e36390010369d070bd"
+      },
+      "counts": {
+        "clock": 72000,
+        "cloud": 3600,
+        "imu": 72000
+      },
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "failure": null,
+      "max_ring_residual_deg": 0.0003452301025390625,
+      "poses": 707
+    }
+  ],
+  "canonical_reconstruction_audits": [
+    {
+      "scope": "post-run deterministic reconstruction, NOT a subscriber-side received-message capture",
+      "original_source_commit": "2e2246663ec7d6bf347fdb2fb2cb8feaf8859a29",
+      "original_converter_sha256": "cb37834113ccfc57d5c7decab8fbe8e90663004fcb91c90e42289e563ddd9345",
+      "capture_sha256": {
+        "raw_0.mcap": "0de2c25af0bac745ebd7e16b1ef3a3fa0bbcf6de52e710d65900125fe7d740bc"
+      },
+      "counts": {
+        "imu": 72000,
+        "cloud": 3600,
+        "clock": 72000
+      },
+      "adapted_semantic_sha256": {
+        "imu": "0a4291b6949ff489fe2070e01a60ec46df28f3a4170f94f445185f88a3ba3094",
+        "cloud": "69a07bb9e6f96bdcbd384ac90d2c8b9d5bf76800fbd543ccc17b707631cd416a"
+      },
+      "cdr_padding_probe": {
+        "unique_cdr_hashes": 2,
+        "all_deserialized_messages_equal": true,
+        "differing_offsets": [
+          42,
+          43,
+          49,
+          50,
+          51,
+          62,
+          63,
+          69,
+          70,
+          71,
+          82,
+          83,
+          89,
+          90,
+          91,
+          110,
+          111,
+          141,
+          142,
+          143,
+          158,
+          159,
+          165,
+          166,
+          167,
+          173,
+          174,
+          175
+        ]
+      },
+      "original_cdr_sha256": {
+        "cloud": "e073156dcd2864aa1dad10f223a50233981bdadb5570f05742d2498cb2d8f4e8",
+        "imu": "24b6d1c31728bb32d0fab8c67078c5e702b14d551a3630e36390010369d070bd"
+      }
+    },
+    {
+      "scope": "post-run deterministic reconstruction, NOT a subscriber-side received-message capture",
+      "original_source_commit": "d6c8f4a3335602988e6f94b93958261f60f3c1e0",
+      "original_converter_sha256": "cb37834113ccfc57d5c7decab8fbe8e90663004fcb91c90e42289e563ddd9345",
+      "capture_sha256": {
+        "raw_0.mcap": "0de2c25af0bac745ebd7e16b1ef3a3fa0bbcf6de52e710d65900125fe7d740bc"
+      },
+      "counts": {
+        "imu": 72000,
+        "cloud": 3600,
+        "clock": 72000
+      },
+      "adapted_semantic_sha256": {
+        "imu": "0a4291b6949ff489fe2070e01a60ec46df28f3a4170f94f445185f88a3ba3094",
+        "cloud": "69a07bb9e6f96bdcbd384ac90d2c8b9d5bf76800fbd543ccc17b707631cd416a"
+      },
+      "cdr_padding_probe": {
+        "unique_cdr_hashes": 2,
+        "all_deserialized_messages_equal": true,
+        "differing_offsets": [
+          42,
+          43,
+          49,
+          50,
+          51,
+          62,
+          63,
+          69,
+          70,
+          71,
+          82,
+          83,
+          89,
+          90,
+          91,
+          110,
+          111,
+          141,
+          142,
+          143,
+          158,
+          159,
+          165,
+          166,
+          167,
+          173,
+          174,
+          175
+        ]
+      },
+      "original_cdr_sha256": {
+        "cloud": "11cc7cbb3f8a340cb0cedefc7cb3b0ac07b0fb1b0d3ae6437d79af08d12fed57",
+        "imu": "24b6d1c31728bb32d0fab8c67078c5e702b14d551a3630e36390010369d070bd"
+      }
+    }
+  ],
+  "results": {
+    "fastlio": {
+      "run": "log/20261023T021753Z_515",
+      "lifecycle": "completed",
+      "source": {
+        "git_commit": "2e2246663ec7d6bf347fdb2fb2cb8feaf8859a29",
+        "git_worktree_clean": true
+      },
+      "trajectory_sha256": "c4a03b9b63854150b471a6845de972e8053d622e71fc957218d29029d3041d50",
+      "poses": 3596,
+      "coverage_percent": 100.0,
+      "window_matches": 3000,
+      "input_identity": {
+        "algorithm": "fastlio",
+        "binaries": {
+          "fastlio_mapping": "d07727c344d9005a73ca5b35b77c96f1fa95e6d72fc60ebbd62ebd687fc4869d"
+        },
+        "capture_sha256": {
+          "raw_0.mcap": "0de2c25af0bac745ebd7e16b1ef3a3fa0bbcf6de52e710d65900125fe7d740bc"
+        },
+        "commands": [
+          [
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/baseline_install/fast_lio/lib/fast_lio/fastlio_mapping",
+            "--ros-args",
+            "--params-file",
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261023T021753Z_515/metadata/config/fastlio.yaml"
+          ]
+        ],
+        "config_sha256": "032a9dcefdf206c1197e3a184e702b6f22b44718ab083d79cbac32cec5257013",
+        "derived_attitude": {
+          "gyro_bias": [
+            -4.212915877938841e-05,
+            -9.872068689658006e-05,
+            0.0001080178395073614
+          ],
+          "imu_rpy_weight": 0,
+          "independent_orientation_measurement": false,
+          "initial_quaternion": [
+            -0.0001284574106145132,
+            -0.00012315115943167685,
+            -1.5819679305253263e-08,
+            0.9999999841662426
+          ],
+          "stationary_samples": 301
+        },
+        "duration_s": 360.0,
+        "source": "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T161447Z_132",
+        "sources": {
+          "fastlio": {
+            "archive_sha256": "c0299f98b3ded3dd4e8b345ee5a5817e11cdac5c60dfd1ff22024613b254fcf2",
+            "commit": "a4743b095409588842a5b30ddfa27e29d2f99164"
+          },
+          "ikdtree": {
+            "archive_sha256": "df1d87b8aa264a5c72dd8e3c5056b5dba5a888b8fd2312810dde11e9460489e0",
+            "commit": "e2e3f4e9d3b95a9e66b1ba83dc98d4a05ed8a3c4"
+          },
+          "liosam": {
+            "archive_sha256": "756b6bf4d8bc98e63e5de343f4efae32b3297ffa303aae2c33d69375911a4771",
+            "commit": "08af3f32f01725372d4269838dc44c19c6d9e76b"
+          }
+        },
+        "truth_published": false,
+        "uwb_published": false
+      },
+      "first_stamp": 1.399999999,
+      "last_stamp": 360.899999999,
+      "max_output_gap_s": 0.10000000100001216,
+      "ape_se3": {
+        "rmse_m": 0.7706293406598482,
+        "mean_m": 0.7162400279149111,
+        "median_m": 0.7750547771803502,
+        "std_m": 0.2843761647857988,
+        "p95_m": 1.086109419202292,
+        "max_m": 1.0932537315746855,
+        "axis_rmse_m": [
+          0.76635151144701,
+          0.06212558541880323,
+          0.052109051277946544
+        ]
+      },
+      "ape_first_pose": {
+        "rmse_m": 1.3993442251099386,
+        "mean_m": 1.157786689609646,
+        "median_m": 1.4479269018597034,
+        "std_m": 0.7859352655984279,
+        "p95_m": 2.0393259653305447,
+        "max_m": 2.0762382139142623,
+        "axis_rmse_m": [
+          1.3512352712007987,
+          0.1770538486976511,
+          0.31777261819229985
+        ]
+      },
+      "se3_rotation": [
+        [
+          -0.00037822915781376585,
+          -0.9999996479054079,
+          0.0007490872877356641
+        ],
+        [
+          0.999966959627838,
+          -0.0003721338910108937,
+          0.008120416801368432
+        ],
+        [
+          -0.008120135181446844,
+          0.0007521339160207759,
+          0.9999667482967664
+        ]
+      ],
+      "se3_translation": [
+        221.11172952768186,
+        0.15299406512798597,
+        1.6301831292880788
+      ],
+      "fit_singular_values": [
+        50115678.805652045,
+        394.01124453941384,
+        76.61990567444138
+      ],
+      "attitude_rmse_deg": 0.6345166282999259,
+      "common_samples": 571,
+      "own_window_ape_using_common_fit": {
+        "rmse_m": 0.7652643075941642,
+        "mean_m": 0.713932276012486,
+        "median_m": 0.7708059436540236,
+        "std_m": 0.27555428819963457,
+        "p95_m": 1.0844056511226248,
+        "max_m": 1.0933141114539309,
+        "axis_rmse_m": [
+          0.7610565451320422,
+          0.05897642180566516,
+          0.05426027331535006
+        ]
+      }
+    },
+    "liosam": {
+      "run": "log/20261023T022435Z_656",
+      "lifecycle": "completed",
+      "source": {
+        "git_commit": "d6c8f4a3335602988e6f94b93958261f60f3c1e0",
+        "git_worktree_clean": true
+      },
+      "trajectory_sha256": "ea1d3612c14586f960641b642f8344b76ce08c8c1af9da02ddaf6cec3118576c",
+      "poses": 707,
+      "coverage_percent": 19.03333333333333,
+      "window_matches": 571,
+      "input_identity": {
+        "algorithm": "liosam",
+        "binaries": {
+          "lio_sam_featureExtraction": "17e6a08f4ffc8516db17a27e2ff6eaa683087c69398612aab70d6dccce65fa33",
+          "lio_sam_imageProjection": "ea6769eabbf0c3e605d0f83d1ac1f847b8ac27e43a0342ceb620542525a3fa0c",
+          "lio_sam_imuPreintegration": "bc87633195e2e451e12f10f25f62ffc2b00b9084f0d2177c705af7a78b9f0130",
+          "lio_sam_mapOptimization": "f721b5a7d200a8d9d995df008b6bcb8d6f6ad74b3e978886426ed3f6462bf6ca"
+        },
+        "capture_sha256": {
+          "raw_0.mcap": "0de2c25af0bac745ebd7e16b1ef3a3fa0bbcf6de52e710d65900125fe7d740bc"
+        },
+        "commands": [
+          [
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/baseline_install/lio_sam/lib/lio_sam/lio_sam_imageProjection",
+            "--ros-args",
+            "--params-file",
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261023T022435Z_656/metadata/config/liosam.yaml"
+          ],
+          [
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/baseline_install/lio_sam/lib/lio_sam/lio_sam_featureExtraction",
+            "--ros-args",
+            "--params-file",
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261023T022435Z_656/metadata/config/liosam.yaml"
+          ],
+          [
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/baseline_install/lio_sam/lib/lio_sam/lio_sam_imuPreintegration",
+            "--ros-args",
+            "--params-file",
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261023T022435Z_656/metadata/config/liosam.yaml"
+          ],
+          [
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/baseline_install/lio_sam/lib/lio_sam/lio_sam_mapOptimization",
+            "--ros-args",
+            "--params-file",
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261023T022435Z_656/metadata/config/liosam.yaml"
+          ]
+        ],
+        "config_sha256": "3b0cd78ad16b0246d415d6203fd518e31b06394fb624f69abb11d88a65ea1559",
+        "derived_attitude": {
+          "gyro_bias": [
+            -4.212915877938841e-05,
+            -9.872068689658006e-05,
+            0.0001080178395073614
+          ],
+          "imu_rpy_weight": 0,
+          "independent_orientation_measurement": false,
+          "initial_quaternion": [
+            -0.0001284574106145132,
+            -0.00012315115943167685,
+            -1.5819679305253263e-08,
+            0.9999999841662426
+          ],
+          "stationary_samples": 301
+        },
+        "duration_s": 360.0,
+        "source": "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T161447Z_132",
+        "sources": {
+          "fastlio": {
+            "archive_sha256": "c0299f98b3ded3dd4e8b345ee5a5817e11cdac5c60dfd1ff22024613b254fcf2",
+            "commit": "a4743b095409588842a5b30ddfa27e29d2f99164"
+          },
+          "ikdtree": {
+            "archive_sha256": "df1d87b8aa264a5c72dd8e3c5056b5dba5a888b8fd2312810dde11e9460489e0",
+            "commit": "e2e3f4e9d3b95a9e66b1ba83dc98d4a05ed8a3c4"
+          },
+          "liosam": {
+            "archive_sha256": "756b6bf4d8bc98e63e5de343f4efae32b3297ffa303aae2c33d69375911a4771",
+            "commit": "08af3f32f01725372d4269838dc44c19c6d9e76b"
+          }
+        },
+        "truth_published": false,
+        "uwb_published": false
+      },
+      "first_stamp": 1.5,
+      "last_stamp": 360.5,
+      "max_output_gap_s": 4.0,
+      "imu_velocity_resets": 167,
+      "imu_bias_resets": 0,
+      "ape_se3": {
+        "rmse_m": 460.7093636818896,
+        "mean_m": 415.2411215667543,
+        "median_m": 346.51282520991646,
+        "std_m": 199.56935822955262,
+        "p95_m": 857.4769115061946,
+        "max_m": 953.8210218943246,
+        "axis_rmse_m": [
+          394.9854595782016,
+          164.98584648675833,
+          170.3504475045966
+        ]
+      },
+      "ape_first_pose": {
+        "rmse_m": 1630.8614122943598,
+        "mean_m": 1373.5998887782505,
+        "median_m": 1662.340441768587,
+        "std_m": 879.1656793000574,
+        "p95_m": 2840.1771235999295,
+        "max_m": 2999.2205450532833,
+        "axis_rmse_m": [
+          1562.3160382174542,
+          246.4792024678899,
+          397.6500290331501
+        ]
+      },
+      "se3_rotation": [
+        [
+          0.10466605026119219,
+          0.9420114957728897,
+          -0.31884064946998925
+        ],
+        [
+          0.5767226870453874,
+          0.203695612366057,
+          0.7911378133738528
+        ],
+        [
+          0.8102073562797788,
+          -0.26668790623974636,
+          -0.5219593858678958
+        ]
+      ],
+      "se3_translation": [
+        -299.04194820623957,
+        -65.4065334394223,
+        -96.01352467854107
+      ],
+      "fit_singular_values": [
+        103749190.0120393,
+        30282.24325565833,
+        10653.199369956885
+      ],
+      "attitude_rmse_deg": 111.96119352992206,
+      "common_samples": 571,
+      "own_window_ape_using_common_fit": {
+        "rmse_m": 460.7093636818896,
+        "mean_m": 415.2411215667543,
+        "median_m": 346.51282520991646,
+        "std_m": 199.56935822955262,
+        "p95_m": 857.4769115061946,
+        "max_m": 953.8210218943246,
+        "axis_rmse_m": [
+          394.9854595782016,
+          164.98584648675833,
+          170.3504475045966
+        ]
+      }
+    },
+    "self": {
+      "run": "log/20261023T023211Z_731",
+      "lifecycle": "completed",
+      "source": {
+        "git_commit": "dc055c439274fbd6d50597c31386f965f28a8d79",
+        "git_worktree_clean": true
+      },
+      "trajectory_sha256": "d56626e22eb5ab9b76ba0824304f1d9d35dfbdb43f1d7b9ffcd65519d188c5c7",
+      "poses": 3147,
+      "coverage_percent": 100.0,
+      "window_matches": 3000,
+      "input_identity": {
+        "binaries": {
+          "odometry": {
+            "ldd": "\tlinux-vdso.so.1 (0x00007fad4f042000)\n\tlibliuo_tunnel_core.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/libliuo_tunnel_core.so (0x00007fad4ec66000)\n\tlibcudart.so.12 => /usr/local/cuda/targets/x86_64-linux/lib/libcudart.so.12 (0x00007fad4e800000)\n\tlibrclcpp.so => /opt/ros/jazzy/lib/librclcpp.so (0x00007fad4e5a2000)\n\tlibnav_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libnav_msgs__rosidl_typesupport_cpp.so (0x00007fad4ec3c000)\n\tlibdiagnostic_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_typesupport_cpp.so (0x00007fad4ec30000)\n\tlibliuo_tunnel_msgs__rosidl_typesupport_cpp.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_typesupport_cpp.so (0x00007fad4ec2b000)\n\tlibvisualization_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libvisualization_msgs__rosidl_typesupport_cpp.so (0x00007fad4ec1f000)\n\tlibgtsam_points.so.1 => /usr/local/lib/libgtsam_points.so.1 (0x00007fad4e2ad000)\n\tlibgtsam_points_cuda.so.1 => /usr/local/lib/libgtsam_points_cuda.so.1 (0x00007fad4e05b000)\n\tlibgtsam.so.4 => /lib/x86_64-linux-gnu/libgtsam.so.4 (0x00007fad4db5e000)\n\tlibcephes-gtsam.so.1 => /lib/x86_64-linux-gnu/libcephes-gtsam.so.1 (0x00007fad4ebeb000)\n\tlibspdlog.so.1.12 => /lib/x86_64-linux-gnu/libspdlog.so.1.12 (0x00007fad4eb64000)\n\tlibfmt.so.9 => /lib/x86_64-linux-gnu/libfmt.so.9 (0x00007fad4eb43000)\n\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x00007fad4eaed000)\n\tliblibstatistics_collector.so => /opt/ros/jazzy/lib/liblibstatistics_collector.so (0x00007fad4eae5000)\n\tlibrcl.so => /opt/ros/jazzy/lib/librcl.so (0x00007fad4db17000)\n\tlibstatistics_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libstatistics_msgs__rosidl_typesupport_cpp.so (0x00007fad4eadd000)\n\tlibtracetools.so => /opt/ros/jazzy/lib/libtracetools.so (0x00007fad4eac3000)\n\tlibsensor_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libsensor_msgs__rosidl_typesupport_cpp.so (0x00007fad4eab4000)\n\tlibrmw.so => /opt/ros/jazzy/lib/librmw.so (0x00007fad4db0c000)\n\tlibrcutils.so => /opt/ros/jazzy/lib/librcutils.so (0x00007fad4daec000)\n\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007fad4d86e000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007fad4d785000)\n\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007fad4d757000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fad4d544000)\n\tlibboost_filesystem.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_filesystem.so.1.83.0 (0x00007fad4d521000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007fad4f044000)\n\tlibdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007fad4d51c000)\n\tlibpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007fad4d517000)\n\tlibrt.so.1 => /lib/x86_64-linux-gnu/librt.so.1 (0x00007fad4d512000)\n\tlibrcl_interfaces__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_cpp.so (0x00007fad4d4f7000)\n\tlibrcl_yaml_param_parser.so => /opt/ros/jazzy/lib/librcl_yaml_param_parser.so (0x00007fad4d4eb000)\n\tlibrosgraph_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librosgraph_msgs__rosidl_typesupport_cpp.so (0x00007fad4d4e4000)\n\tlibrcl_logging_interface.so => /opt/ros/jazzy/lib/librcl_logging_interface.so (0x00007fad4d4df000)\n\tlibrmw_implementation.so => /opt/ros/jazzy/lib/librmw_implementation.so (0x00007fad4d4d2000)\n\tlibament_index_cpp.so => /opt/ros/jazzy/lib/libament_index_cpp.so (0x00007fad4d4c6000)\n\tlibtype_description_interfaces__rosidl_typesupport_c.so => /opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_typesupport_c.so (0x00007fad4d4bf000)\n\tlibrosidl_dynamic_typesupport.so => /opt/ros/jazzy/lib/librosidl_dynamic_typesupport.so (0x00007fad4d4a4000)\n\tlibrosidl_typesupport_introspection_cpp.so => /opt/ros/jazzy/lib/librosidl_typesupport_introspection_cpp.so (0x00007fad4d49f000)\n\tlibrcpputils.so => /opt/ros/jazzy/lib/librcpputils.so (0x00007fad4d490000)\n\tlibrosidl_runtime_c.so => /opt/ros/jazzy/lib/librosidl_runtime_c.so (0x00007fad4d471000)\n\tlibnav_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libnav_msgs__rosidl_generator_c.so (0x00007fad4d43e000)\n\tlibrosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librosidl_typesupport_cpp.so (0x00007fad4d436000)\n\tlibdiagnostic_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_generator_c.so (0x00007fad4d421000)\n\tlibliuo_tunnel_msgs__rosidl_generator_c.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_generator_c.so (0x00007fad4d41b000)\n\tlibvisualization_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libvisualization_msgs__rosidl_generator_c.so (0x00007fad4d3e7000)\n\tlibboost_timer.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_timer.so.1.83.0 (0x00007fad4d3e0000)\n\tlibboost_serialization.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_serialization.so.1.83.0 (0x00007fad4d39b000)\n\tlibmetis.so.5 => /lib/x86_64-linux-gnu/libmetis.so.5 (0x00007fad4d331000)\n\tlibrcl_logging_spdlog.so => /opt/ros/jazzy/lib/librcl_logging_spdlog.so (0x00007fad4d327000)\n\tlibrcl_interfaces__rosidl_typesupport_c.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_c.so (0x00007fad4d317000)\n\tlibtype_description_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_generator_c.so (0x00007fad4d2ff000)\n\tlibyaml-0.so.2 => /lib/x86_64-linux-gnu/libyaml-0.so.2 (0x00007fad4d2dc000)\n\tlibstatistics_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libstatistics_msgs__rosidl_generator_c.so (0x00007fad4d2d3000)\n\tliblttng-ust.so.1 => /lib/x86_64-linux-gnu/liblttng-ust.so.1 (0x00007fad4d250000)\n\tlibsensor_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libsensor_msgs__rosidl_generator_c.so (0x00007fad4d20c000)\n\tlibrcl_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_generator_c.so (0x00007fad4d1be000)\n\tlibrosgraph_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/librosgraph_msgs__rosidl_generator_c.so (0x00007fad4d1b7000)\n\tlibrosidl_typesupport_c.so => /opt/ros/jazzy/lib/librosidl_typesupport_c.so (0x00007fad4d1b1000)\n\tlibgeometry_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libgeometry_msgs__rosidl_generator_c.so (0x00007fad4d173000)\n\tlibstd_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libstd_msgs__rosidl_generator_c.so (0x00007fad4d142000)\n\tlibservice_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libservice_msgs__rosidl_generator_c.so (0x00007fad4d13d000)\n\tlibbuiltin_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/libbuiltin_interfaces__rosidl_generator_c.so (0x00007fad4d134000)\n\tlibnuma.so.1 => /lib/x86_64-linux-gnu/libnuma.so.1 (0x00007fad4d126000)\n\tliblttng-ust-common.so.1 => /lib/x86_64-linux-gnu/liblttng-ust-common.so.1 (0x00007fad4d119000)\n\tliblttng-ust-tracepoint.so.1 => /lib/x86_64-linux-gnu/liblttng-ust-tracepoint.so.1 (0x00007fad4d0fc000)\n",
+            "path": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/liuo_tunnel/liuo_tunnel_node",
+            "sha256": "4b4be71f652d9df6e57b20798204dd3f2896c84264acf823f98856ae273056dd"
+          },
+          "simulation": {
+            "ldd": "\tlinux-vdso.so.1 (0x00007a033d228000)\n\tlibliuo_tunnel_renderer.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib/libliuo_tunnel_renderer.so (0x00007a033d150000)\n\tlibliuo_tunnel_core.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/libliuo_tunnel_core.so (0x00007a033d022000)\n\tlibrosbag2_cpp.so => /opt/ros/jazzy/lib/librosbag2_cpp.so (0x00007a033cf84000)\n\tlibnav_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libnav_msgs__rosidl_typesupport_cpp.so (0x00007a033cf77000)\n\tlibliuo_tunnel_msgs__rosidl_typesupport_cpp.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_typesupport_cpp.so (0x00007a033cf70000)\n\tlibspdlog.so.1.12 => /lib/x86_64-linux-gnu/libspdlog.so.1.12 (0x00007a033cecc000)\n\tlibfmt.so.9 => /lib/x86_64-linux-gnu/libfmt.so.9 (0x00007a033ceab000)\n\tlibrosbag2_storage.so => /opt/ros/jazzy/lib/librosbag2_storage.so (0x00007a033ce28000)\n\tlibrclcpp.so => /opt/ros/jazzy/lib/librclcpp.so (0x00007a033cbca000)\n\tlibrosgraph_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librosgraph_msgs__rosidl_typesupport_cpp.so (0x00007a033cbc3000)\n\tlibrcl.so => /opt/ros/jazzy/lib/librcl.so (0x00007a033cb7c000)\n\tlibtracetools.so => /opt/ros/jazzy/lib/libtracetools.so (0x00007a033cb62000)\n\tlibsensor_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libsensor_msgs__rosidl_typesupport_cpp.so (0x00007a033cb53000)\n\tlibrmw.so => /opt/ros/jazzy/lib/librmw.so (0x00007a033cb48000)\n\tlibrcutils.so => /opt/ros/jazzy/lib/librcutils.so (0x00007a033cb28000)\n\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007a033c8a8000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007a033c7bf000)\n\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007a033c791000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007a033c57e000)\n\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x00007a033c528000)\n\tlibgtsam_points.so.1 => /usr/local/lib/libgtsam_points.so.1 (0x00007a033c233000)\n\tlibgtsam.so.4 => /lib/x86_64-linux-gnu/libgtsam.so.4 (0x00007a033bd34000)\n\tlibboost_filesystem.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_filesystem.so.1.83.0 (0x00007a033bd11000)\n\tlibclass_loader.so => /opt/ros/jazzy/lib/libclass_loader.so (0x00007a033bcfe000)\n\tlibconsole_bridge.so.1.0 => /lib/x86_64-linux-gnu/libconsole_bridge.so.1.0 (0x00007a033bcf8000)\n\tlibtinyxml2.so.10 => /lib/x86_64-linux-gnu/libtinyxml2.so.10 (0x00007a033bce1000)\n\tlibrmw_implementation.so => /opt/ros/jazzy/lib/librmw_implementation.so (0x00007a033bcd2000)\n\tlibament_index_cpp.so => /opt/ros/jazzy/lib/libament_index_cpp.so (0x00007a033bcc6000)\n\tlibservice_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libservice_msgs__rosidl_typesupport_cpp.so (0x00007a033bcc1000)\n\tlibrcpputils.so => /opt/ros/jazzy/lib/librcpputils.so (0x00007a033bcb2000)\n\tlibnav_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libnav_msgs__rosidl_generator_c.so (0x00007a033bc7f000)\n\tlibrosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librosidl_typesupport_cpp.so (0x00007a033bc77000)\n\tlibliuo_tunnel_msgs__rosidl_generator_c.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_generator_c.so (0x00007a033bc71000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007a033d22a000)\n\tlibyaml-cpp.so.0.8 => /lib/x86_64-linux-gnu/libyaml-cpp.so.0.8 (0x00007a033bc28000)\n\tliblibstatistics_collector.so => /opt/ros/jazzy/lib/liblibstatistics_collector.so (0x00007a033bc20000)\n\tlibrcl_interfaces__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_cpp.so (0x00007a033bc05000)\n\tlibrcl_yaml_param_parser.so => /opt/ros/jazzy/lib/librcl_yaml_param_parser.so (0x00007a033bbf7000)\n\tlibstatistics_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libstatistics_msgs__rosidl_typesupport_cpp.so (0x00007a033bbf1000)\n\tlibrcl_logging_interface.so => /opt/ros/jazzy/lib/librcl_logging_interface.so (0x00007a033bbec000)\n\tlibtype_description_interfaces__rosidl_typesupport_c.so => /opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_typesupport_c.so (0x00007a033bbe5000)\n\tlibrosidl_dynamic_typesupport.so => /opt/ros/jazzy/lib/librosidl_dynamic_typesupport.so (0x00007a033bbcc000)\n\tlibrosidl_typesupport_introspection_cpp.so => /opt/ros/jazzy/lib/librosidl_typesupport_introspection_cpp.so (0x00007a033bbc5000)\n\tlibrosidl_runtime_c.so => /opt/ros/jazzy/lib/librosidl_runtime_c.so (0x00007a033bba6000)\n\tlibrosgraph_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/librosgraph_msgs__rosidl_generator_c.so (0x00007a033bba1000)\n\tlibrcl_logging_spdlog.so => /opt/ros/jazzy/lib/librcl_logging_spdlog.so (0x00007a033bb97000)\n\tlibrcl_interfaces__rosidl_typesupport_c.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_c.so (0x00007a033bb87000)\n\tlibtype_description_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_generator_c.so (0x00007a033bb6d000)\n\tlibyaml-0.so.2 => /lib/x86_64-linux-gnu/libyaml-0.so.2 (0x00007a033bb4c000)\n\tliblttng-ust.so.1 => /lib/x86_64-linux-gnu/liblttng-ust.so.1 (0x00007a033bac9000)\n\tlibsensor_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libsensor_msgs__rosidl_generator_c.so (0x00007a033ba85000)\n\tlibgtsam_points_cuda.so.1 => /usr/local/lib/libgtsam_points_cuda.so.1 (0x00007a033b833000)\n\tlibboost_timer.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_timer.so.1.83.0 (0x00007a033b82a000)\n\tlibboost_serialization.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_serialization.so.1.83.0 (0x00007a033b7e7000)\n\tlibmetis.so.5 => /lib/x86_64-linux-gnu/libmetis.so.5 (0x00007a033b77d000)\n\tlibcephes-gtsam.so.1 => /lib/x86_64-linux-gnu/libcephes-gtsam.so.1 (0x00007a033b74b000)\n\tlibservice_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libservice_msgs__rosidl_generator_c.so (0x00007a033b746000)\n\tlibgeometry_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libgeometry_msgs__rosidl_generator_c.so (0x00007a033b706000)\n\tlibstd_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libstd_msgs__rosidl_generator_c.so (0x00007a033b6d5000)\n\tlibbuiltin_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/libbuiltin_interfaces__rosidl_generator_c.so (0x00007a033b6ce000)\n\tlibrcl_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_generator_c.so (0x00007a033b680000)\n\tlibstatistics_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libstatistics_msgs__rosidl_generator_c.so (0x00007a033b677000)\n\tlibrosidl_typesupport_c.so => /opt/ros/jazzy/lib/librosidl_typesupport_c.so (0x00007a033b66f000)\n\tlibnuma.so.1 => /lib/x86_64-linux-gnu/libnuma.so.1 (0x00007a033b661000)\n\tliblttng-ust-common.so.1 => /lib/x86_64-linux-gnu/liblttng-ust-common.so.1 (0x00007a033b654000)\n\tliblttng-ust-tracepoint.so.1 => /lib/x86_64-linux-gnu/liblttng-ust-tracepoint.so.1 (0x00007a033b637000)\n\tlibcudart.so.12 => /usr/local/cuda/targets/x86_64-linux/lib/libcudart.so.12 (0x00007a033b200000)\n\tlibdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007a033b630000)\n\tlibpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007a033b62b000)\n\tlibrt.so.1 => /lib/x86_64-linux-gnu/librt.so.1 (0x00007a033b626000)\n",
+            "path": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib/liuo_tunnel_sim/liuo_rail_sim",
+            "sha256": "c57d596d527e7b2e08f20f4b70ca38d9193b1e53a3a7bd712a9bf02ccad0017f"
+          }
+        },
+        "build_caches": {
+          "liuo_tunnel": {
+            "selected_options": [
+              "CMAKE_BUILD_TYPE:STRING=Release",
+              "CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/c++",
+              "CUDAToolkit_BIN_DIR:PATH=/usr/local/cuda/bin",
+              "CUDAToolkit_CUPTI_INCLUDE_DIR:PATH=/usr/local/cuda/targets/x86_64-linux/include",
+              "CUDAToolkit_NVCC_EXECUTABLE:FILEPATH=/usr/local/cuda/bin/nvcc",
+              "CUDAToolkit_rt_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/librt.a",
+              "GTSAM_DIR:PATH=/usr/lib/cmake/GTSAM",
+              "gtsam_points_DIR:PATH=/usr/local/lib/cmake/gtsam_points",
+              "CUDAToolkit_BIN_DIR-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_CUPTI_INCLUDE_DIR-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_NVCC_EXECUTABLE-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_rt_LIBRARY-ADVANCED:INTERNAL=1"
+            ],
+            "sha256": "569ff3500335f927824ab90622cfac42b28a41143a0cd4a5d74709044e0f3ffc"
+          },
+          "liuo_tunnel_sim": {
+            "selected_options": [
+              "CMAKE_BUILD_TYPE:STRING=Release",
+              "CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/c++",
+              "CUDAToolkit_BIN_DIR:PATH=/usr/local/cuda/bin",
+              "CUDAToolkit_CUPTI_INCLUDE_DIR:PATH=/usr/local/cuda/targets/x86_64-linux/include",
+              "CUDAToolkit_NVCC_EXECUTABLE:FILEPATH=/usr/local/cuda/bin/nvcc",
+              "CUDAToolkit_rt_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/librt.a",
+              "GTSAM_DIR:PATH=/usr/lib/cmake/GTSAM",
+              "gtsam_points_DIR:PATH=/usr/local/lib/cmake/gtsam_points",
+              "CUDAToolkit_BIN_DIR-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_CUPTI_INCLUDE_DIR-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_NVCC_EXECUTABLE-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_rt_LIBRARY-ADVANCED:INTERNAL=1"
+            ],
+            "sha256": "3c88fe6eb6b4bd868f181205fbfc180c119e7e6d0124e32f075f80cd208e985e"
+          }
+        },
+        "commands": {
+          "observer": [
+            "/usr/bin/python3",
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/tools/observe.py"
+          ],
+          "odometry": [
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/liuo_tunnel/liuo_tunnel_node",
+            "--ros-args",
+            "-p",
+            "config_file:=/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261023T023211Z_731/metadata/config/phase1.json",
+            "-p",
+            "use_sim_time:=true",
+            "-p",
+            "installation_file:=/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261023T023211Z_731/metadata/config/installation.json"
+          ],
+          "simulation": [
+            "/usr/bin/python3",
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/tools/replay.py",
+            "--source-run",
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T161447Z_132"
+          ]
+        },
+        "config_sha256": "ba37cacf2836d17bd4344ad31ef75e3a62ca6e518c51420c51d77a5aa917029e",
+        "environment": {
+          "AMENT_PREFIX_PATH": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim:/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel:/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs:/opt/ros/jazzy",
+          "LD_LIBRARY_PATH": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib:/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib:/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib:/opt/ros/jazzy/opt/rviz_ogre_vendor/lib:/opt/ros/jazzy/lib/x86_64-linux-gnu:/opt/ros/jazzy/opt/gz_math_vendor/lib:/opt/ros/jazzy/opt/gz_utils_vendor/lib:/opt/ros/jazzy/opt/gz_cmake_vendor/lib:/opt/ros/jazzy/lib",
+          "ROS_DOMAIN_ID": "155",
+          "ROS_LOG_DIR": "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261023T023211Z_731/runtime/ros"
+        },
+        "frozen_input": {
+          "capture_sha256": {
+            "export/capture/raw/metadata.yaml": "5a41cb74d74df9e0922f254fa71d13c66d09bd51ceb4712f6800480aba10be44",
+            "export/capture/raw/raw_0.mcap": "0de2c25af0bac745ebd7e16b1ef3a3fa0bbcf6de52e710d65900125fe7d740bc"
+          },
+          "counts": {
+            "clock": 72000,
+            "cloud": 3600,
+            "imu": 72000,
+            "uwb": 26685
+          },
+          "raw_sha256": {
+            "clock": "2444af9f41847054396fa4b82dc87973eb47eb983ac412e5e5cf705f2097e149",
+            "cloud": "e9bd22b96e417445f53958a320d547277c2f71cac00541c7b42c93146fa45154",
+            "imu": "120887c46d7dd44b1c0233fb50099366bfc2a973a921b53d6565eaabf0b22db1",
+            "uwb": "0829b79bf23e7fda5573b8b3173e7b8f68720816dc401e8f2519833c1607035d"
+          },
+          "source_run": "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T161447Z_132",
+          "source_run_id": "20261022T161447Z_132",
+          "source_scenario": {
+            "anchor_layout": "high_first_four_corner_400m_7_anchors_v5",
+            "clock_start_s": 1,
+            "dt_s": 0.005,
+            "duration_s": 360.0,
+            "exchange_dt_s": 0.004,
+            "gauge_m": 1.435,
+            "height_m": 5,
+            "length_m": 2400,
+            "lidar_range_m": 40,
+            "lidar_samples": [
+              512,
+              40
+            ],
+            "motion": "local_bootstrap_then_x1000_300s_v1",
+            "requested_rate": 1.0,
+            "reset_at_s": -1.0,
+            "return_trip": false,
+            "scan_model": "snapshot",
+            "scene": "rail_tunnel_straight_v1",
+            "seed": 1,
+            "simulation_start_xyz_yaw": [
+              220.0,
+              0.2,
+              1.6,
+              1.5707963267948966
+            ],
+            "width_m": 6,
+            "world_voxel_m": 0.1
+          }
+        },
+        "installation_sha256": "7ff25a7f022625805a8aad9c8f5603fb1cf997effbea38fc49b4f53f0bcfcdeb",
+        "scan_model": "snapshot",
+        "seed": 1,
+        "shared_libraries": {
+          "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/libliuo_tunnel_core.so": {
+            "resolved": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/libliuo_tunnel_core.so",
+            "sha256": "a75ad893e8013e2b617fe51c7237f1397fdfd521c77d69933bf5c67e419c41c1"
+          },
+          "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_generator_c.so": {
+            "resolved": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_generator_c.so",
+            "sha256": "c4634bd07c0fec27e207966c3ffc5a47c09709da8390c04bfc77ccf0f684fdc9"
+          },
+          "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "b61301c7bd57f9db9438646b8fabb5444b4dc7d11cccbc781c810ad2df8cc522"
+          },
+          "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib/libliuo_tunnel_renderer.so": {
+            "resolved": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib/libliuo_tunnel_renderer.so",
+            "sha256": "49011a1e9f9e45f0c1023dbcd1225859a9fd2bb82db5a75405a08fe4684ad867"
+          },
+          "/lib/x86_64-linux-gnu/libboost_filesystem.so.1.83.0": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.83.0",
+            "sha256": "2c137b29a3740fb6d12a4c18823bc2b15215646c3ba3bb208b89782df28559f0"
+          },
+          "/lib/x86_64-linux-gnu/libboost_serialization.so.1.83.0": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libboost_serialization.so.1.83.0",
+            "sha256": "cb6b870f1c1278453f38b01f5e0c3e7feff8f23fcd533c8969cf08e6364b890c"
+          },
+          "/lib/x86_64-linux-gnu/libboost_timer.so.1.83.0": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libboost_timer.so.1.83.0",
+            "sha256": "1ab8ccc485c6e599dccf54843f554305b0bc7600107f0bea146e6495479ce3ae"
+          },
+          "/lib/x86_64-linux-gnu/libc.so.6": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libc.so.6",
+            "sha256": "3a15d66867d83762c7f2f1e37359cb8f6c5743edb369c65285cb0b1c4f7498bf"
+          },
+          "/lib/x86_64-linux-gnu/libcephes-gtsam.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libcephes-gtsam.so.1.0.0",
+            "sha256": "6acec5d566c34c29a63e949b6319dbf1aa9877349f59d7a6f4e6d8feb4678275"
+          },
+          "/lib/x86_64-linux-gnu/libconsole_bridge.so.1.0": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libconsole_bridge.so.1.0",
+            "sha256": "bb9ced68ce1209c48b55ddcebe913542197dc745c71febd65205ff0a4d833651"
+          },
+          "/lib/x86_64-linux-gnu/libdl.so.2": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libdl.so.2",
+            "sha256": "c2994527172cc23b7fb0f7d611b71e00a37da27af12c2e5e9e0dc1a742886c96"
+          },
+          "/lib/x86_64-linux-gnu/libfmt.so.9": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libfmt.so.9.1.0",
+            "sha256": "da008b908b32e428eaa1c09e36d6894c8f88362e254b503c7c2c6112b4ec9ed0"
+          },
+          "/lib/x86_64-linux-gnu/libgcc_s.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libgcc_s.so.1",
+            "sha256": "d93224d2b0dab4247598be683adca02f5cf00586f99c187579cd7e92058fb7cb"
+          },
+          "/lib/x86_64-linux-gnu/libgomp.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libgomp.so.1.0.0",
+            "sha256": "135f3c8f006d2fe5e68e51281c7974cb991a03de3bfb3593d68d174dfcf854d1"
+          },
+          "/lib/x86_64-linux-gnu/libgtsam.so.4": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libgtsam.so.4.3a0",
+            "sha256": "802215b2ca62c2fb8b07a17b3d1afe72ebf96564eca4cfff00d28228363535f9"
+          },
+          "/lib/x86_64-linux-gnu/liblttng-ust-common.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/liblttng-ust-common.so.1.0.0",
+            "sha256": "28c3025315634619a7d278fff9e5bfa85ef85a58db8a52ce3ecf0054093fe0be"
+          },
+          "/lib/x86_64-linux-gnu/liblttng-ust-tracepoint.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/liblttng-ust-tracepoint.so.1.0.0",
+            "sha256": "c5a75aea47fbfa1380e75fad869a00e225a947bbfa99edc6c62c2241959e1eb8"
+          },
+          "/lib/x86_64-linux-gnu/liblttng-ust.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/liblttng-ust.so.1.0.0",
+            "sha256": "3dda3aff8ce04c7a1d5f1c5f20bd725d63e686a2042ee4834d8c25cde288f27b"
+          },
+          "/lib/x86_64-linux-gnu/libm.so.6": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libm.so.6",
+            "sha256": "fce00b6f25f459cf4ae0b7fae4257909a1a8a86f9149e7c029a5d617baf1ccd0"
+          },
+          "/lib/x86_64-linux-gnu/libmetis.so.5": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libmetis.so.5.1.0",
+            "sha256": "e3644eb16d61bdc633255b36851aecbb61919963a3a3d3cd8a5eb9bf2895f200"
+          },
+          "/lib/x86_64-linux-gnu/libnuma.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libnuma.so.1.0.0",
+            "sha256": "02d7582c5d391e460e56aa67a414360e3183b968206645b9123f9dc7bff5d009"
+          },
+          "/lib/x86_64-linux-gnu/libpthread.so.0": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libpthread.so.0",
+            "sha256": "90491a21ce44efcf3bd4b65ec82501c091d7ebe7f8d9b341dd01d721001d9ecd"
+          },
+          "/lib/x86_64-linux-gnu/librt.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/librt.so.1",
+            "sha256": "6d072187d88e092e81561a44c03a4a41397319022c6d43519757cc051c576d82"
+          },
+          "/lib/x86_64-linux-gnu/libspdlog.so.1.12": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libspdlog.so.1.12.0",
+            "sha256": "62bb2fbc92edc05b35888e624882b78f5b38c0aca6a3df7ab7db32bb9c2629b6"
+          },
+          "/lib/x86_64-linux-gnu/libstdc++.so.6": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.33",
+            "sha256": "1fd75fe70354a416d75aef22bcae68c47bd25d20e2d0568c30b1a9838cf62f11"
+          },
+          "/lib/x86_64-linux-gnu/libtinyxml2.so.10": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libtinyxml2.so.10.0.0",
+            "sha256": "f9e01d87fb78af744a426af8c992e94abf8cd3810a256e117bcc94cd84d2be6d"
+          },
+          "/lib/x86_64-linux-gnu/libyaml-0.so.2": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.9",
+            "sha256": "a518a0ec7ee915fbeabe80551b8c9573b34e37b9402cc3e3eeab0fe346ba6ef0"
+          },
+          "/lib/x86_64-linux-gnu/libyaml-cpp.so.0.8": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libyaml-cpp.so.0.8.0",
+            "sha256": "55749fdb0a78969cf15c67c326f9a506e67cace47aa8520c2ae137b9e6189e3b"
+          },
+          "/opt/ros/jazzy/lib/libament_index_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libament_index_cpp.so",
+            "sha256": "0be9f15749b6f66470de43adc0dc1e9b44d06986f8ade3d2067598e5f2e4f800"
+          },
+          "/opt/ros/jazzy/lib/libbuiltin_interfaces__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libbuiltin_interfaces__rosidl_generator_c.so",
+            "sha256": "5978f053a35a78a5533a2371cb87435643e492b02eb556d214dc79534387c17a"
+          },
+          "/opt/ros/jazzy/lib/libclass_loader.so": {
+            "resolved": "/opt/ros/jazzy/lib/libclass_loader.so",
+            "sha256": "667c9151a4daa9865a6602850321b77104d3955fc27fa9aa9fd4cc3e36fd4ada"
+          },
+          "/opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_generator_c.so",
+            "sha256": "9a0b3032346d31db3abb14e761d0daf8779af51e461231133b96569e1f0e6b22"
+          },
+          "/opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "876043a19e64fbdb7c93ee685c92954764274145ab8bb00458260d33bdb7268c"
+          },
+          "/opt/ros/jazzy/lib/libgeometry_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libgeometry_msgs__rosidl_generator_c.so",
+            "sha256": "9581678b8280d8265e0549b3c357016bf04cc3c04593f8911bbb50020436ec1c"
+          },
+          "/opt/ros/jazzy/lib/liblibstatistics_collector.so": {
+            "resolved": "/opt/ros/jazzy/lib/liblibstatistics_collector.so",
+            "sha256": "e6da5a84efab7d443a81def20f3c771d1d72ac126dd6e1db8a78e0568b1656e4"
+          },
+          "/opt/ros/jazzy/lib/libnav_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libnav_msgs__rosidl_generator_c.so",
+            "sha256": "b4dd0448ad688e67e0ca5c01838a959bfa30741d1efaa7db38371e83af557907"
+          },
+          "/opt/ros/jazzy/lib/libnav_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libnav_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "c8f54f8e64df4c584bc7df5ba16c1ebd0862e928387728561ef03f41bde8d03e"
+          },
+          "/opt/ros/jazzy/lib/librcl.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl.so",
+            "sha256": "9d081f3fdc54eace43c7427de0a9a0a47cd835c2906ec5d8a3327f426c551341"
+          },
+          "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_generator_c.so",
+            "sha256": "a3d13b8cf4cb4dff0b62ade62956d648921ae8e1c2292a822639e2ad3e41f8b3"
+          },
+          "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_c.so",
+            "sha256": "c55cae062b0f0f3370c4b6831a3b3dfeff60a44ba65762a013333925fcadbed6"
+          },
+          "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_cpp.so",
+            "sha256": "71f7b9f8ab328764c599f5e6a31bcdece0bab4a2d229bd4a634a0be81d45be32"
+          },
+          "/opt/ros/jazzy/lib/librcl_logging_interface.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_logging_interface.so",
+            "sha256": "95352499feed45aa66bf8fcbdf7101cdb3a72c34860c7d203b7ea55f23810d01"
+          },
+          "/opt/ros/jazzy/lib/librcl_logging_spdlog.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_logging_spdlog.so",
+            "sha256": "4812499e63a978c4997789f64d5f4efecdf4fc218c8a9533e8277266832a49a4"
+          },
+          "/opt/ros/jazzy/lib/librcl_yaml_param_parser.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_yaml_param_parser.so",
+            "sha256": "24a15997f533fbc299883083b344ca21d2735bd7494b6c4522f96feb3e5bf588"
+          },
+          "/opt/ros/jazzy/lib/librclcpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librclcpp.so",
+            "sha256": "393d0a4ff5f64628c2d978a24c1feed15dc98b0c6d17342fc7301df01928064a"
+          },
+          "/opt/ros/jazzy/lib/librcpputils.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcpputils.so",
+            "sha256": "c2a458e3b3860481a3eb9ba9524927b5cd4661dbc0a09a51ed151fb82c15f76e"
+          },
+          "/opt/ros/jazzy/lib/librcutils.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcutils.so",
+            "sha256": "b348164cb2aa665f83312e1de506c3b98351107fe188e6d1fda1689b6bd9f2fe"
+          },
+          "/opt/ros/jazzy/lib/librmw.so": {
+            "resolved": "/opt/ros/jazzy/lib/librmw.so",
+            "sha256": "996a8b0ba5695f23841ab1dcd1c04e266e8da219ca7d2b656fae6d7420e6956e"
+          },
+          "/opt/ros/jazzy/lib/librmw_implementation.so": {
+            "resolved": "/opt/ros/jazzy/lib/librmw_implementation.so",
+            "sha256": "2f17c2bf4b9c044c48f34ef5fbd8d5bed7581c377b44f6714e9f6c2ad69c95bc"
+          },
+          "/opt/ros/jazzy/lib/librosbag2_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosbag2_cpp.so",
+            "sha256": "3594c88ed98d12a0404ac3402a0527bb6445115ed123a21566ca4f04283ceece"
+          },
+          "/opt/ros/jazzy/lib/librosbag2_storage.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosbag2_storage.so",
+            "sha256": "87a84016e94b28b6c3ff78baa9786a7a6836fe5edfad99443a74273505018021"
+          },
+          "/opt/ros/jazzy/lib/librosgraph_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosgraph_msgs__rosidl_generator_c.so",
+            "sha256": "c7e7262b0040fe3fac6873bfca30c429ff867ac2a589ac28983865772f96bb1d"
+          },
+          "/opt/ros/jazzy/lib/librosgraph_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosgraph_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "329eed7b100c99497648c85a02317e3a0b621b599c76fb54e6c743cca1ee5344"
+          },
+          "/opt/ros/jazzy/lib/librosidl_dynamic_typesupport.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosidl_dynamic_typesupport.so",
+            "sha256": "5533baa58e58414b29e38b6da2ec28354be6cf3541b368491b3bf4faac8f6dac"
+          },
+          "/opt/ros/jazzy/lib/librosidl_runtime_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosidl_runtime_c.so",
+            "sha256": "a819014d87d7db42c066358788d1e100b6eb31a71877789defbd0f34b3ed48cb"
+          },
+          "/opt/ros/jazzy/lib/librosidl_typesupport_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosidl_typesupport_c.so",
+            "sha256": "6110cdf1684bbf9115f4b14dc2f815d829d2b3a16cc276daa20d338a8131c1d3"
+          },
+          "/opt/ros/jazzy/lib/librosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosidl_typesupport_cpp.so",
+            "sha256": "49ccc86f23f87bc8c7287724ff294424d56efe0125e6d45bb7740f5aefa278ec"
+          },
+          "/opt/ros/jazzy/lib/librosidl_typesupport_introspection_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosidl_typesupport_introspection_cpp.so",
+            "sha256": "f36fcfb0f24f16cce9e0f73e05fec06e629a732ba6f864236492e7b606518705"
+          },
+          "/opt/ros/jazzy/lib/libsensor_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libsensor_msgs__rosidl_generator_c.so",
+            "sha256": "a43ab663afbc57a3a20fb4595cc62d91e59bbbd04ba0b0c29687e64c21911742"
+          },
+          "/opt/ros/jazzy/lib/libsensor_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libsensor_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "7c4f057e70cb1b92474909d82f09a77884410b01dc2b390a30e4b65ee7f08dd2"
+          },
+          "/opt/ros/jazzy/lib/libservice_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libservice_msgs__rosidl_generator_c.so",
+            "sha256": "86ef6e60448c40ddd8d3508fe6ff2a74e4c4620d05941ce4a6fa56a142fabc81"
+          },
+          "/opt/ros/jazzy/lib/libservice_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libservice_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "a483835f44cbe23a6b282c50c08ff83ee3a45b2018b529fdd3b6eedab69536f7"
+          },
+          "/opt/ros/jazzy/lib/libstatistics_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libstatistics_msgs__rosidl_generator_c.so",
+            "sha256": "120ffecae490a21ac7ce13736792dc1e47b3d1793232d82d42d60bab33ed1d05"
+          },
+          "/opt/ros/jazzy/lib/libstatistics_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libstatistics_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "562aaefdbb36c3f9a9750b1ba27ac1f1423e42c1512f1176d672c41452ec131e"
+          },
+          "/opt/ros/jazzy/lib/libstd_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libstd_msgs__rosidl_generator_c.so",
+            "sha256": "2785660b416ddd995b333394e1a9768292c32644cb017cf742739eff58689f7f"
+          },
+          "/opt/ros/jazzy/lib/libtracetools.so": {
+            "resolved": "/opt/ros/jazzy/lib/libtracetools.so",
+            "sha256": "9e3d86dbde344cc505f109b77f85720384ca8c16cd197feb42d552803b527f87"
+          },
+          "/opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_generator_c.so",
+            "sha256": "48cf59f8b0f4e79aba72da6ea97210785418bfa7b6e20e47b81b782113429a95"
+          },
+          "/opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_typesupport_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_typesupport_c.so",
+            "sha256": "dcc3a2b582cf8019a3db96c7882b96a43a557c92dfba92d64db385a74537fbdf"
+          },
+          "/opt/ros/jazzy/lib/libvisualization_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libvisualization_msgs__rosidl_generator_c.so",
+            "sha256": "498ec0b59e1d1a787dd6d0e4ee191ca12b3ef9d84ed32e8ff7a020d17b102828"
+          },
+          "/opt/ros/jazzy/lib/libvisualization_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libvisualization_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "7110282cae75184ac31ba5ca57182df1de3dbdf13397851972865c03d7304081"
+          },
+          "/usr/local/cuda/targets/x86_64-linux/lib/libcudart.so.12": {
+            "resolved": "/usr/local/cuda-12.5/targets/x86_64-linux/lib/libcudart.so.12.5.82",
+            "sha256": "16e8815a5e36a7ffbc9107df350d3f67090afb10a3de4b3710f6928aa7994a36"
+          },
+          "/usr/local/lib/libgtsam_points.so.1": {
+            "resolved": "/usr/local/lib/libgtsam_points.so.1.2.1",
+            "sha256": "dfcd7ca6609afedf4d921a71de1e4bcc3f92117b1e0933e1eef0c0f9db32f58b"
+          },
+          "/usr/local/lib/libgtsam_points_cuda.so.1": {
+            "resolved": "/usr/local/lib/libgtsam_points_cuda.so.1.2.1",
+            "sha256": "77aacb13f514eff0ce9447122e51fd1f3a83ac0099ecf8c2f2edf11e1f6efaa0"
+          }
+        },
+        "source_iap_commit": "fbccae16802402d7300bb817d2627f86e6a495df"
+      },
+      "first_stamp": 46.3,
+      "last_stamp": 360.9,
+      "max_output_gap_s": 0.10000000000002274,
+      "state_counts": {
+        "DEGRADED": 2980,
+        "LOST": 167
+      },
+      "ape_se3": {
+        "rmse_m": 0.598756071113363,
+        "mean_m": 0.46565965772860834,
+        "median_m": 0.2957150523077013,
+        "std_m": 0.3763906426296834,
+        "p95_m": 1.0982585730409724,
+        "max_m": 2.174187145215575,
+        "axis_rmse_m": [
+          0.023441408763257763,
+          0.11526697190445014,
+          0.5870884586144435
+        ]
+      },
+      "ape_first_pose": {
+        "rmse_m": 2.9055137098439077,
+        "mean_m": 2.356729048878913,
+        "median_m": 2.4469603483416544,
+        "std_m": 1.6993640305305988,
+        "p95_m": 4.442500306573388,
+        "max_m": 4.44551635432209,
+        "axis_rmse_m": [
+          0.028772879384595267,
+          2.832255854323664,
+          0.6476950016420996
+        ]
+      },
+      "se3_rotation": [
+        [
+          -0.001013210545418336,
+          -0.9999958742315338,
+          0.002687921929945488
+        ],
+        [
+          0.999976466429317,
+          -0.0010314218760617442,
+          -0.006782533188432749
+        ],
+        [
+          0.0067852775867508625,
+          0.0026809865393935804,
+          0.9999733858054659
+        ]
+      ],
+      "se3_translation": [
+        219.99358347395156,
+        0.12623103136688035,
+        1.9046210636435394
+      ],
+      "fit_singular_values": [
+        50244804.641789086,
+        358.95938782586626,
+        76.73895547758234
+      ],
+      "attitude_rmse_deg": 0.3325329368852558,
+      "common_samples": 571,
+      "own_window_ape_using_common_fit": {
+        "rmse_m": 0.5671895888848535,
+        "mean_m": 0.4418758370268656,
+        "median_m": 0.29390603894951073,
+        "std_m": 0.35559777050928776,
+        "p95_m": 1.0893423480068363,
+        "max_m": 2.1835012387400243,
+        "axis_rmse_m": [
+          0.025916714656578497,
+          0.1121701813796593,
+          0.5553829346046139
+        ]
+      }
+    },
+    "reuse": {
+      "run": "log/20261022T162059Z_880",
+      "lifecycle": "completed",
+      "source": {
+        "git_commit": "bcf931b43312d0af7cd5e9dd18f3d677e41ce1d6",
+        "git_worktree_clean": true
+      },
+      "trajectory_sha256": "43e25bf608be16b90aee0b17aeb795ede5e72f32d768bb17778fb7eb2d83fbba",
+      "poses": 3412,
+      "coverage_percent": 100.0,
+      "window_matches": 3000,
+      "input_identity": {
+        "binaries": {
+          "odometry": {
+            "ldd": "\tlinux-vdso.so.1 (0x0000772cd50b9000)\n\tlibliuo_tunnel_core.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/libliuo_tunnel_core.so (0x0000772cd4cfa000)\n\tlibcudart.so.12 => /usr/local/cuda/targets/x86_64-linux/lib/libcudart.so.12 (0x0000772cd4a00000)\n\tlibrclcpp.so => /opt/ros/jazzy/lib/librclcpp.so (0x0000772cd47a2000)\n\tlibnav_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libnav_msgs__rosidl_typesupport_cpp.so (0x0000772cd4cd0000)\n\tlibdiagnostic_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_typesupport_cpp.so (0x0000772cd4cc4000)\n\tlibliuo_tunnel_msgs__rosidl_typesupport_cpp.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_typesupport_cpp.so (0x0000772cd4cbf000)\n\tlibgtsam_points.so.1 => /usr/local/lib/libgtsam_points.so.1 (0x0000772cd44ad000)\n\tlibgtsam_points_cuda.so.1 => /usr/local/lib/libgtsam_points_cuda.so.1 (0x0000772cd425b000)\n\tlibgtsam.so.4 => /lib/x86_64-linux-gnu/libgtsam.so.4 (0x0000772cd3d5e000)\n\tlibcephes-gtsam.so.1 => /lib/x86_64-linux-gnu/libcephes-gtsam.so.1 (0x0000772cd3d2c000)\n\tlibspdlog.so.1.12 => /lib/x86_64-linux-gnu/libspdlog.so.1.12 (0x0000772cd3ca5000)\n\tlibfmt.so.9 => /lib/x86_64-linux-gnu/libfmt.so.9 (0x0000772cd3c84000)\n\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x0000772cd3c2e000)\n\tliblibstatistics_collector.so => /opt/ros/jazzy/lib/liblibstatistics_collector.so (0x0000772cd4cb5000)\n\tlibrcl.so => /opt/ros/jazzy/lib/librcl.so (0x0000772cd3be7000)\n\tlibstatistics_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libstatistics_msgs__rosidl_typesupport_cpp.so (0x0000772cd3be1000)\n\tlibtracetools.so => /opt/ros/jazzy/lib/libtracetools.so (0x0000772cd3bc7000)\n\tlibsensor_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libsensor_msgs__rosidl_typesupport_cpp.so (0x0000772cd3bb8000)\n\tlibrmw.so => /opt/ros/jazzy/lib/librmw.so (0x0000772cd3bad000)\n\tlibrcutils.so => /opt/ros/jazzy/lib/librcutils.so (0x0000772cd3b8d000)\n\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x0000772cd390f000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x0000772cd3826000)\n\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x0000772cd37f8000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x0000772cd35e5000)\n\tlibboost_filesystem.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_filesystem.so.1.83.0 (0x0000772cd35c2000)\n\t/lib64/ld-linux-x86-64.so.2 (0x0000772cd50bb000)\n\tlibdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x0000772cd35bb000)\n\tlibpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x0000772cd35b6000)\n\tlibrt.so.1 => /lib/x86_64-linux-gnu/librt.so.1 (0x0000772cd35b1000)\n\tlibrcl_interfaces__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_cpp.so (0x0000772cd3596000)\n\tlibrcl_yaml_param_parser.so => /opt/ros/jazzy/lib/librcl_yaml_param_parser.so (0x0000772cd358a000)\n\tlibrosgraph_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librosgraph_msgs__rosidl_typesupport_cpp.so (0x0000772cd3583000)\n\tlibrcl_logging_interface.so => /opt/ros/jazzy/lib/librcl_logging_interface.so (0x0000772cd357e000)\n\tlibrmw_implementation.so => /opt/ros/jazzy/lib/librmw_implementation.so (0x0000772cd3571000)\n\tlibament_index_cpp.so => /opt/ros/jazzy/lib/libament_index_cpp.so (0x0000772cd3565000)\n\tlibtype_description_interfaces__rosidl_typesupport_c.so => /opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_typesupport_c.so (0x0000772cd355e000)\n\tlibrosidl_dynamic_typesupport.so => /opt/ros/jazzy/lib/librosidl_dynamic_typesupport.so (0x0000772cd3543000)\n\tlibrosidl_typesupport_introspection_cpp.so => /opt/ros/jazzy/lib/librosidl_typesupport_introspection_cpp.so (0x0000772cd353e000)\n\tlibrcpputils.so => /opt/ros/jazzy/lib/librcpputils.so (0x0000772cd352f000)\n\tlibrosidl_runtime_c.so => /opt/ros/jazzy/lib/librosidl_runtime_c.so (0x0000772cd3510000)\n\tlibnav_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libnav_msgs__rosidl_generator_c.so (0x0000772cd34dd000)\n\tlibrosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librosidl_typesupport_cpp.so (0x0000772cd34d5000)\n\tlibdiagnostic_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_generator_c.so (0x0000772cd34c0000)\n\tlibliuo_tunnel_msgs__rosidl_generator_c.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_generator_c.so (0x0000772cd34ba000)\n\tlibboost_timer.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_timer.so.1.83.0 (0x0000772cd34b3000)\n\tlibboost_serialization.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_serialization.so.1.83.0 (0x0000772cd3470000)\n\tlibmetis.so.5 => /lib/x86_64-linux-gnu/libmetis.so.5 (0x0000772cd3404000)\n\tlibrcl_logging_spdlog.so => /opt/ros/jazzy/lib/librcl_logging_spdlog.so (0x0000772cd33fa000)\n\tlibrcl_interfaces__rosidl_typesupport_c.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_c.so (0x0000772cd33ea000)\n\tlibtype_description_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_generator_c.so (0x0000772cd33d2000)\n\tlibyaml-0.so.2 => /lib/x86_64-linux-gnu/libyaml-0.so.2 (0x0000772cd33b1000)\n\tlibstatistics_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libstatistics_msgs__rosidl_generator_c.so (0x0000772cd33a6000)\n\tliblttng-ust.so.1 => /lib/x86_64-linux-gnu/liblttng-ust.so.1 (0x0000772cd3323000)\n\tlibsensor_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libsensor_msgs__rosidl_generator_c.so (0x0000772cd32df000)\n\tlibrcl_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_generator_c.so (0x0000772cd3291000)\n\tlibrosgraph_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/librosgraph_msgs__rosidl_generator_c.so (0x0000772cd328c000)\n\tlibrosidl_typesupport_c.so => /opt/ros/jazzy/lib/librosidl_typesupport_c.so (0x0000772cd3284000)\n\tlibgeometry_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libgeometry_msgs__rosidl_generator_c.so (0x0000772cd3246000)\n\tlibstd_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libstd_msgs__rosidl_generator_c.so (0x0000772cd3215000)\n\tlibservice_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libservice_msgs__rosidl_generator_c.so (0x0000772cd3210000)\n\tlibbuiltin_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/libbuiltin_interfaces__rosidl_generator_c.so (0x0000772cd3209000)\n\tlibnuma.so.1 => /lib/x86_64-linux-gnu/libnuma.so.1 (0x0000772cd31f9000)\n\tliblttng-ust-common.so.1 => /lib/x86_64-linux-gnu/liblttng-ust-common.so.1 (0x0000772cd31ec000)\n\tliblttng-ust-tracepoint.so.1 => /lib/x86_64-linux-gnu/liblttng-ust-tracepoint.so.1 (0x0000772cd31cf000)\n",
+            "path": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/liuo_tunnel/liuo_tunnel_node",
+            "sha256": "85974a6cef93b3207957930992e04f10850e3724495d9b1044dbaa318c6ef8bb"
+          },
+          "simulation": {
+            "ldd": "\tlinux-vdso.so.1 (0x00007802715f1000)\n\tlibliuo_tunnel_renderer.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib/libliuo_tunnel_renderer.so (0x0000780271519000)\n\tlibliuo_tunnel_core.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/libliuo_tunnel_core.so (0x00007802713eb000)\n\tlibrosbag2_cpp.so => /opt/ros/jazzy/lib/librosbag2_cpp.so (0x000078027134d000)\n\tlibnav_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libnav_msgs__rosidl_typesupport_cpp.so (0x0000780271340000)\n\tlibliuo_tunnel_msgs__rosidl_typesupport_cpp.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_typesupport_cpp.so (0x0000780271339000)\n\tlibspdlog.so.1.12 => /lib/x86_64-linux-gnu/libspdlog.so.1.12 (0x0000780271295000)\n\tlibfmt.so.9 => /lib/x86_64-linux-gnu/libfmt.so.9 (0x0000780271274000)\n\tlibrosbag2_storage.so => /opt/ros/jazzy/lib/librosbag2_storage.so (0x00007802711f1000)\n\tlibrclcpp.so => /opt/ros/jazzy/lib/librclcpp.so (0x0000780270f93000)\n\tlibrosgraph_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librosgraph_msgs__rosidl_typesupport_cpp.so (0x0000780270f8c000)\n\tlibrcl.so => /opt/ros/jazzy/lib/librcl.so (0x0000780270f45000)\n\tlibtracetools.so => /opt/ros/jazzy/lib/libtracetools.so (0x0000780270f2b000)\n\tlibsensor_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libsensor_msgs__rosidl_typesupport_cpp.so (0x0000780270f1c000)\n\tlibrmw.so => /opt/ros/jazzy/lib/librmw.so (0x0000780270f11000)\n\tlibrcutils.so => /opt/ros/jazzy/lib/librcutils.so (0x0000780270ef1000)\n\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x0000780270c71000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x0000780270b88000)\n\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x0000780270b5a000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x0000780270947000)\n\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x00007802708f1000)\n\tlibgtsam_points.so.1 => /usr/local/lib/libgtsam_points.so.1 (0x00007802705fc000)\n\tlibgtsam.so.4 => /lib/x86_64-linux-gnu/libgtsam.so.4 (0x00007802700fd000)\n\tlibboost_filesystem.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_filesystem.so.1.83.0 (0x00007802700da000)\n\tlibclass_loader.so => /opt/ros/jazzy/lib/libclass_loader.so (0x00007802700c7000)\n\tlibconsole_bridge.so.1.0 => /lib/x86_64-linux-gnu/libconsole_bridge.so.1.0 (0x00007802700c1000)\n\tlibtinyxml2.so.10 => /lib/x86_64-linux-gnu/libtinyxml2.so.10 (0x00007802700aa000)\n\tlibrmw_implementation.so => /opt/ros/jazzy/lib/librmw_implementation.so (0x000078027009b000)\n\tlibament_index_cpp.so => /opt/ros/jazzy/lib/libament_index_cpp.so (0x000078027008f000)\n\tlibservice_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libservice_msgs__rosidl_typesupport_cpp.so (0x000078027008a000)\n\tlibrcpputils.so => /opt/ros/jazzy/lib/librcpputils.so (0x000078027007b000)\n\tlibnav_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libnav_msgs__rosidl_generator_c.so (0x0000780270048000)\n\tlibrosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librosidl_typesupport_cpp.so (0x0000780270040000)\n\tlibliuo_tunnel_msgs__rosidl_generator_c.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_generator_c.so (0x000078027003a000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007802715f3000)\n\tlibyaml-cpp.so.0.8 => /lib/x86_64-linux-gnu/libyaml-cpp.so.0.8 (0x000078026fff1000)\n\tliblibstatistics_collector.so => /opt/ros/jazzy/lib/liblibstatistics_collector.so (0x000078026ffe9000)\n\tlibrcl_interfaces__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_cpp.so (0x000078026ffce000)\n\tlibrcl_yaml_param_parser.so => /opt/ros/jazzy/lib/librcl_yaml_param_parser.so (0x000078026ffc0000)\n\tlibstatistics_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libstatistics_msgs__rosidl_typesupport_cpp.so (0x000078026ffba000)\n\tlibrcl_logging_interface.so => /opt/ros/jazzy/lib/librcl_logging_interface.so (0x000078026ffb5000)\n\tlibtype_description_interfaces__rosidl_typesupport_c.so => /opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_typesupport_c.so (0x000078026ffae000)\n\tlibrosidl_dynamic_typesupport.so => /opt/ros/jazzy/lib/librosidl_dynamic_typesupport.so (0x000078026ff95000)\n\tlibrosidl_typesupport_introspection_cpp.so => /opt/ros/jazzy/lib/librosidl_typesupport_introspection_cpp.so (0x000078026ff8e000)\n\tlibrosidl_runtime_c.so => /opt/ros/jazzy/lib/librosidl_runtime_c.so (0x000078026ff6f000)\n\tlibrosgraph_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/librosgraph_msgs__rosidl_generator_c.so (0x000078026ff6a000)\n\tlibrcl_logging_spdlog.so => /opt/ros/jazzy/lib/librcl_logging_spdlog.so (0x000078026ff60000)\n\tlibrcl_interfaces__rosidl_typesupport_c.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_c.so (0x000078026ff50000)\n\tlibtype_description_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_generator_c.so (0x000078026ff36000)\n\tlibyaml-0.so.2 => /lib/x86_64-linux-gnu/libyaml-0.so.2 (0x000078026ff15000)\n\tliblttng-ust.so.1 => /lib/x86_64-linux-gnu/liblttng-ust.so.1 (0x000078026fe92000)\n\tlibsensor_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libsensor_msgs__rosidl_generator_c.so (0x000078026fe4e000)\n\tlibgtsam_points_cuda.so.1 => /usr/local/lib/libgtsam_points_cuda.so.1 (0x000078026fbfc000)\n\tlibboost_timer.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_timer.so.1.83.0 (0x000078026fbf3000)\n\tlibboost_serialization.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_serialization.so.1.83.0 (0x000078026fbb0000)\n\tlibmetis.so.5 => /lib/x86_64-linux-gnu/libmetis.so.5 (0x000078026fb46000)\n\tlibcephes-gtsam.so.1 => /lib/x86_64-linux-gnu/libcephes-gtsam.so.1 (0x000078026fb14000)\n\tlibservice_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libservice_msgs__rosidl_generator_c.so (0x000078026fb0f000)\n\tlibgeometry_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libgeometry_msgs__rosidl_generator_c.so (0x000078026facf000)\n\tlibstd_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libstd_msgs__rosidl_generator_c.so (0x000078026fa9e000)\n\tlibbuiltin_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/libbuiltin_interfaces__rosidl_generator_c.so (0x000078026fa97000)\n\tlibrcl_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_generator_c.so (0x000078026fa49000)\n\tlibstatistics_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libstatistics_msgs__rosidl_generator_c.so (0x000078026fa40000)\n\tlibrosidl_typesupport_c.so => /opt/ros/jazzy/lib/librosidl_typesupport_c.so (0x000078026fa38000)\n\tlibnuma.so.1 => /lib/x86_64-linux-gnu/libnuma.so.1 (0x000078026fa2a000)\n\tliblttng-ust-common.so.1 => /lib/x86_64-linux-gnu/liblttng-ust-common.so.1 (0x000078026fa1d000)\n\tliblttng-ust-tracepoint.so.1 => /lib/x86_64-linux-gnu/liblttng-ust-tracepoint.so.1 (0x000078026fa00000)\n\tlibcudart.so.12 => /usr/local/cuda/targets/x86_64-linux/lib/libcudart.so.12 (0x000078026f600000)\n\tlibdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x000078026f9f9000)\n\tlibpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x000078026f9f4000)\n\tlibrt.so.1 => /lib/x86_64-linux-gnu/librt.so.1 (0x000078026f9ef000)\n",
+            "path": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib/liuo_tunnel_sim/liuo_rail_sim",
+            "sha256": "c57d596d527e7b2e08f20f4b70ca38d9193b1e53a3a7bd712a9bf02ccad0017f"
+          }
+        },
+        "build_caches": {
+          "liuo_tunnel": {
+            "selected_options": [
+              "CMAKE_BUILD_TYPE:STRING=Release",
+              "CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/c++",
+              "CUDAToolkit_BIN_DIR:PATH=/usr/local/cuda/bin",
+              "CUDAToolkit_CUPTI_INCLUDE_DIR:PATH=/usr/local/cuda/targets/x86_64-linux/include",
+              "CUDAToolkit_NVCC_EXECUTABLE:FILEPATH=/usr/local/cuda/bin/nvcc",
+              "CUDAToolkit_rt_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/librt.a",
+              "GTSAM_DIR:PATH=/usr/lib/cmake/GTSAM",
+              "gtsam_points_DIR:PATH=/usr/local/lib/cmake/gtsam_points",
+              "CUDAToolkit_BIN_DIR-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_CUPTI_INCLUDE_DIR-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_NVCC_EXECUTABLE-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_rt_LIBRARY-ADVANCED:INTERNAL=1"
+            ],
+            "sha256": "cca6955c1e596716f85e05cae1607cf3b83c2eddf784f346bcd2cc761cd95b35"
+          },
+          "liuo_tunnel_sim": {
+            "selected_options": [
+              "CMAKE_BUILD_TYPE:STRING=Release",
+              "CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/c++",
+              "CUDAToolkit_BIN_DIR:PATH=/usr/local/cuda/bin",
+              "CUDAToolkit_CUPTI_INCLUDE_DIR:PATH=/usr/local/cuda/targets/x86_64-linux/include",
+              "CUDAToolkit_NVCC_EXECUTABLE:FILEPATH=/usr/local/cuda/bin/nvcc",
+              "CUDAToolkit_rt_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/librt.a",
+              "GTSAM_DIR:PATH=/usr/lib/cmake/GTSAM",
+              "gtsam_points_DIR:PATH=/usr/local/lib/cmake/gtsam_points",
+              "CUDAToolkit_BIN_DIR-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_CUPTI_INCLUDE_DIR-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_NVCC_EXECUTABLE-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_rt_LIBRARY-ADVANCED:INTERNAL=1"
+            ],
+            "sha256": "3c88fe6eb6b4bd868f181205fbfc180c119e7e6d0124e32f075f80cd208e985e"
+          }
+        },
+        "commands": {
+          "observer": [
+            "/usr/bin/python3",
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/tools/observe.py"
+          ],
+          "odometry": [
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/liuo_tunnel/liuo_tunnel_node",
+            "--ros-args",
+            "-p",
+            "config_file:=/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T162059Z_880/metadata/config/phase1.json",
+            "-p",
+            "use_sim_time:=true",
+            "-p",
+            "map_file:=/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T162059Z_880/metadata/config/map.json"
+          ],
+          "simulation": [
+            "/usr/bin/python3",
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/tools/replay.py",
+            "--source-run",
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T161447Z_132"
+          ]
+        },
+        "config_sha256": "351874fd80c074155dfe571ee188b03944f15347fca6ac51fc02f38203e66a7f",
+        "environment": {
+          "AMENT_PREFIX_PATH": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim:/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel:/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs:/opt/ros/jazzy",
+          "LD_LIBRARY_PATH": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib:/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib:/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib:/opt/ros/jazzy/opt/rviz_ogre_vendor/lib:/opt/ros/jazzy/lib/x86_64-linux-gnu:/opt/ros/jazzy/opt/gz_math_vendor/lib:/opt/ros/jazzy/opt/gz_utils_vendor/lib:/opt/ros/jazzy/opt/gz_cmake_vendor/lib:/opt/ros/jazzy/lib",
+          "ROS_DOMAIN_ID": "179",
+          "ROS_LOG_DIR": "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T162059Z_880/runtime/ros"
+        },
+        "frozen_input": {
+          "capture_sha256": {
+            "export/capture/raw/metadata.yaml": "5a41cb74d74df9e0922f254fa71d13c66d09bd51ceb4712f6800480aba10be44",
+            "export/capture/raw/raw_0.mcap": "0de2c25af0bac745ebd7e16b1ef3a3fa0bbcf6de52e710d65900125fe7d740bc"
+          },
+          "counts": {
+            "clock": 72000,
+            "cloud": 3600,
+            "imu": 72000,
+            "uwb": 26685
+          },
+          "raw_sha256": {
+            "clock": "2444af9f41847054396fa4b82dc87973eb47eb983ac412e5e5cf705f2097e149",
+            "cloud": "e9bd22b96e417445f53958a320d547277c2f71cac00541c7b42c93146fa45154",
+            "imu": "120887c46d7dd44b1c0233fb50099366bfc2a973a921b53d6565eaabf0b22db1",
+            "uwb": "0829b79bf23e7fda5573b8b3173e7b8f68720816dc401e8f2519833c1607035d"
+          },
+          "source_run": "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T161447Z_132",
+          "source_run_id": "20261022T161447Z_132",
+          "source_scenario": {
+            "anchor_layout": "high_first_four_corner_400m_7_anchors_v5",
+            "clock_start_s": 1,
+            "dt_s": 0.005,
+            "duration_s": 360.0,
+            "exchange_dt_s": 0.004,
+            "gauge_m": 1.435,
+            "height_m": 5,
+            "length_m": 2400,
+            "lidar_range_m": 40,
+            "lidar_samples": [
+              512,
+              40
+            ],
+            "motion": "local_bootstrap_then_x1000_300s_v1",
+            "requested_rate": 1.0,
+            "reset_at_s": -1.0,
+            "return_trip": false,
+            "scan_model": "snapshot",
+            "scene": "rail_tunnel_straight_v1",
+            "seed": 1,
+            "simulation_start_xyz_yaw": [
+              220.0,
+              0.2,
+              1.6,
+              1.5707963267948966
+            ],
+            "width_m": 6,
+            "world_voxel_m": 0.1
+          }
+        },
+        "map_sha256": "6ffc91bf57fe1a5aaf0e380f7b79e694ddf7a380229597d07359f6443fa8afe9",
+        "scan_model": "snapshot",
+        "seed": 1,
+        "shared_libraries": {
+          "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/libliuo_tunnel_core.so": {
+            "resolved": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/libliuo_tunnel_core.so",
+            "sha256": "a75ad893e8013e2b617fe51c7237f1397fdfd521c77d69933bf5c67e419c41c1"
+          },
+          "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_generator_c.so": {
+            "resolved": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_generator_c.so",
+            "sha256": "c4634bd07c0fec27e207966c3ffc5a47c09709da8390c04bfc77ccf0f684fdc9"
+          },
+          "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "b61301c7bd57f9db9438646b8fabb5444b4dc7d11cccbc781c810ad2df8cc522"
+          },
+          "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib/libliuo_tunnel_renderer.so": {
+            "resolved": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib/libliuo_tunnel_renderer.so",
+            "sha256": "49011a1e9f9e45f0c1023dbcd1225859a9fd2bb82db5a75405a08fe4684ad867"
+          },
+          "/lib/x86_64-linux-gnu/libboost_filesystem.so.1.83.0": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.83.0",
+            "sha256": "2c137b29a3740fb6d12a4c18823bc2b15215646c3ba3bb208b89782df28559f0"
+          },
+          "/lib/x86_64-linux-gnu/libboost_serialization.so.1.83.0": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libboost_serialization.so.1.83.0",
+            "sha256": "cb6b870f1c1278453f38b01f5e0c3e7feff8f23fcd533c8969cf08e6364b890c"
+          },
+          "/lib/x86_64-linux-gnu/libboost_timer.so.1.83.0": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libboost_timer.so.1.83.0",
+            "sha256": "1ab8ccc485c6e599dccf54843f554305b0bc7600107f0bea146e6495479ce3ae"
+          },
+          "/lib/x86_64-linux-gnu/libc.so.6": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libc.so.6",
+            "sha256": "3a15d66867d83762c7f2f1e37359cb8f6c5743edb369c65285cb0b1c4f7498bf"
+          },
+          "/lib/x86_64-linux-gnu/libcephes-gtsam.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libcephes-gtsam.so.1.0.0",
+            "sha256": "6acec5d566c34c29a63e949b6319dbf1aa9877349f59d7a6f4e6d8feb4678275"
+          },
+          "/lib/x86_64-linux-gnu/libconsole_bridge.so.1.0": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libconsole_bridge.so.1.0",
+            "sha256": "bb9ced68ce1209c48b55ddcebe913542197dc745c71febd65205ff0a4d833651"
+          },
+          "/lib/x86_64-linux-gnu/libdl.so.2": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libdl.so.2",
+            "sha256": "c2994527172cc23b7fb0f7d611b71e00a37da27af12c2e5e9e0dc1a742886c96"
+          },
+          "/lib/x86_64-linux-gnu/libfmt.so.9": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libfmt.so.9.1.0",
+            "sha256": "da008b908b32e428eaa1c09e36d6894c8f88362e254b503c7c2c6112b4ec9ed0"
+          },
+          "/lib/x86_64-linux-gnu/libgcc_s.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libgcc_s.so.1",
+            "sha256": "d93224d2b0dab4247598be683adca02f5cf00586f99c187579cd7e92058fb7cb"
+          },
+          "/lib/x86_64-linux-gnu/libgomp.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libgomp.so.1.0.0",
+            "sha256": "135f3c8f006d2fe5e68e51281c7974cb991a03de3bfb3593d68d174dfcf854d1"
+          },
+          "/lib/x86_64-linux-gnu/libgtsam.so.4": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libgtsam.so.4.3a0",
+            "sha256": "802215b2ca62c2fb8b07a17b3d1afe72ebf96564eca4cfff00d28228363535f9"
+          },
+          "/lib/x86_64-linux-gnu/liblttng-ust-common.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/liblttng-ust-common.so.1.0.0",
+            "sha256": "28c3025315634619a7d278fff9e5bfa85ef85a58db8a52ce3ecf0054093fe0be"
+          },
+          "/lib/x86_64-linux-gnu/liblttng-ust-tracepoint.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/liblttng-ust-tracepoint.so.1.0.0",
+            "sha256": "c5a75aea47fbfa1380e75fad869a00e225a947bbfa99edc6c62c2241959e1eb8"
+          },
+          "/lib/x86_64-linux-gnu/liblttng-ust.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/liblttng-ust.so.1.0.0",
+            "sha256": "3dda3aff8ce04c7a1d5f1c5f20bd725d63e686a2042ee4834d8c25cde288f27b"
+          },
+          "/lib/x86_64-linux-gnu/libm.so.6": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libm.so.6",
+            "sha256": "fce00b6f25f459cf4ae0b7fae4257909a1a8a86f9149e7c029a5d617baf1ccd0"
+          },
+          "/lib/x86_64-linux-gnu/libmetis.so.5": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libmetis.so.5.1.0",
+            "sha256": "e3644eb16d61bdc633255b36851aecbb61919963a3a3d3cd8a5eb9bf2895f200"
+          },
+          "/lib/x86_64-linux-gnu/libnuma.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libnuma.so.1.0.0",
+            "sha256": "02d7582c5d391e460e56aa67a414360e3183b968206645b9123f9dc7bff5d009"
+          },
+          "/lib/x86_64-linux-gnu/libpthread.so.0": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libpthread.so.0",
+            "sha256": "90491a21ce44efcf3bd4b65ec82501c091d7ebe7f8d9b341dd01d721001d9ecd"
+          },
+          "/lib/x86_64-linux-gnu/librt.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/librt.so.1",
+            "sha256": "6d072187d88e092e81561a44c03a4a41397319022c6d43519757cc051c576d82"
+          },
+          "/lib/x86_64-linux-gnu/libspdlog.so.1.12": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libspdlog.so.1.12.0",
+            "sha256": "62bb2fbc92edc05b35888e624882b78f5b38c0aca6a3df7ab7db32bb9c2629b6"
+          },
+          "/lib/x86_64-linux-gnu/libstdc++.so.6": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.33",
+            "sha256": "1fd75fe70354a416d75aef22bcae68c47bd25d20e2d0568c30b1a9838cf62f11"
+          },
+          "/lib/x86_64-linux-gnu/libtinyxml2.so.10": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libtinyxml2.so.10.0.0",
+            "sha256": "f9e01d87fb78af744a426af8c992e94abf8cd3810a256e117bcc94cd84d2be6d"
+          },
+          "/lib/x86_64-linux-gnu/libyaml-0.so.2": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.9",
+            "sha256": "a518a0ec7ee915fbeabe80551b8c9573b34e37b9402cc3e3eeab0fe346ba6ef0"
+          },
+          "/lib/x86_64-linux-gnu/libyaml-cpp.so.0.8": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libyaml-cpp.so.0.8.0",
+            "sha256": "55749fdb0a78969cf15c67c326f9a506e67cace47aa8520c2ae137b9e6189e3b"
+          },
+          "/opt/ros/jazzy/lib/libament_index_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libament_index_cpp.so",
+            "sha256": "0be9f15749b6f66470de43adc0dc1e9b44d06986f8ade3d2067598e5f2e4f800"
+          },
+          "/opt/ros/jazzy/lib/libbuiltin_interfaces__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libbuiltin_interfaces__rosidl_generator_c.so",
+            "sha256": "5978f053a35a78a5533a2371cb87435643e492b02eb556d214dc79534387c17a"
+          },
+          "/opt/ros/jazzy/lib/libclass_loader.so": {
+            "resolved": "/opt/ros/jazzy/lib/libclass_loader.so",
+            "sha256": "667c9151a4daa9865a6602850321b77104d3955fc27fa9aa9fd4cc3e36fd4ada"
+          },
+          "/opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_generator_c.so",
+            "sha256": "9a0b3032346d31db3abb14e761d0daf8779af51e461231133b96569e1f0e6b22"
+          },
+          "/opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "876043a19e64fbdb7c93ee685c92954764274145ab8bb00458260d33bdb7268c"
+          },
+          "/opt/ros/jazzy/lib/libgeometry_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libgeometry_msgs__rosidl_generator_c.so",
+            "sha256": "9581678b8280d8265e0549b3c357016bf04cc3c04593f8911bbb50020436ec1c"
+          },
+          "/opt/ros/jazzy/lib/liblibstatistics_collector.so": {
+            "resolved": "/opt/ros/jazzy/lib/liblibstatistics_collector.so",
+            "sha256": "e6da5a84efab7d443a81def20f3c771d1d72ac126dd6e1db8a78e0568b1656e4"
+          },
+          "/opt/ros/jazzy/lib/libnav_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libnav_msgs__rosidl_generator_c.so",
+            "sha256": "b4dd0448ad688e67e0ca5c01838a959bfa30741d1efaa7db38371e83af557907"
+          },
+          "/opt/ros/jazzy/lib/libnav_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libnav_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "c8f54f8e64df4c584bc7df5ba16c1ebd0862e928387728561ef03f41bde8d03e"
+          },
+          "/opt/ros/jazzy/lib/librcl.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl.so",
+            "sha256": "9d081f3fdc54eace43c7427de0a9a0a47cd835c2906ec5d8a3327f426c551341"
+          },
+          "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_generator_c.so",
+            "sha256": "a3d13b8cf4cb4dff0b62ade62956d648921ae8e1c2292a822639e2ad3e41f8b3"
+          },
+          "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_c.so",
+            "sha256": "c55cae062b0f0f3370c4b6831a3b3dfeff60a44ba65762a013333925fcadbed6"
+          },
+          "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_cpp.so",
+            "sha256": "71f7b9f8ab328764c599f5e6a31bcdece0bab4a2d229bd4a634a0be81d45be32"
+          },
+          "/opt/ros/jazzy/lib/librcl_logging_interface.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_logging_interface.so",
+            "sha256": "95352499feed45aa66bf8fcbdf7101cdb3a72c34860c7d203b7ea55f23810d01"
+          },
+          "/opt/ros/jazzy/lib/librcl_logging_spdlog.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_logging_spdlog.so",
+            "sha256": "4812499e63a978c4997789f64d5f4efecdf4fc218c8a9533e8277266832a49a4"
+          },
+          "/opt/ros/jazzy/lib/librcl_yaml_param_parser.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_yaml_param_parser.so",
+            "sha256": "24a15997f533fbc299883083b344ca21d2735bd7494b6c4522f96feb3e5bf588"
+          },
+          "/opt/ros/jazzy/lib/librclcpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librclcpp.so",
+            "sha256": "393d0a4ff5f64628c2d978a24c1feed15dc98b0c6d17342fc7301df01928064a"
+          },
+          "/opt/ros/jazzy/lib/librcpputils.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcpputils.so",
+            "sha256": "c2a458e3b3860481a3eb9ba9524927b5cd4661dbc0a09a51ed151fb82c15f76e"
+          },
+          "/opt/ros/jazzy/lib/librcutils.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcutils.so",
+            "sha256": "b348164cb2aa665f83312e1de506c3b98351107fe188e6d1fda1689b6bd9f2fe"
+          },
+          "/opt/ros/jazzy/lib/librmw.so": {
+            "resolved": "/opt/ros/jazzy/lib/librmw.so",
+            "sha256": "996a8b0ba5695f23841ab1dcd1c04e266e8da219ca7d2b656fae6d7420e6956e"
+          },
+          "/opt/ros/jazzy/lib/librmw_implementation.so": {
+            "resolved": "/opt/ros/jazzy/lib/librmw_implementation.so",
+            "sha256": "2f17c2bf4b9c044c48f34ef5fbd8d5bed7581c377b44f6714e9f6c2ad69c95bc"
+          },
+          "/opt/ros/jazzy/lib/librosbag2_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosbag2_cpp.so",
+            "sha256": "3594c88ed98d12a0404ac3402a0527bb6445115ed123a21566ca4f04283ceece"
+          },
+          "/opt/ros/jazzy/lib/librosbag2_storage.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosbag2_storage.so",
+            "sha256": "87a84016e94b28b6c3ff78baa9786a7a6836fe5edfad99443a74273505018021"
+          },
+          "/opt/ros/jazzy/lib/librosgraph_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosgraph_msgs__rosidl_generator_c.so",
+            "sha256": "c7e7262b0040fe3fac6873bfca30c429ff867ac2a589ac28983865772f96bb1d"
+          },
+          "/opt/ros/jazzy/lib/librosgraph_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosgraph_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "329eed7b100c99497648c85a02317e3a0b621b599c76fb54e6c743cca1ee5344"
+          },
+          "/opt/ros/jazzy/lib/librosidl_dynamic_typesupport.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosidl_dynamic_typesupport.so",
+            "sha256": "5533baa58e58414b29e38b6da2ec28354be6cf3541b368491b3bf4faac8f6dac"
+          },
+          "/opt/ros/jazzy/lib/librosidl_runtime_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosidl_runtime_c.so",
+            "sha256": "a819014d87d7db42c066358788d1e100b6eb31a71877789defbd0f34b3ed48cb"
+          },
+          "/opt/ros/jazzy/lib/librosidl_typesupport_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosidl_typesupport_c.so",
+            "sha256": "6110cdf1684bbf9115f4b14dc2f815d829d2b3a16cc276daa20d338a8131c1d3"
+          },
+          "/opt/ros/jazzy/lib/librosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosidl_typesupport_cpp.so",
+            "sha256": "49ccc86f23f87bc8c7287724ff294424d56efe0125e6d45bb7740f5aefa278ec"
+          },
+          "/opt/ros/jazzy/lib/librosidl_typesupport_introspection_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosidl_typesupport_introspection_cpp.so",
+            "sha256": "f36fcfb0f24f16cce9e0f73e05fec06e629a732ba6f864236492e7b606518705"
+          },
+          "/opt/ros/jazzy/lib/libsensor_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libsensor_msgs__rosidl_generator_c.so",
+            "sha256": "a43ab663afbc57a3a20fb4595cc62d91e59bbbd04ba0b0c29687e64c21911742"
+          },
+          "/opt/ros/jazzy/lib/libsensor_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libsensor_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "7c4f057e70cb1b92474909d82f09a77884410b01dc2b390a30e4b65ee7f08dd2"
+          },
+          "/opt/ros/jazzy/lib/libservice_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libservice_msgs__rosidl_generator_c.so",
+            "sha256": "86ef6e60448c40ddd8d3508fe6ff2a74e4c4620d05941ce4a6fa56a142fabc81"
+          },
+          "/opt/ros/jazzy/lib/libservice_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libservice_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "a483835f44cbe23a6b282c50c08ff83ee3a45b2018b529fdd3b6eedab69536f7"
+          },
+          "/opt/ros/jazzy/lib/libstatistics_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libstatistics_msgs__rosidl_generator_c.so",
+            "sha256": "120ffecae490a21ac7ce13736792dc1e47b3d1793232d82d42d60bab33ed1d05"
+          },
+          "/opt/ros/jazzy/lib/libstatistics_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libstatistics_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "562aaefdbb36c3f9a9750b1ba27ac1f1423e42c1512f1176d672c41452ec131e"
+          },
+          "/opt/ros/jazzy/lib/libstd_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libstd_msgs__rosidl_generator_c.so",
+            "sha256": "2785660b416ddd995b333394e1a9768292c32644cb017cf742739eff58689f7f"
+          },
+          "/opt/ros/jazzy/lib/libtracetools.so": {
+            "resolved": "/opt/ros/jazzy/lib/libtracetools.so",
+            "sha256": "9e3d86dbde344cc505f109b77f85720384ca8c16cd197feb42d552803b527f87"
+          },
+          "/opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_generator_c.so",
+            "sha256": "48cf59f8b0f4e79aba72da6ea97210785418bfa7b6e20e47b81b782113429a95"
+          },
+          "/opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_typesupport_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_typesupport_c.so",
+            "sha256": "dcc3a2b582cf8019a3db96c7882b96a43a557c92dfba92d64db385a74537fbdf"
+          },
+          "/usr/local/cuda/targets/x86_64-linux/lib/libcudart.so.12": {
+            "resolved": "/usr/local/cuda-12.5/targets/x86_64-linux/lib/libcudart.so.12.5.82",
+            "sha256": "16e8815a5e36a7ffbc9107df350d3f67090afb10a3de4b3710f6928aa7994a36"
+          },
+          "/usr/local/lib/libgtsam_points.so.1": {
+            "resolved": "/usr/local/lib/libgtsam_points.so.1.2.1",
+            "sha256": "dfcd7ca6609afedf4d921a71de1e4bcc3f92117b1e0933e1eef0c0f9db32f58b"
+          },
+          "/usr/local/lib/libgtsam_points_cuda.so.1": {
+            "resolved": "/usr/local/lib/libgtsam_points_cuda.so.1.2.1",
+            "sha256": "77aacb13f514eff0ce9447122e51fd1f3a83ac0099ecf8c2f2edf11e1f6efaa0"
+          }
+        },
+        "source_iap_commit": "fbccae16802402d7300bb817d2627f86e6a495df"
+      },
+      "first_stamp": 19.8,
+      "last_stamp": 360.9,
+      "max_output_gap_s": 0.10000000000002274,
+      "state_counts": {
+        "DEGRADED": 3410,
+        "LOST": 2
+      },
+      "ape_se3": {
+        "rmse_m": 0.24066289291344728,
+        "mean_m": 0.2013309466373462,
+        "median_m": 0.1679838682877603,
+        "std_m": 0.13185021028265156,
+        "p95_m": 0.4918743148941691,
+        "max_m": 0.568038126913545,
+        "axis_rmse_m": [
+          0.017011478123956012,
+          0.009069706755989178,
+          0.23988951218606444
+        ]
+      },
+      "ape_first_pose": {
+        "rmse_m": 0.7606171418929464,
+        "mean_m": 0.6551002351949242,
+        "median_m": 0.4498614914421992,
+        "std_m": 0.3864998297398715,
+        "p95_m": 1.2217835889551805,
+        "max_m": 1.2556130652786424,
+        "axis_rmse_m": [
+          0.028583024594573205,
+          0.5172689834791803,
+          0.5569149360331759
+        ]
+      },
+      "se3_rotation": [
+        [
+          0.9999973466661106,
+          -0.00011224961086705304,
+          0.002300882605175312
+        ],
+        [
+          0.0001357206770660151,
+          0.9999479359697506,
+          -0.010203280341648961
+        ],
+        [
+          -0.00229961749770584,
+          0.010203565546284411,
+          0.999945298008599
+        ]
+      ],
+      "se3_translation": [
+        200.00483433324416,
+        0.014945264236205319,
+        1.312797887332343
+      ],
+      "fit_singular_values": [
+        50244322.76003966,
+        397.44744790077436,
+        79.77720126689934
+      ],
+      "attitude_rmse_deg": 0.5868422615958642,
+      "common_samples": 571,
+      "own_window_ape_using_common_fit": {
+        "rmse_m": 0.22534929052688274,
+        "mean_m": 0.18828389275477816,
+        "median_m": 0.16381789058713203,
+        "std_m": 0.12382034756079709,
+        "p95_m": 0.4562597722893293,
+        "max_m": 0.5877467968378365,
+        "axis_rmse_m": [
+          0.017446961515604965,
+          0.009007638381611543,
+          0.22449224647107177
+        ]
+      }
+    },
+    "off": {
+      "run": "log/20261022T161447Z_132",
+      "lifecycle": "completed",
+      "source": {
+        "git_commit": "bcf931b43312d0af7cd5e9dd18f3d677e41ce1d6",
+        "git_worktree_clean": true
+      },
+      "trajectory_sha256": "d903f3e84b222d08020bd58a7312bf7a4ab4a1cea544802073b3cf32c130745e",
+      "poses": 3579,
+      "coverage_percent": 100.0,
+      "window_matches": 3000,
+      "input_identity": {
+        "binaries": {
+          "odometry": {
+            "ldd": "\tlinux-vdso.so.1 (0x000077b10058e000)\n\tlibliuo_tunnel_core.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/libliuo_tunnel_core.so (0x000077b1001cf000)\n\tlibcudart.so.12 => /usr/local/cuda/targets/x86_64-linux/lib/libcudart.so.12 (0x000077b0ffe00000)\n\tlibrclcpp.so => /opt/ros/jazzy/lib/librclcpp.so (0x000077b0ffba2000)\n\tlibnav_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libnav_msgs__rosidl_typesupport_cpp.so (0x000077b1001a5000)\n\tlibdiagnostic_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_typesupport_cpp.so (0x000077b100199000)\n\tlibliuo_tunnel_msgs__rosidl_typesupport_cpp.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_typesupport_cpp.so (0x000077b100194000)\n\tlibgtsam_points.so.1 => /usr/local/lib/libgtsam_points.so.1 (0x000077b0ff8ad000)\n\tlibgtsam_points_cuda.so.1 => /usr/local/lib/libgtsam_points_cuda.so.1 (0x000077b0ff65b000)\n\tlibgtsam.so.4 => /lib/x86_64-linux-gnu/libgtsam.so.4 (0x000077b0ff15e000)\n\tlibcephes-gtsam.so.1 => /lib/x86_64-linux-gnu/libcephes-gtsam.so.1 (0x000077b100160000)\n\tlibspdlog.so.1.12 => /lib/x86_64-linux-gnu/libspdlog.so.1.12 (0x000077b1000d9000)\n\tlibfmt.so.9 => /lib/x86_64-linux-gnu/libfmt.so.9 (0x000077b1000b8000)\n\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x000077b0ff108000)\n\tliblibstatistics_collector.so => /opt/ros/jazzy/lib/liblibstatistics_collector.so (0x000077b1000b0000)\n\tlibrcl.so => /opt/ros/jazzy/lib/librcl.so (0x000077b0ff0c1000)\n\tlibstatistics_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libstatistics_msgs__rosidl_typesupport_cpp.so (0x000077b0ff0b9000)\n\tlibtracetools.so => /opt/ros/jazzy/lib/libtracetools.so (0x000077b0ff09f000)\n\tlibsensor_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libsensor_msgs__rosidl_typesupport_cpp.so (0x000077b0ff090000)\n\tlibrmw.so => /opt/ros/jazzy/lib/librmw.so (0x000077b0ff085000)\n\tlibrcutils.so => /opt/ros/jazzy/lib/librcutils.so (0x000077b0ff065000)\n\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x000077b0fede5000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x000077b0fecfc000)\n\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x000077b0fecce000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x000077b0feabb000)\n\tlibboost_filesystem.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_filesystem.so.1.83.0 (0x000077b0fea98000)\n\t/lib64/ld-linux-x86-64.so.2 (0x000077b100590000)\n\tlibdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x000077b0fea91000)\n\tlibpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x000077b0fea8c000)\n\tlibrt.so.1 => /lib/x86_64-linux-gnu/librt.so.1 (0x000077b0fea87000)\n\tlibrcl_interfaces__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_cpp.so (0x000077b0fea6c000)\n\tlibrcl_yaml_param_parser.so => /opt/ros/jazzy/lib/librcl_yaml_param_parser.so (0x000077b0fea60000)\n\tlibrosgraph_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librosgraph_msgs__rosidl_typesupport_cpp.so (0x000077b0fea59000)\n\tlibrcl_logging_interface.so => /opt/ros/jazzy/lib/librcl_logging_interface.so (0x000077b0fea54000)\n\tlibrmw_implementation.so => /opt/ros/jazzy/lib/librmw_implementation.so (0x000077b0fea47000)\n\tlibament_index_cpp.so => /opt/ros/jazzy/lib/libament_index_cpp.so (0x000077b0fea3b000)\n\tlibtype_description_interfaces__rosidl_typesupport_c.so => /opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_typesupport_c.so (0x000077b0fea34000)\n\tlibrosidl_dynamic_typesupport.so => /opt/ros/jazzy/lib/librosidl_dynamic_typesupport.so (0x000077b0fea19000)\n\tlibrosidl_typesupport_introspection_cpp.so => /opt/ros/jazzy/lib/librosidl_typesupport_introspection_cpp.so (0x000077b0fea14000)\n\tlibrcpputils.so => /opt/ros/jazzy/lib/librcpputils.so (0x000077b0fea05000)\n\tlibrosidl_runtime_c.so => /opt/ros/jazzy/lib/librosidl_runtime_c.so (0x000077b0fe9e6000)\n\tlibnav_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libnav_msgs__rosidl_generator_c.so (0x000077b0fe9b3000)\n\tlibrosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librosidl_typesupport_cpp.so (0x000077b0fe9ab000)\n\tlibdiagnostic_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_generator_c.so (0x000077b0fe996000)\n\tlibliuo_tunnel_msgs__rosidl_generator_c.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_generator_c.so (0x000077b0fe990000)\n\tlibboost_timer.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_timer.so.1.83.0 (0x000077b0fe989000)\n\tlibboost_serialization.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_serialization.so.1.83.0 (0x000077b0fe946000)\n\tlibmetis.so.5 => /lib/x86_64-linux-gnu/libmetis.so.5 (0x000077b0fe8da000)\n\tlibrcl_logging_spdlog.so => /opt/ros/jazzy/lib/librcl_logging_spdlog.so (0x000077b0fe8d0000)\n\tlibrcl_interfaces__rosidl_typesupport_c.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_c.so (0x000077b0fe8c0000)\n\tlibtype_description_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_generator_c.so (0x000077b0fe8a8000)\n\tlibyaml-0.so.2 => /lib/x86_64-linux-gnu/libyaml-0.so.2 (0x000077b0fe887000)\n\tlibstatistics_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libstatistics_msgs__rosidl_generator_c.so (0x000077b0fe87c000)\n\tliblttng-ust.so.1 => /lib/x86_64-linux-gnu/liblttng-ust.so.1 (0x000077b0fe7f9000)\n\tlibsensor_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libsensor_msgs__rosidl_generator_c.so (0x000077b0fe7b5000)\n\tlibrcl_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_generator_c.so (0x000077b0fe767000)\n\tlibrosgraph_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/librosgraph_msgs__rosidl_generator_c.so (0x000077b0fe762000)\n\tlibrosidl_typesupport_c.so => /opt/ros/jazzy/lib/librosidl_typesupport_c.so (0x000077b0fe75a000)\n\tlibgeometry_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libgeometry_msgs__rosidl_generator_c.so (0x000077b0fe71c000)\n\tlibstd_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libstd_msgs__rosidl_generator_c.so (0x000077b0fe6eb000)\n\tlibservice_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libservice_msgs__rosidl_generator_c.so (0x000077b0fe6e6000)\n\tlibbuiltin_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/libbuiltin_interfaces__rosidl_generator_c.so (0x000077b0fe6df000)\n\tlibnuma.so.1 => /lib/x86_64-linux-gnu/libnuma.so.1 (0x000077b0fe6cf000)\n\tliblttng-ust-common.so.1 => /lib/x86_64-linux-gnu/liblttng-ust-common.so.1 (0x000077b0fe6c2000)\n\tliblttng-ust-tracepoint.so.1 => /lib/x86_64-linux-gnu/liblttng-ust-tracepoint.so.1 (0x000077b0fe6a5000)\n",
+            "path": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/liuo_tunnel/liuo_tunnel_node",
+            "sha256": "85974a6cef93b3207957930992e04f10850e3724495d9b1044dbaa318c6ef8bb"
+          },
+          "simulation": {
+            "ldd": "\tlinux-vdso.so.1 (0x00007d6781ba4000)\n\tlibliuo_tunnel_renderer.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib/libliuo_tunnel_renderer.so (0x00007d6781acc000)\n\tlibliuo_tunnel_core.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/libliuo_tunnel_core.so (0x00007d678199e000)\n\tlibrosbag2_cpp.so => /opt/ros/jazzy/lib/librosbag2_cpp.so (0x00007d6781900000)\n\tlibnav_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libnav_msgs__rosidl_typesupport_cpp.so (0x00007d67818f3000)\n\tlibliuo_tunnel_msgs__rosidl_typesupport_cpp.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_typesupport_cpp.so (0x00007d67818ec000)\n\tlibspdlog.so.1.12 => /lib/x86_64-linux-gnu/libspdlog.so.1.12 (0x00007d6781848000)\n\tlibfmt.so.9 => /lib/x86_64-linux-gnu/libfmt.so.9 (0x00007d6781827000)\n\tlibrosbag2_storage.so => /opt/ros/jazzy/lib/librosbag2_storage.so (0x00007d67817a4000)\n\tlibrclcpp.so => /opt/ros/jazzy/lib/librclcpp.so (0x00007d6781546000)\n\tlibrosgraph_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librosgraph_msgs__rosidl_typesupport_cpp.so (0x00007d678153f000)\n\tlibrcl.so => /opt/ros/jazzy/lib/librcl.so (0x00007d67814f8000)\n\tlibtracetools.so => /opt/ros/jazzy/lib/libtracetools.so (0x00007d67814de000)\n\tlibsensor_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libsensor_msgs__rosidl_typesupport_cpp.so (0x00007d67814cf000)\n\tlibrmw.so => /opt/ros/jazzy/lib/librmw.so (0x00007d67814c4000)\n\tlibrcutils.so => /opt/ros/jazzy/lib/librcutils.so (0x00007d67814a4000)\n\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007d6781224000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007d678113b000)\n\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007d678110d000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007d6780efa000)\n\tlibgomp.so.1 => /lib/x86_64-linux-gnu/libgomp.so.1 (0x00007d6780ea4000)\n\tlibgtsam_points.so.1 => /usr/local/lib/libgtsam_points.so.1 (0x00007d6780baf000)\n\tlibgtsam.so.4 => /lib/x86_64-linux-gnu/libgtsam.so.4 (0x00007d67806b0000)\n\tlibboost_filesystem.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_filesystem.so.1.83.0 (0x00007d678068d000)\n\tlibclass_loader.so => /opt/ros/jazzy/lib/libclass_loader.so (0x00007d678067a000)\n\tlibconsole_bridge.so.1.0 => /lib/x86_64-linux-gnu/libconsole_bridge.so.1.0 (0x00007d6780674000)\n\tlibtinyxml2.so.10 => /lib/x86_64-linux-gnu/libtinyxml2.so.10 (0x00007d678065d000)\n\tlibrmw_implementation.so => /opt/ros/jazzy/lib/librmw_implementation.so (0x00007d678064e000)\n\tlibament_index_cpp.so => /opt/ros/jazzy/lib/libament_index_cpp.so (0x00007d6780642000)\n\tlibservice_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libservice_msgs__rosidl_typesupport_cpp.so (0x00007d678063d000)\n\tlibrcpputils.so => /opt/ros/jazzy/lib/librcpputils.so (0x00007d678062e000)\n\tlibnav_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libnav_msgs__rosidl_generator_c.so (0x00007d67805fb000)\n\tlibrosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librosidl_typesupport_cpp.so (0x00007d67805f3000)\n\tlibliuo_tunnel_msgs__rosidl_generator_c.so => /home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_generator_c.so (0x00007d67805ed000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007d6781ba6000)\n\tlibyaml-cpp.so.0.8 => /lib/x86_64-linux-gnu/libyaml-cpp.so.0.8 (0x00007d67805a4000)\n\tliblibstatistics_collector.so => /opt/ros/jazzy/lib/liblibstatistics_collector.so (0x00007d678059c000)\n\tlibrcl_interfaces__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_cpp.so (0x00007d6780581000)\n\tlibrcl_yaml_param_parser.so => /opt/ros/jazzy/lib/librcl_yaml_param_parser.so (0x00007d6780573000)\n\tlibstatistics_msgs__rosidl_typesupport_cpp.so => /opt/ros/jazzy/lib/libstatistics_msgs__rosidl_typesupport_cpp.so (0x00007d678056d000)\n\tlibrcl_logging_interface.so => /opt/ros/jazzy/lib/librcl_logging_interface.so (0x00007d6780568000)\n\tlibtype_description_interfaces__rosidl_typesupport_c.so => /opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_typesupport_c.so (0x00007d6780561000)\n\tlibrosidl_dynamic_typesupport.so => /opt/ros/jazzy/lib/librosidl_dynamic_typesupport.so (0x00007d6780548000)\n\tlibrosidl_typesupport_introspection_cpp.so => /opt/ros/jazzy/lib/librosidl_typesupport_introspection_cpp.so (0x00007d6780541000)\n\tlibrosidl_runtime_c.so => /opt/ros/jazzy/lib/librosidl_runtime_c.so (0x00007d6780522000)\n\tlibrosgraph_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/librosgraph_msgs__rosidl_generator_c.so (0x00007d678051d000)\n\tlibrcl_logging_spdlog.so => /opt/ros/jazzy/lib/librcl_logging_spdlog.so (0x00007d6780513000)\n\tlibrcl_interfaces__rosidl_typesupport_c.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_c.so (0x00007d6780503000)\n\tlibtype_description_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_generator_c.so (0x00007d67804e9000)\n\tlibyaml-0.so.2 => /lib/x86_64-linux-gnu/libyaml-0.so.2 (0x00007d67804c8000)\n\tliblttng-ust.so.1 => /lib/x86_64-linux-gnu/liblttng-ust.so.1 (0x00007d6780445000)\n\tlibsensor_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libsensor_msgs__rosidl_generator_c.so (0x00007d6780401000)\n\tlibgtsam_points_cuda.so.1 => /usr/local/lib/libgtsam_points_cuda.so.1 (0x00007d67801af000)\n\tlibboost_timer.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_timer.so.1.83.0 (0x00007d67801a6000)\n\tlibboost_serialization.so.1.83.0 => /lib/x86_64-linux-gnu/libboost_serialization.so.1.83.0 (0x00007d6780163000)\n\tlibmetis.so.5 => /lib/x86_64-linux-gnu/libmetis.so.5 (0x00007d67800f9000)\n\tlibcephes-gtsam.so.1 => /lib/x86_64-linux-gnu/libcephes-gtsam.so.1 (0x00007d67800c7000)\n\tlibservice_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libservice_msgs__rosidl_generator_c.so (0x00007d67800c2000)\n\tlibgeometry_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libgeometry_msgs__rosidl_generator_c.so (0x00007d6780082000)\n\tlibstd_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libstd_msgs__rosidl_generator_c.so (0x00007d6780051000)\n\tlibbuiltin_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/libbuiltin_interfaces__rosidl_generator_c.so (0x00007d678004a000)\n\tlibrcl_interfaces__rosidl_generator_c.so => /opt/ros/jazzy/lib/librcl_interfaces__rosidl_generator_c.so (0x00007d677fffc000)\n\tlibstatistics_msgs__rosidl_generator_c.so => /opt/ros/jazzy/lib/libstatistics_msgs__rosidl_generator_c.so (0x00007d677fff3000)\n\tlibrosidl_typesupport_c.so => /opt/ros/jazzy/lib/librosidl_typesupport_c.so (0x00007d677ffeb000)\n\tlibnuma.so.1 => /lib/x86_64-linux-gnu/libnuma.so.1 (0x00007d677ffdd000)\n\tliblttng-ust-common.so.1 => /lib/x86_64-linux-gnu/liblttng-ust-common.so.1 (0x00007d677ffd0000)\n\tliblttng-ust-tracepoint.so.1 => /lib/x86_64-linux-gnu/liblttng-ust-tracepoint.so.1 (0x00007d677ffb3000)\n\tlibcudart.so.12 => /usr/local/cuda/targets/x86_64-linux/lib/libcudart.so.12 (0x00007d677fc00000)\n\tlibdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007d677ffac000)\n\tlibpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007d677ffa7000)\n\tlibrt.so.1 => /lib/x86_64-linux-gnu/librt.so.1 (0x00007d677ffa2000)\n",
+            "path": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib/liuo_tunnel_sim/liuo_rail_sim",
+            "sha256": "c57d596d527e7b2e08f20f4b70ca38d9193b1e53a3a7bd712a9bf02ccad0017f"
+          }
+        },
+        "build_caches": {
+          "liuo_tunnel": {
+            "selected_options": [
+              "CMAKE_BUILD_TYPE:STRING=Release",
+              "CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/c++",
+              "CUDAToolkit_BIN_DIR:PATH=/usr/local/cuda/bin",
+              "CUDAToolkit_CUPTI_INCLUDE_DIR:PATH=/usr/local/cuda/targets/x86_64-linux/include",
+              "CUDAToolkit_NVCC_EXECUTABLE:FILEPATH=/usr/local/cuda/bin/nvcc",
+              "CUDAToolkit_rt_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/librt.a",
+              "GTSAM_DIR:PATH=/usr/lib/cmake/GTSAM",
+              "gtsam_points_DIR:PATH=/usr/local/lib/cmake/gtsam_points",
+              "CUDAToolkit_BIN_DIR-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_CUPTI_INCLUDE_DIR-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_NVCC_EXECUTABLE-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_rt_LIBRARY-ADVANCED:INTERNAL=1"
+            ],
+            "sha256": "cca6955c1e596716f85e05cae1607cf3b83c2eddf784f346bcd2cc761cd95b35"
+          },
+          "liuo_tunnel_sim": {
+            "selected_options": [
+              "CMAKE_BUILD_TYPE:STRING=Release",
+              "CMAKE_CXX_COMPILER:FILEPATH=/usr/bin/c++",
+              "CUDAToolkit_BIN_DIR:PATH=/usr/local/cuda/bin",
+              "CUDAToolkit_CUPTI_INCLUDE_DIR:PATH=/usr/local/cuda/targets/x86_64-linux/include",
+              "CUDAToolkit_NVCC_EXECUTABLE:FILEPATH=/usr/local/cuda/bin/nvcc",
+              "CUDAToolkit_rt_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/librt.a",
+              "GTSAM_DIR:PATH=/usr/lib/cmake/GTSAM",
+              "gtsam_points_DIR:PATH=/usr/local/lib/cmake/gtsam_points",
+              "CUDAToolkit_BIN_DIR-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_CUPTI_INCLUDE_DIR-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_NVCC_EXECUTABLE-ADVANCED:INTERNAL=1",
+              "CUDAToolkit_rt_LIBRARY-ADVANCED:INTERNAL=1"
+            ],
+            "sha256": "3c88fe6eb6b4bd868f181205fbfc180c119e7e6d0124e32f075f80cd208e985e"
+          }
+        },
+        "commands": {
+          "observer": [
+            "/usr/bin/python3",
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/tools/observe.py"
+          ],
+          "odometry": [
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/liuo_tunnel/liuo_tunnel_node",
+            "--ros-args",
+            "-p",
+            "config_file:=/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T161447Z_132/metadata/config/phase1.json",
+            "-p",
+            "use_sim_time:=true"
+          ],
+          "simulation": [
+            "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib/liuo_tunnel_sim/liuo_rail_sim",
+            "--ros-args",
+            "-p",
+            "config_file:=/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T161447Z_132/metadata/config/phase1.json",
+            "-p",
+            "use_sim_time:=true",
+            "-p",
+            "duration_s:=360.0",
+            "-p",
+            "seed:=1",
+            "-p",
+            "reset_at_s:=-1.0",
+            "-p",
+            "return_trip:=false",
+            "-p",
+            "local_calibration:=true",
+            "-p",
+            "calibration_route:=true",
+            "-p",
+            "rate:=1.0",
+            "-p",
+            "capture:=true",
+            "-p",
+            "start_x:=220.0",
+            "-p",
+            "start_y:=0.2",
+            "-p",
+            "start_z:=1.6",
+            "-p",
+            "start_yaw:=1.5707963267948966"
+          ]
+        },
+        "config_sha256": "a4e9dbd3685aa536011fa96991158399f94e249d3ae39361e001a861475dace9",
+        "environment": {
+          "AMENT_PREFIX_PATH": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim:/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel:/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs:/opt/ros/jazzy",
+          "LD_LIBRARY_PATH": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib:/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib:/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib:/opt/ros/jazzy/opt/rviz_ogre_vendor/lib:/opt/ros/jazzy/lib/x86_64-linux-gnu:/opt/ros/jazzy/opt/gz_math_vendor/lib:/opt/ros/jazzy/opt/gz_utils_vendor/lib:/opt/ros/jazzy/opt/gz_cmake_vendor/lib:/opt/ros/jazzy/lib",
+          "ROS_DOMAIN_ID": "196",
+          "ROS_LOG_DIR": "/home/dev/code/ws_tunnel/src/liuo_tunnel/log/20261022T161447Z_132/runtime/ros"
+        },
+        "scan_model": "snapshot",
+        "seed": 1,
+        "shared_libraries": {
+          "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/libliuo_tunnel_core.so": {
+            "resolved": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel/lib/libliuo_tunnel_core.so",
+            "sha256": "a75ad893e8013e2b617fe51c7237f1397fdfd521c77d69933bf5c67e419c41c1"
+          },
+          "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_generator_c.so": {
+            "resolved": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_generator_c.so",
+            "sha256": "c4634bd07c0fec27e207966c3ffc5a47c09709da8390c04bfc77ccf0f684fdc9"
+          },
+          "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_msgs/lib/libliuo_tunnel_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "b61301c7bd57f9db9438646b8fabb5444b4dc7d11cccbc781c810ad2df8cc522"
+          },
+          "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib/libliuo_tunnel_renderer.so": {
+            "resolved": "/home/dev/code/ws_tunnel/src/liuo_tunnel/install/liuo_tunnel_sim/lib/libliuo_tunnel_renderer.so",
+            "sha256": "49011a1e9f9e45f0c1023dbcd1225859a9fd2bb82db5a75405a08fe4684ad867"
+          },
+          "/lib/x86_64-linux-gnu/libboost_filesystem.so.1.83.0": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.83.0",
+            "sha256": "2c137b29a3740fb6d12a4c18823bc2b15215646c3ba3bb208b89782df28559f0"
+          },
+          "/lib/x86_64-linux-gnu/libboost_serialization.so.1.83.0": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libboost_serialization.so.1.83.0",
+            "sha256": "cb6b870f1c1278453f38b01f5e0c3e7feff8f23fcd533c8969cf08e6364b890c"
+          },
+          "/lib/x86_64-linux-gnu/libboost_timer.so.1.83.0": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libboost_timer.so.1.83.0",
+            "sha256": "1ab8ccc485c6e599dccf54843f554305b0bc7600107f0bea146e6495479ce3ae"
+          },
+          "/lib/x86_64-linux-gnu/libc.so.6": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libc.so.6",
+            "sha256": "3a15d66867d83762c7f2f1e37359cb8f6c5743edb369c65285cb0b1c4f7498bf"
+          },
+          "/lib/x86_64-linux-gnu/libcephes-gtsam.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libcephes-gtsam.so.1.0.0",
+            "sha256": "6acec5d566c34c29a63e949b6319dbf1aa9877349f59d7a6f4e6d8feb4678275"
+          },
+          "/lib/x86_64-linux-gnu/libconsole_bridge.so.1.0": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libconsole_bridge.so.1.0",
+            "sha256": "bb9ced68ce1209c48b55ddcebe913542197dc745c71febd65205ff0a4d833651"
+          },
+          "/lib/x86_64-linux-gnu/libdl.so.2": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libdl.so.2",
+            "sha256": "c2994527172cc23b7fb0f7d611b71e00a37da27af12c2e5e9e0dc1a742886c96"
+          },
+          "/lib/x86_64-linux-gnu/libfmt.so.9": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libfmt.so.9.1.0",
+            "sha256": "da008b908b32e428eaa1c09e36d6894c8f88362e254b503c7c2c6112b4ec9ed0"
+          },
+          "/lib/x86_64-linux-gnu/libgcc_s.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libgcc_s.so.1",
+            "sha256": "d93224d2b0dab4247598be683adca02f5cf00586f99c187579cd7e92058fb7cb"
+          },
+          "/lib/x86_64-linux-gnu/libgomp.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libgomp.so.1.0.0",
+            "sha256": "135f3c8f006d2fe5e68e51281c7974cb991a03de3bfb3593d68d174dfcf854d1"
+          },
+          "/lib/x86_64-linux-gnu/libgtsam.so.4": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libgtsam.so.4.3a0",
+            "sha256": "802215b2ca62c2fb8b07a17b3d1afe72ebf96564eca4cfff00d28228363535f9"
+          },
+          "/lib/x86_64-linux-gnu/liblttng-ust-common.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/liblttng-ust-common.so.1.0.0",
+            "sha256": "28c3025315634619a7d278fff9e5bfa85ef85a58db8a52ce3ecf0054093fe0be"
+          },
+          "/lib/x86_64-linux-gnu/liblttng-ust-tracepoint.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/liblttng-ust-tracepoint.so.1.0.0",
+            "sha256": "c5a75aea47fbfa1380e75fad869a00e225a947bbfa99edc6c62c2241959e1eb8"
+          },
+          "/lib/x86_64-linux-gnu/liblttng-ust.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/liblttng-ust.so.1.0.0",
+            "sha256": "3dda3aff8ce04c7a1d5f1c5f20bd725d63e686a2042ee4834d8c25cde288f27b"
+          },
+          "/lib/x86_64-linux-gnu/libm.so.6": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libm.so.6",
+            "sha256": "fce00b6f25f459cf4ae0b7fae4257909a1a8a86f9149e7c029a5d617baf1ccd0"
+          },
+          "/lib/x86_64-linux-gnu/libmetis.so.5": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libmetis.so.5.1.0",
+            "sha256": "e3644eb16d61bdc633255b36851aecbb61919963a3a3d3cd8a5eb9bf2895f200"
+          },
+          "/lib/x86_64-linux-gnu/libnuma.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libnuma.so.1.0.0",
+            "sha256": "02d7582c5d391e460e56aa67a414360e3183b968206645b9123f9dc7bff5d009"
+          },
+          "/lib/x86_64-linux-gnu/libpthread.so.0": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libpthread.so.0",
+            "sha256": "90491a21ce44efcf3bd4b65ec82501c091d7ebe7f8d9b341dd01d721001d9ecd"
+          },
+          "/lib/x86_64-linux-gnu/librt.so.1": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/librt.so.1",
+            "sha256": "6d072187d88e092e81561a44c03a4a41397319022c6d43519757cc051c576d82"
+          },
+          "/lib/x86_64-linux-gnu/libspdlog.so.1.12": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libspdlog.so.1.12.0",
+            "sha256": "62bb2fbc92edc05b35888e624882b78f5b38c0aca6a3df7ab7db32bb9c2629b6"
+          },
+          "/lib/x86_64-linux-gnu/libstdc++.so.6": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.33",
+            "sha256": "1fd75fe70354a416d75aef22bcae68c47bd25d20e2d0568c30b1a9838cf62f11"
+          },
+          "/lib/x86_64-linux-gnu/libtinyxml2.so.10": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libtinyxml2.so.10.0.0",
+            "sha256": "f9e01d87fb78af744a426af8c992e94abf8cd3810a256e117bcc94cd84d2be6d"
+          },
+          "/lib/x86_64-linux-gnu/libyaml-0.so.2": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libyaml-0.so.2.0.9",
+            "sha256": "a518a0ec7ee915fbeabe80551b8c9573b34e37b9402cc3e3eeab0fe346ba6ef0"
+          },
+          "/lib/x86_64-linux-gnu/libyaml-cpp.so.0.8": {
+            "resolved": "/usr/lib/x86_64-linux-gnu/libyaml-cpp.so.0.8.0",
+            "sha256": "55749fdb0a78969cf15c67c326f9a506e67cace47aa8520c2ae137b9e6189e3b"
+          },
+          "/opt/ros/jazzy/lib/libament_index_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libament_index_cpp.so",
+            "sha256": "0be9f15749b6f66470de43adc0dc1e9b44d06986f8ade3d2067598e5f2e4f800"
+          },
+          "/opt/ros/jazzy/lib/libbuiltin_interfaces__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libbuiltin_interfaces__rosidl_generator_c.so",
+            "sha256": "5978f053a35a78a5533a2371cb87435643e492b02eb556d214dc79534387c17a"
+          },
+          "/opt/ros/jazzy/lib/libclass_loader.so": {
+            "resolved": "/opt/ros/jazzy/lib/libclass_loader.so",
+            "sha256": "667c9151a4daa9865a6602850321b77104d3955fc27fa9aa9fd4cc3e36fd4ada"
+          },
+          "/opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_generator_c.so",
+            "sha256": "9a0b3032346d31db3abb14e761d0daf8779af51e461231133b96569e1f0e6b22"
+          },
+          "/opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libdiagnostic_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "876043a19e64fbdb7c93ee685c92954764274145ab8bb00458260d33bdb7268c"
+          },
+          "/opt/ros/jazzy/lib/libgeometry_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libgeometry_msgs__rosidl_generator_c.so",
+            "sha256": "9581678b8280d8265e0549b3c357016bf04cc3c04593f8911bbb50020436ec1c"
+          },
+          "/opt/ros/jazzy/lib/liblibstatistics_collector.so": {
+            "resolved": "/opt/ros/jazzy/lib/liblibstatistics_collector.so",
+            "sha256": "e6da5a84efab7d443a81def20f3c771d1d72ac126dd6e1db8a78e0568b1656e4"
+          },
+          "/opt/ros/jazzy/lib/libnav_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libnav_msgs__rosidl_generator_c.so",
+            "sha256": "b4dd0448ad688e67e0ca5c01838a959bfa30741d1efaa7db38371e83af557907"
+          },
+          "/opt/ros/jazzy/lib/libnav_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libnav_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "c8f54f8e64df4c584bc7df5ba16c1ebd0862e928387728561ef03f41bde8d03e"
+          },
+          "/opt/ros/jazzy/lib/librcl.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl.so",
+            "sha256": "9d081f3fdc54eace43c7427de0a9a0a47cd835c2906ec5d8a3327f426c551341"
+          },
+          "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_generator_c.so",
+            "sha256": "a3d13b8cf4cb4dff0b62ade62956d648921ae8e1c2292a822639e2ad3e41f8b3"
+          },
+          "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_c.so",
+            "sha256": "c55cae062b0f0f3370c4b6831a3b3dfeff60a44ba65762a013333925fcadbed6"
+          },
+          "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_interfaces__rosidl_typesupport_cpp.so",
+            "sha256": "71f7b9f8ab328764c599f5e6a31bcdece0bab4a2d229bd4a634a0be81d45be32"
+          },
+          "/opt/ros/jazzy/lib/librcl_logging_interface.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_logging_interface.so",
+            "sha256": "95352499feed45aa66bf8fcbdf7101cdb3a72c34860c7d203b7ea55f23810d01"
+          },
+          "/opt/ros/jazzy/lib/librcl_logging_spdlog.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_logging_spdlog.so",
+            "sha256": "4812499e63a978c4997789f64d5f4efecdf4fc218c8a9533e8277266832a49a4"
+          },
+          "/opt/ros/jazzy/lib/librcl_yaml_param_parser.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcl_yaml_param_parser.so",
+            "sha256": "24a15997f533fbc299883083b344ca21d2735bd7494b6c4522f96feb3e5bf588"
+          },
+          "/opt/ros/jazzy/lib/librclcpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librclcpp.so",
+            "sha256": "393d0a4ff5f64628c2d978a24c1feed15dc98b0c6d17342fc7301df01928064a"
+          },
+          "/opt/ros/jazzy/lib/librcpputils.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcpputils.so",
+            "sha256": "c2a458e3b3860481a3eb9ba9524927b5cd4661dbc0a09a51ed151fb82c15f76e"
+          },
+          "/opt/ros/jazzy/lib/librcutils.so": {
+            "resolved": "/opt/ros/jazzy/lib/librcutils.so",
+            "sha256": "b348164cb2aa665f83312e1de506c3b98351107fe188e6d1fda1689b6bd9f2fe"
+          },
+          "/opt/ros/jazzy/lib/librmw.so": {
+            "resolved": "/opt/ros/jazzy/lib/librmw.so",
+            "sha256": "996a8b0ba5695f23841ab1dcd1c04e266e8da219ca7d2b656fae6d7420e6956e"
+          },
+          "/opt/ros/jazzy/lib/librmw_implementation.so": {
+            "resolved": "/opt/ros/jazzy/lib/librmw_implementation.so",
+            "sha256": "2f17c2bf4b9c044c48f34ef5fbd8d5bed7581c377b44f6714e9f6c2ad69c95bc"
+          },
+          "/opt/ros/jazzy/lib/librosbag2_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosbag2_cpp.so",
+            "sha256": "3594c88ed98d12a0404ac3402a0527bb6445115ed123a21566ca4f04283ceece"
+          },
+          "/opt/ros/jazzy/lib/librosbag2_storage.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosbag2_storage.so",
+            "sha256": "87a84016e94b28b6c3ff78baa9786a7a6836fe5edfad99443a74273505018021"
+          },
+          "/opt/ros/jazzy/lib/librosgraph_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosgraph_msgs__rosidl_generator_c.so",
+            "sha256": "c7e7262b0040fe3fac6873bfca30c429ff867ac2a589ac28983865772f96bb1d"
+          },
+          "/opt/ros/jazzy/lib/librosgraph_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosgraph_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "329eed7b100c99497648c85a02317e3a0b621b599c76fb54e6c743cca1ee5344"
+          },
+          "/opt/ros/jazzy/lib/librosidl_dynamic_typesupport.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosidl_dynamic_typesupport.so",
+            "sha256": "5533baa58e58414b29e38b6da2ec28354be6cf3541b368491b3bf4faac8f6dac"
+          },
+          "/opt/ros/jazzy/lib/librosidl_runtime_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosidl_runtime_c.so",
+            "sha256": "a819014d87d7db42c066358788d1e100b6eb31a71877789defbd0f34b3ed48cb"
+          },
+          "/opt/ros/jazzy/lib/librosidl_typesupport_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosidl_typesupport_c.so",
+            "sha256": "6110cdf1684bbf9115f4b14dc2f815d829d2b3a16cc276daa20d338a8131c1d3"
+          },
+          "/opt/ros/jazzy/lib/librosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosidl_typesupport_cpp.so",
+            "sha256": "49ccc86f23f87bc8c7287724ff294424d56efe0125e6d45bb7740f5aefa278ec"
+          },
+          "/opt/ros/jazzy/lib/librosidl_typesupport_introspection_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/librosidl_typesupport_introspection_cpp.so",
+            "sha256": "f36fcfb0f24f16cce9e0f73e05fec06e629a732ba6f864236492e7b606518705"
+          },
+          "/opt/ros/jazzy/lib/libsensor_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libsensor_msgs__rosidl_generator_c.so",
+            "sha256": "a43ab663afbc57a3a20fb4595cc62d91e59bbbd04ba0b0c29687e64c21911742"
+          },
+          "/opt/ros/jazzy/lib/libsensor_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libsensor_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "7c4f057e70cb1b92474909d82f09a77884410b01dc2b390a30e4b65ee7f08dd2"
+          },
+          "/opt/ros/jazzy/lib/libservice_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libservice_msgs__rosidl_generator_c.so",
+            "sha256": "86ef6e60448c40ddd8d3508fe6ff2a74e4c4620d05941ce4a6fa56a142fabc81"
+          },
+          "/opt/ros/jazzy/lib/libservice_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libservice_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "a483835f44cbe23a6b282c50c08ff83ee3a45b2018b529fdd3b6eedab69536f7"
+          },
+          "/opt/ros/jazzy/lib/libstatistics_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libstatistics_msgs__rosidl_generator_c.so",
+            "sha256": "120ffecae490a21ac7ce13736792dc1e47b3d1793232d82d42d60bab33ed1d05"
+          },
+          "/opt/ros/jazzy/lib/libstatistics_msgs__rosidl_typesupport_cpp.so": {
+            "resolved": "/opt/ros/jazzy/lib/libstatistics_msgs__rosidl_typesupport_cpp.so",
+            "sha256": "562aaefdbb36c3f9a9750b1ba27ac1f1423e42c1512f1176d672c41452ec131e"
+          },
+          "/opt/ros/jazzy/lib/libstd_msgs__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libstd_msgs__rosidl_generator_c.so",
+            "sha256": "2785660b416ddd995b333394e1a9768292c32644cb017cf742739eff58689f7f"
+          },
+          "/opt/ros/jazzy/lib/libtracetools.so": {
+            "resolved": "/opt/ros/jazzy/lib/libtracetools.so",
+            "sha256": "9e3d86dbde344cc505f109b77f85720384ca8c16cd197feb42d552803b527f87"
+          },
+          "/opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_generator_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_generator_c.so",
+            "sha256": "48cf59f8b0f4e79aba72da6ea97210785418bfa7b6e20e47b81b782113429a95"
+          },
+          "/opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_typesupport_c.so": {
+            "resolved": "/opt/ros/jazzy/lib/libtype_description_interfaces__rosidl_typesupport_c.so",
+            "sha256": "dcc3a2b582cf8019a3db96c7882b96a43a557c92dfba92d64db385a74537fbdf"
+          },
+          "/usr/local/cuda/targets/x86_64-linux/lib/libcudart.so.12": {
+            "resolved": "/usr/local/cuda-12.5/targets/x86_64-linux/lib/libcudart.so.12.5.82",
+            "sha256": "16e8815a5e36a7ffbc9107df350d3f67090afb10a3de4b3710f6928aa7994a36"
+          },
+          "/usr/local/lib/libgtsam_points.so.1": {
+            "resolved": "/usr/local/lib/libgtsam_points.so.1.2.1",
+            "sha256": "dfcd7ca6609afedf4d921a71de1e4bcc3f92117b1e0933e1eef0c0f9db32f58b"
+          },
+          "/usr/local/lib/libgtsam_points_cuda.so.1": {
+            "resolved": "/usr/local/lib/libgtsam_points_cuda.so.1.2.1",
+            "sha256": "77aacb13f514eff0ce9447122e51fd1f3a83ac0099ecf8c2f2edf11e1f6efaa0"
+          }
+        },
+        "source_iap_commit": "fbccae16802402d7300bb817d2627f86e6a495df"
+      },
+      "first_stamp": 3.1,
+      "last_stamp": 360.9,
+      "max_output_gap_s": 0.10000000000002274,
+      "state_counts": {
+        "DEGRADED": 3550,
+        "TRACKING": 29
+      },
+      "ape_se3": {
+        "rmse_m": 1438.5705950877477,
+        "mean_m": 1170.8702358380335,
+        "median_m": 838.2620544826698,
+        "std_m": 835.7919884036365,
+        "p95_m": 3109.8188914391694,
+        "max_m": 3408.0981822227964,
+        "axis_rmse_m": [
+          1438.3115812100677,
+          20.439109452797442,
+          18.094065681533593
+        ]
+      },
+      "ape_first_pose": {
+        "rmse_m": 1470.3207598345878,
+        "mean_m": 1074.4269595218996,
+        "median_m": 718.5710678777407,
+        "std_m": 1003.7180109239282,
+        "p95_m": 3413.2764468759724,
+        "max_m": 3711.738095283521,
+        "axis_rmse_m": [
+          1469.85972487529,
+          23.0973502842968,
+          28.67121204171734
+        ]
+      },
+      "se3_rotation": [
+        [
+          -0.010940113367003576,
+          -0.9999393014561546,
+          0.001306645665162183
+        ],
+        [
+          -0.6494249639023887,
+          0.008098824880689904,
+          0.7603825519407539
+        ],
+        [
+          -0.7603469801215094,
+          0.007470103006592314,
+          -0.6494741468150773
+        ]
+      ],
+      "se3_translation": [
+        -83.46584032684586,
+        -11.350909076965097,
+        3.800749757983018
+      ],
+      "fit_singular_values": [
+        252031988.06311646,
+        1783.7064701089164,
+        33.39534570575464
+      ],
+      "attitude_rmse_deg": 130.57049277702802,
+      "common_samples": 571,
+      "own_window_ape_using_common_fit": {
+        "rmse_m": 1350.312522958502,
+        "mean_m": 1092.6726230388367,
+        "median_m": 811.5669564714949,
+        "std_m": 793.3539238700363,
+        "p95_m": 3048.7800413826167,
+        "max_m": 3417.9950343820155,
+        "axis_rmse_m": [
+          1350.0740260980508,
+          18.995007279914013,
+          16.8292427753488
+        ]
+      }
+    }
+  }
+}

@@ -176,16 +176,20 @@ def main():
     axes[1].set_xlabel('SE(3)-aligned APE [m], log scale');axes[1].set_ylabel('Cumulative fraction');axes[1].legend(fontsize=8)
     fig.tight_layout();fig.savefig(figdir/'ape_five_summary.png');plt.close(fig)
     def fmt(value):return f'{value:.3f}'
-    rows=[];coverage=[];axis=[];sources=[]
+    rows=[];coverage=[];axis=[];sources=[];dense=[]
     for k in NAMES:
         v=results[k];name=NAMES[k][0]
         if 'ape_se3' in v:
             a=v['ape_se3'];rows.append('| '+name+' | '+' | '.join(fmt(a[f]) for f in ('rmse_m','mean_m','median_m','p95_m','max_m'))+' | '+fmt(v['ape_first_pose']['rmse_m'])+' |')
             axis.append('| '+name+' | '+' | '.join(fmt(x) for x in a['axis_rmse_m'])+' | '+fmt(v['attitude_rmse_deg'])+' |')
+            dense.append(f"| {name} | {v['window_matches']} | {v['own_window_ape_using_common_fit']['rmse_m']:.3f} |")
         else:
             rows.append('| '+name+' | N/A | N/A | N/A | N/A | N/A | N/A |')
-        coverage.append(f"| {name} | {v['poses']} | {v.get('first_stamp','—')} / {v.get('last_stamp','—')} | {v['coverage_percent']:.1f}% | {v.get('max_output_gap_s','—')} | {v['lifecycle']} |")
-        sources.append(f"| {name} | `{v['run']}` | `{v['trajectory_sha256']}` |")
+        first=fmt(v['first_stamp']) if 'first_stamp' in v else '—'
+        last=fmt(v['last_stamp']) if 'last_stamp' in v else '—'
+        gap=fmt(v['max_output_gap_s']) if v.get('max_output_gap_s') is not None else '—'
+        coverage.append(f"| {name} | {v['poses']} | {first} / {last} | {v['coverage_percent']:.1f}% | {gap} | {v['lifecycle']} |")
+        sources.append(f"| {name} | [{v['run']}](../{v['run']}/export/odometry/trajectory.csv) | `{v['trajectory_sha256']}` |")
     best=min(active,key=lambda k:results[k]['ape_se3']['rmse_m'])
     report=f'''# 轨道隧道仿真：五种配置的 APE 实测对比
 
@@ -224,6 +228,13 @@ def main():
 |---|---:|---:|---:|---:|
 {chr(10).join(axis)}
 
+**本次结果的具体含义：**
+
+- 三个纯 LIO 配置中，FAST-LIO2 是本次最可靠的精度基线；LIO-SAM 六轴适配版与本方法 OFF 均发生明显发散，表中的数百/上千米是失败轨迹误差，不是有效工作的名义精度。
+- UWB 两组的轴向误差较 FAST-LIO2 小，但其高度误差更大：不能概括成“所有方向都更好”。无图组仅首姿态对齐 RMSE 也比 FAST-LIO2 大，不能只拿全窗口对齐后的较低数字宣称全面胜出。
+- 无图组原始输出包含 **{results['self'].get('state_counts',{}).get('LOST',0)} 帧 LOST**、**{results['self'].get('state_counts',{}).get('DEGRADED',0)} 帧 DEGRADED**。它完成了回放，但这次新起点下不能宣称始终健康。
+- 有图组的 {results['reuse']['ape_se3']['rmse_m']:.3f} m 是去掉整体坐标差异后的轨迹形状精度。其已有固定地图坐标评估记录的全输出位置 RMSE 为 1.036 m，高度 RMSE 为 1.034 m；详见 [原运行评估](../log/20261022T162059Z_880/export/analysis/report.json)。两者的对齐方式和采样范围不同，不能互换。
+
 ## 4. 轨迹与误差随时间变化
 
 ![共同时间的平面轨迹](figures/ape_five_trajectories.png)
@@ -244,6 +255,12 @@ APE 范数采用对数纵轴，以同时保留小误差和大漂移；分轴曲�
 
 LIO-SAM 日志记录 **{results['liosam'].get('imu_velocity_resets',0)} 次速度过大重置**、**{results['liosam'].get('imu_bias_resets',0)} 次偏置过大重置**。这些失效迹象保留在评价中，未因重新输出轨迹而清除。本方法状态计数见 JSON；DEGRADED/LOST 不改写成 TRACKING。若轨迹没有覆盖到至少 stamp 360 s，不进入全程主表，也不让其早期前缀缩短其余方法的评测路线。
 
+共同采样被 LIO-SAM 的稀疏输出限制在 {100*common.mean():.1f}%。为检查采样影响，下表保持主表的同一对齐矩阵不变，纳入每组在整个预声明窗口内的所有有效网格点。这是补充诊断，样本数不同，不替代主表的同时间对照。
+
+| 配置 | 自身窗口样本数 | 同一对齐矩阵下 APE RMSE (m) |
+|---|---:|---:|
+{chr(10).join(dense)}
+
 ## 6. 可追溯运行与复现
 
 | 配置 | 实际 run | 轨迹 SHA-256 |
@@ -251,6 +268,17 @@ LIO-SAM 日志记录 **{results['liosam'].get('imu_velocity_resets',0)} 次速�
 {chr(10).join(sources)}
 
 运行命令、固定源码提交、配置和全部适配说明见 [对比工具说明](../tools/baselines/README.md)。运行目录中的 `metadata/manifests/` 保存输入/二进制身份，`runtime/` 保存控制台日志，`export/odometry/trajectory.csv` 为原始估计轨迹；所有失败尝试保留，未替换成成功结果。
+
+运行平台为 ROS 2 Jazzy / GTSAM 4.3a0。FAST-LIO2、LIO-SAM 的固定参数分别见 [FAST-LIO 配置](../tools/baselines/config/fastlio.yaml)、[LIO-SAM 配置](../tools/baselines/config/liosam.yaml)。FAST-LIO 原生的编译期源码目录 debug 文本已额外归档到该 run 的 `runtime/fastlio_native_debug/`，不用于轨迹评分。
+
+| 验证 | 结果与证据 |
+|---|---|
+| 干净 ROS underlay 下重建外部三包 | PASS，[构建日志](../log/baseline-clean-reproduction-build.txt) |
+| 重建的五个外部可执行文件与实际运行的 SHA-256 一致 | PASS，[二进制复核](../log/baseline-clean-build-binary-check.json) |
+| 适配不改变点坐标/强度/零时间与原始 IMU 数值 | PASS，[针对性测试](../log/baseline-adapter-tests-final.txt) |
+| 刚体 APE 不拟合尺度，不跨输出断档插值 | PASS，[评估测试](../log/baseline-ape-tests-final.txt) |
+| 外部两组规范化输入重建一致 | PASS（发布侧重建），[完整审计](../log/baseline-canonical-input-audit.txt) |
+| 本方法 OFF 的 3,580 条图记录没有 UWB / 基站 / 地图因子 | PASS，[因子检查](../log/baseline-off-factor-check.json) |
 
 ```bash
 python3 tools/baselines/evaluate_ape.py --runs tools/baselines/runs.json

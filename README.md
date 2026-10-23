@@ -1,5 +1,7 @@
 # LIUO Tunnel
 
+五组同输入精度实验已保存为[图文 APE 对比报告](docs/ape_five_method_comparison.md)：FAST-LIO2、LIO-SAM 六轴适配、本方法无图/有图 UWB、本方法 UWB OFF。包含共同时间 APE、分轴误差、轨迹、覆盖率、失败状态和可复现命令；不是全面部署或算法普遍排名。
+
 第三阶段已按代表性范围交付：**代表性仿真中首次自标定及独立地图复用有效**。完整360秒首轮/次轮、四站联合地图、同输入ON/OFF/已知地图参照及AA消融见[交付报告与完整命令](docs/phase3_representative_results.md)。地图高度和局部后验仍弱，不是全面部署认证。
 
 第二阶段按用户修订范围完成，结论仅为**代表性仿真范围内系统完成且验证有效**。使用原始GPU VGICP、IMU和UWB同图紧耦合；三个内部起点、冻结输入全程ON/OFF及5s/20s断流已有证据。正式配置、命令、run路径与限制见[交付报告](docs/phase2_representative_results.md)，历史失败见[逐轮记录](docs/phase2_acceptance.md)。
