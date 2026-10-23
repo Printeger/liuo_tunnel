@@ -26,6 +26,7 @@ from nav_msgs.msg import Odometry
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools'))
 import run_directory as rd
+from raw_identity import hash_message
 
 
 def stamp(msg):
@@ -129,6 +130,7 @@ def main():
     poses, latency = [], []
     counts = dict(imu=0, cloud=0, clock=0)
     hashes = {key: hashlib.sha256() for key in ('imu', 'cloud')}
+    semantic_hashes = {key: hashlib.sha256() for key in ('imu', 'cloud')}
     adapter = None
     identity = dict(algorithm=args.algorithm, source=str(args.source.resolve()), duration_s=args.duration, uwb_published=False, truth_published=False, commands=[], binaries={})
     try:
@@ -207,6 +209,7 @@ def main():
                 latest_sensor[0] = msg.clock.sec + msg.clock.nanosec * 1e-9
             if key in hashes:
                 hashes[key].update(serialize_message(msg))
+                hash_message(semantic_hashes[key], key, msg)
             pubs[key].publish(msg)
             counts[key] += 1
             rclpy.spin_once(node, timeout_sec=0.)
@@ -243,6 +246,7 @@ def main():
         with (export / 'delivery_latency.csv').open('w') as f:
             writer = csv.writer(f); writer.writerow(['stamp', 'latest_input_stamp_minus_estimate_s']); writer.writerows(latency)
         summary = dict(failure=failure, counts=counts, adapted_sha256={k: h.hexdigest() for k, h in hashes.items()}, poses=len(poses), max_ring_residual_deg=adapter.max_ring_residual_deg if adapter else None, exit_codes=[p.returncode for p in children])
+        summary['adapted_semantic_sha256'] = {k:h.hexdigest() for k,h in semantic_hashes.items()}
         rd.write_subordinate_manifest(run, 'baseline_result', summary)
         if failure:
             rd.write_subordinate_manifest(run, 'input_failure', {'reason': failure})

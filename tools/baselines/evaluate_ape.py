@@ -123,13 +123,24 @@ def main():
         all_target=truth_at(all_chosen[:,0])
         results[key].update(ape_se3=stats(errors[key]),ape_first_pose=stats(fixed_errors[key]),se3_rotation=r.tolist(),se3_translation=t.tolist(),fit_singular_values=s.tolist(),attitude_rmse_deg=float(np.rad2deg(np.sqrt(np.mean(att**2)))),common_samples=len(chosen),own_window_ape_using_common_fit=stats((r@all_chosen[:,1:4].T).T+t-all_target))
     external=[]
+    reconstructions=[]
     for key in ('fastlio','liosam'):
         path=ROOT/spec['runs'][key]/'metadata/manifests/baseline_result.json'
         external.append(json.loads(path.read_text()))
-    input_equal=external[0]['adapted_sha256']==external[1]['adapted_sha256'] and external[0]['counts']==external[1]['counts']
+        audit=path.with_name('canonical_input_reconstruction.json')
+        reconstructions.append(json.loads(audit.read_text()) if audit.exists() else None)
+    if all(reconstructions):
+        input_equal=(reconstructions[0]['adapted_semantic_sha256']==reconstructions[1]['adapted_semantic_sha256']
+                     and reconstructions[0]['original_converter_sha256']==reconstructions[1]['original_converter_sha256']
+                     and reconstructions[0]['capture_sha256']==reconstructions[1]['capture_sha256']
+                     and reconstructions[0]['counts']==external[0]['counts']==external[1]['counts']==reconstructions[1]['counts'])
+    else:
+        input_equal=(external[0].get('adapted_semantic_sha256') is not None
+                     and external[0].get('adapted_semantic_sha256')==external[1].get('adapted_semantic_sha256')
+                     and external[0]['counts']==external[1]['counts'])
     if not input_equal:
         raise RuntimeError('external baseline full adapted inputs do not match; no paired precision claim')
-    summary=dict(protocol='same source; body origin; no scale; nearest timestamps <=51ms; common ROS stamps [61,360.9]',source=spec['source'],source_capture_sha256={p.name:hashlib.file_digest(p.open('rb'),'sha256').hexdigest() for p in (source/'export/capture/raw').glob('*.mcap')},requested_grid_samples=len(grid),common_samples=int(common.sum()),common_coverage_percent=float(100*common.mean()),external_adapted_inputs_equal=input_equal,external_input_checks=external,results=results)
+    summary=dict(protocol='same source; body origin; no scale; nearest timestamps <=51ms; common ROS stamps [61,360.9]',source=spec['source'],source_capture_sha256={p.name:hashlib.file_digest(p.open('rb'),'sha256').hexdigest() for p in (source/'export/capture/raw').glob('*.mcap')},requested_grid_samples=len(grid),common_samples=int(common.sum()),common_coverage_percent=float(100*common.mean()),external_adapted_inputs_equal=input_equal,external_input_checks=external,canonical_reconstruction_audits=reconstructions,results=results)
     out=ROOT/'docs';figdir=out/'figures';figdir.mkdir(exist_ok=True)
     (out/'ape_five_method_results.json').write_text(json.dumps(summary,indent=2,ensure_ascii=False)+'\n')
     plt.rcParams.update({'font.size':10,'axes.grid':True,'grid.alpha':.25,'figure.dpi':150})
@@ -138,10 +149,10 @@ def main():
     for ax in axes:ax.plot(target[:,0],target[:,1],'k--',lw=2,label='Truth (offline only)');ax.set_xlabel('Tunnel longitudinal X [m]');ax.set_ylabel('Lateral Y [m]')
     for key in active:
         for j,ax in enumerate(axes):
-            if j==1 and key=='off':continue
+            if j==1 and key in ('off','liosam'):continue
             ax.plot(aligned[key][:,0],aligned[key][:,1],color=NAMES[key][2],lw=1,label=NAMES[key][1])
     axes[0].set_title('All methods: common-time SE(3)-aligned XY')
-    axes[1].set_title('Detail: UWB OFF omitted here; shown at left')
+    axes[1].set_title('Detail: FAST-LIO2 + UWB methods (all shown at left)')
     for ax in axes:ax.legend(fontsize=7)
     fig.tight_layout();fig.savefig(figdir/'ape_five_trajectories.png');plt.close(fig)
     fig,axes=plt.subplots(2,2,figsize=(13,8),sharex=True)
@@ -186,7 +197,7 @@ def main():
 
 - 评测原始输入：`{spec['source']}`，seed 1，360 s，真实运行起点 (220,0.2,1.6) m / yaw π/2，仅供仿真与离线评估说明，不进入估计器。40 线 × 512 水平射线、40 m LiDAR 量程、10 Hz 点云、200 Hz 六轴 IMU；点云为 snapshot，无滚动扫描验证。
 - 有图组地图来自独立 seed 0 首次标定 `log/20261022T160635Z_994`，没有用 seed 1 的评测输入先建地图。这里的“有图”是 UWB 基站/安装参考的相关后验，**不是稠密点云地图重定位**。
-- 外部两组适配后 LiDAR/IMU 消息数量与 SHA-256 严格相等：**PASS**。未发布真值、UWB 或 GPS。原始输入文件 SHA-256、全部结果与对齐矩阵见 [机器可读结果](ape_five_method_results.json)。
+- 外部两组发布的 LiDAR/IMU 数量相等；冻结原始文件、实际执行的转换器代码一致，分别重建的**规范化消息 SHA-256 相等**。原始 CDR 字节哈希曾不一致，已复现原因是未定义的对齐填充字节，原差异保留；不能把字节哈希不一致直接当作相同。此处是发布侧确定性重建核对，不是接收侧录包证明；算法内部丢帧/节流体现为输出覆盖率。未发布真值、UWB 或 GPS。完整审计、原始哈希与对齐矩阵见 [机器可读结果](ape_five_method_results.json)。
 - FAST-LIO2 保留 CPU 原生后端；本方法使用 GPU 原始因子路径；LIO-SAM 使用 CPU、关闭 GPS/回环。本文不以不同后端的耗时作速度排名。
 - LIO-SAM 原接口要求姿态，本次明确是**六轴适配版**：静止段比力初始化 roll/pitch、局部 yaw=0、随后陀螺积分，原始 gyro/acc 不改；不使用真值姿态。关闭独立航向初始化及持续 RPY 融合权重。不能把该结果当作带九轴姿态传感器的原版成绩。
 - FAST-LIO2 对全零点时间默认会重建扫描时间，本次显式 snapshot 补丁关闭这种行为及等时点云去畸变；绝不伪造滚动扫描。ring 来自已知雷达射线角度，与隧道几何先验无关。详见 [冻结协议、补丁和来源](../tools/baselines/README.md)。
@@ -217,7 +228,7 @@ def main():
 
 ![共同时间的平面轨迹](figures/ape_five_trajectories.png)
 
-左图保留全部方法的尺度；右图单独省略 OFF 以查看其余轨迹细节，未从指标中移除 OFF。坐标为离线对齐后的世界坐标。
+左图保留全部方法的尺度；右图只放大 FAST-LIO2 与本方法两个 UWB 组，以便查看细节，LIO-SAM 与 OFF 仍完整保留在左图及全部指标中。坐标为离线对齐后的世界坐标。
 
 ![APE 及三个方向误差](figures/ape_five_errors.png)
 
