@@ -76,6 +76,12 @@ def main():
         matched[key],valid[key]=associate(values,grid)
         manifest=json.loads((run/'metadata/run_manifest.json').read_text())
         result=dict(run=relative,lifecycle=manifest['lifecycle'],source=manifest.get('source'),trajectory_sha256=hashlib.file_digest(path.open('rb'),'sha256').hexdigest() if path.exists() else None,poses=len(values),coverage_percent=float(100*valid[key].mean()),window_matches=int(valid[key].sum()))
+        identity_file=run/'metadata/manifests'/('baseline_input.json' if key in ('fastlio','liosam') else 'input_identity.json')
+        if identity_file.exists():
+            identity=json.loads(identity_file.read_text())
+            result['input_identity']=identity
+            if key in ('self','reuse') and Path(identity.get('frozen_input',{}).get('source_run','')).resolve()!=source.resolve():
+                raise RuntimeError('our replay source differs from declared benchmark input: '+key)
         if len(values):
             result.update(first_stamp=float(values[0,0]),last_stamp=float(values[-1,0]),max_output_gap_s=float(np.diff(values[:,0]).max()) if len(values)>1 else None)
         failure=run/'metadata/manifests/input_failure.json'
@@ -133,8 +139,9 @@ def main():
         axes[0,0].semilogy(common_time,np.maximum(np.linalg.norm(err,axis=1),1e-6),color=NAMES[key][2],lw=1,label=NAMES[key][1])
         for ax,i in zip([axes[0,1],axes[1,0],axes[1,1]],range(3)):
             ax.plot(common_time,err[:,i],color=NAMES[key][2],lw=.8)
+            ax.set_yscale('symlog',linthresh=.1)
     for ax,title in zip(axes.flat,['Translation APE norm (log scale)','Longitudinal X error','Lateral Y error','Height Z error']):
-        ax.set_title(title);ax.set_ylabel('Error [m]');ax.set_xlabel('ROS measurement time [s]')
+        ax.set_title(title);ax.set_ylabel('Error [m], log / signed-log');ax.set_xlabel('ROS measurement time [s]')
     axes[0,0].legend(fontsize=7)
     fig.tight_layout();fig.savefig(figdir/'ape_five_errors.png');plt.close(fig)
     fig,axes=plt.subplots(1,2,figsize=(13,5))
@@ -203,7 +210,7 @@ def main():
 
 ![APE 及三个方向误差](figures/ape_five_errors.png)
 
-APE 范数采用对数纵轴，以同时保留小误差和大漂移；分轴曲线保留正负号。长直、重复纹理的隧道存在几何弱约束，单独的“比 OFF 好”并不能证明部署有效性。
+APE 范数采用对数纵轴，以同时保留小误差和大漂移；分轴曲线采用保留正负号的对称对数轴（±0.1 m 内为线性）。长直、重复纹理的隧道存在几何弱约束，单独的“比 OFF 好”并不能证明部署有效性。
 
 ## 5. 输出完整性与失败记录
 
