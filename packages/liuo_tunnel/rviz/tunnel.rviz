@@ -18,6 +18,7 @@ Visualization Manager:
     - Class: rviz_default_plugins/PointCloud2
       Name: Current scan (estimated pose, snapshot)
       Enabled: true
+      Decay Time: 0.5
       Topic:
         Value: /liuo/visual/current_cloud
         Reliability Policy: Reliable
