@@ -1,0 +1,42 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -28,7 +28,7 @@
+ find_package(OpenCV REQUIRED)
+ find_package(PCL REQUIRED)
+ find_package(GTSAM REQUIRED)
+-find_package(Eigen REQUIRED)
++find_package(Eigen3 REQUIRED)
+ find_package(OpenMP REQUIRED)
+ 
+ include_directories(
+@@ -49,7 +49,7 @@
+ target_link_libraries(${PROJECT_NAME}_imageProjection "${cpp_typesupport_target}") 
+ 
+ add_executable(${PROJECT_NAME}_imuPreintegration src/imuPreintegration.cpp)
+-ament_target_dependencies(${PROJECT_NAME}_imuPreintegration rclcpp rclpy std_msgs sensor_msgs geometry_msgs nav_msgs pcl_conversions pcl_msgs visualization_msgs tf2 tf2_ros tf2_eigen tf2_sensor_msgs tf2_geometry_msgs OpenCV PCL GTSAM Eigen)
++ament_target_dependencies(${PROJECT_NAME}_imuPreintegration rclcpp rclpy std_msgs sensor_msgs geometry_msgs nav_msgs pcl_conversions pcl_msgs visualization_msgs tf2 tf2_ros tf2_eigen tf2_sensor_msgs tf2_geometry_msgs OpenCV PCL GTSAM Eigen3)
+ target_link_libraries(${PROJECT_NAME}_imuPreintegration gtsam "${cpp_typesupport_target}")
+ 
+ add_executable(${PROJECT_NAME}_mapOptimization src/mapOptmization.cpp)
+--- a/src/imuPreintegration.cpp
++++ b/src/imuPreintegration.cpp
+@@ -245,7 +245,7 @@
+ 
+         pubImuOdometry = create_publisher<nav_msgs::msg::Odometry>(odomTopic+"_incremental", qos_imu);
+ 
+-        boost::shared_ptr<gtsam::PreintegrationParams> p = gtsam::PreintegrationParams::MakeSharedU(imuGravity);
++        auto p = gtsam::PreintegrationParams::MakeSharedU(imuGravity);
+         p->accelerometerCovariance  = gtsam::Matrix33::Identity(3,3) * pow(imuAccNoise, 2); // acc white noise in continuous
+         p->gyroscopeCovariance      = gtsam::Matrix33::Identity(3,3) * pow(imuGyrNoise, 2); // gyro white noise in continuous
+         p->integrationCovariance    = gtsam::Matrix33::Identity(3,3) * pow(1e-4, 2); // error committed in integrating position from velocities
+--- a/src/imuPreintegration.cpp
++++ b/src/imuPreintegration.cpp
+@@ -142,6 +142,8 @@
+         }
+         geometry_msgs::msg::TransformStamped ts;
+         tf2::convert(tCur, ts);
++        ts.header.frame_id = odometryFrame;
++        ts.header.stamp = odomMsg->header.stamp;
+         ts.child_frame_id = baselinkFrame;
+         tfBroadcaster->sendTransform(ts);
+ 

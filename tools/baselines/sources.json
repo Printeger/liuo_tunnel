@@ -1,0 +1,14 @@
+{
+  "fastlio": {
+    "commit": "a4743b095409588842a5b30ddfa27e29d2f99164",
+    "archive_sha256": "c0299f98b3ded3dd4e8b345ee5a5817e11cdac5c60dfd1ff22024613b254fcf2"
+  },
+  "liosam": {
+    "commit": "08af3f32f01725372d4269838dc44c19c6d9e76b",
+    "archive_sha256": "756b6bf4d8bc98e63e5de343f4efae32b3297ffa303aae2c33d69375911a4771"
+  },
+  "ikdtree": {
+    "commit": "e2e3f4e9d3b95a9e66b1ba83dc98d4a05ed8a3c4",
+    "archive_sha256": "df1d87b8aa264a5c72dd8e3c5056b5dba5a888b8fd2312810dde11e9460489e0"
+  }
+}

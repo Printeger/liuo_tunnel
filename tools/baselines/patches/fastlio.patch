@@ -1,0 +1,75 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -5,17 +5,17 @@
+   set(CMAKE_BUILD_TYPE Release)
+ endif()
+ 
+-ADD_COMPILE_OPTIONS(-std=c++14)
+-ADD_COMPILE_OPTIONS(-std=c++14)
+-set(CMAKE_CXX_FLAGS "-std=c++14 -O3")
++ADD_COMPILE_OPTIONS(-std=c++17)
++ADD_COMPILE_OPTIONS(-std=c++17)
++set(CMAKE_CXX_FLAGS "-std=c++17 -O3")
+ 
+ add_definitions(-DROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/\")
+ 
+ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions")
+-set(CMAKE_CXX_STANDARD 14)
++set(CMAKE_CXX_STANDARD 17)
+ set(CMAKE_CXX_STANDARD_REQUIRED ON)
+ set(CMAKE_CXX_EXTENSIONS OFF)
+-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -pthread -std=c++0x -std=c++14 -fexceptions")
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -pthread -std=c++0x -std=c++17 -fexceptions")
+ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+ 
+ message("Current CPU archtecture: ${CMAKE_SYSTEM_PROCESSOR}")
+--- a/src/preprocess.h
++++ b/src/preprocess.h
+@@ -135,6 +135,7 @@
+ class Preprocess
+ {
+   public:
++    bool snapshot_mode = false; // Explicit zero-time scan input; never invent azimuth time.
+ //   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+ 
+   Preprocess();
+--- a/src/preprocess.cpp
++++ b/src/preprocess.cpp
+@@ -314,7 +314,7 @@
+   std::vector<float> time_last(N_SCANS, 0.0);  // last offset time
+   /*****************************************************************/
+ 
+-  if (pl_orig.points[plsize - 1].time > 0)
++  if (snapshot_mode || pl_orig.points[plsize - 1].time > 0)
+   {
+     given_offset_time = true;
+   }
+--- a/src/laserMapping.cpp
++++ b/src/laserMapping.cpp
+@@ -820,6 +820,7 @@
+         this->declare_parameter<double>("mapping.acc_cov", 0.1);
+         this->declare_parameter<double>("mapping.b_gyr_cov", 0.0001);
+         this->declare_parameter<double>("mapping.b_acc_cov", 0.0001);
++        this->declare_parameter<bool>("preprocess.snapshot", false);
+         this->declare_parameter<double>("preprocess.blind", 0.01);
+         this->declare_parameter<int>("preprocess.lidar_type", AVIA);
+         this->declare_parameter<int>("preprocess.scan_line", 16);
+@@ -856,6 +857,7 @@
+         this->get_parameter_or<double>("mapping.acc_cov",acc_cov,0.1);
+         this->get_parameter_or<double>("mapping.b_gyr_cov",b_gyr_cov,0.0001);
+         this->get_parameter_or<double>("mapping.b_acc_cov",b_acc_cov,0.0001);
++        this->get_parameter_or<bool>("preprocess.snapshot", p_pre->snapshot_mode, false);
+         this->get_parameter_or<double>("preprocess.blind", p_pre->blind, 0.01);
+         this->get_parameter_or<int>("preprocess.lidar_type", p_pre->lidar_type, AVIA);
+         this->get_parameter_or<int>("preprocess.scan_line", p_pre->N_SCANS, 16);
+--- a/src/IMU_Processing.hpp
++++ b/src/IMU_Processing.hpp
+@@ -298,6 +298,8 @@
+   last_imu_ = meas.imu.back();
+   last_lidar_end_time_ = pcl_end_time;
+ 
++  // A snapshot has no intra-scan motion; IMU propagation above remains unchanged.
++  if (pcl_end_time == pcl_beg_time) return;
+   /*** undistort each lidar point (backward propagation) ***/
+   if (pcl_out.points.begin() == pcl_out.points.end()) return;
+   auto it_pcl = pcl_out.points.end() - 1;
