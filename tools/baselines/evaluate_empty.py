@@ -119,6 +119,8 @@ def main():
         errors[key] = (common & masks[key], error)
         result = results[key]
         result['common_fixed_datum_ape'] = stats(error)
+        result['evaluated_samples'] = len(chosen)
+        result['partial_window_only'] = key not in active
         attitude = (tr(chosen[:,0]).inv()*Rotation.from_quat(chosen[:,4:8])).magnitude()
         result['attitude_rmse_deg'] = float(np.rad2deg(np.sqrt(np.mean(attitude**2))))
         v = raw[key]
