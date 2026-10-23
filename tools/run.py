@@ -42,6 +42,8 @@ def watchdog_failure(elapsed, wall_budget, idle_seconds, idle_budget):
 
 def main():
     p = argparse.ArgumentParser()
+    p.add_argument('--visualize', action='store_true', help='owned bounded visualization publishers')
+    p.add_argument('--rviz', action='store_true', help='owned RViz window (implies --visualize)')
     p.add_argument(
         "--delivery-profile",
         type=Path,
@@ -428,7 +430,20 @@ def main():
                 "--args",
             ] + commands["odometry"]
         commands["observer"] = [sys.executable, str(ROOT / "tools/observe.py")]
-        for name in ["observer", "odometry", "simulation"]:
+        process_order = ["observer"]
+        if args.visualize or args.rviz:
+            identity['visualization_script_sha256'] = digest(ROOT / 'tools/visualize.py')
+            env['LIUO_VIS_CONFIG'] = str(config)
+            commands['visualization'] = [sys.executable, str(ROOT / 'tools/visualize.py'), '--ros-args', '-p', 'use_sim_time:=true']
+            process_order.append('visualization')
+        if args.rviz:
+            rviz_config = run / 'metadata/config/tunnel.rviz'
+            rviz_config.write_bytes((ROOT / 'packages/liuo_tunnel/rviz/tunnel.rviz').read_bytes())
+            rd.register_config_snapshot(run, rviz_config)
+            commands['rviz'] = ['/opt/ros/jazzy/bin/rviz2', '-d', str(rviz_config), '--ros-args', '-p', 'use_sim_time:=true']
+            process_order.append('rviz')
+        process_order += ['odometry', 'simulation']
+        for name in process_order:
             f = open(run / f"runtime/{name}_console.log", "w")
             handles.append(f)
             children[name] = subprocess.Popen(

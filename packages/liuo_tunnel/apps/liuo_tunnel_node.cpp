@@ -6,6 +6,7 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 #include <diagnostic_msgs/msg/diagnostic_array.hpp>
 #include <liuo_tunnel_msgs/msg/uwb_range.hpp>
 #include <liuo_tunnel/common/imu_integration.hpp>
@@ -150,6 +151,8 @@ public:
     timing << "session,stamp,preprocess_ms,optimize_ms,total_ms,latency_s,imu_queue,cloud_queue,pred_x,ba_x,ba_y,ba_z,bg_x,bg_y,bg_z,gpu_diagnostic_ms,smoother_ms,covariance_ms,"
               "pred_vx,pred_vy,pred_vz\n";
     reset();
+    visual_cloud = create_publisher<sensor_msgs::msg::PointCloud2>("/liuo/visual/current_cloud", 2);
+    visual_anchors = create_publisher<visualization_msgs::msg::MarkerArray>("/liuo/visual/anchors", 2);
     pub = create_publisher<nav_msgs::msg::Odometry>("/liuo/odom", 100);
     diagnostics = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/liuo/diagnostics", 10);
     imu_sub = create_subscription<sensor_msgs::msg::Imu>("/sensors/imu", rclcpp::SensorDataQoS().keep_last(2048), [this](sensor_msgs::msg::Imu::ConstSharedPtr m) { on_imu(*m); });
@@ -1685,6 +1688,48 @@ private:
       for (int i = 0; i < 6; i++)
         for (int j = 0; j < 6; j++) out.twist.covariance[i * 6 + j] = twist_cov(i, j);
       pub->publish(out);
+      if (visual_cloud->get_subscription_count()) {
+        sensor_msgs::msg::PointCloud2 display;
+        display.header = out.header;
+        sensor_msgs::PointCloud2Modifier modifier(display);
+        modifier.setPointCloud2FieldsByString(1, "xyz");
+        modifier.resize(points.size());
+        sensor_msgs::PointCloud2Iterator<float> dx(display, "x"), dy(display, "y"), dz(display, "z");
+        for (const auto& point : points) {
+          const auto world = state.pose().transformFrom(gtsam::Point3(point.head<3>()));
+          *dx = world.x(); *dy = world.y(); *dz = world.z();
+          ++dx; ++dy; ++dz;
+        }
+        visual_cloud->publish(display);
+      }
+      if (visual_anchors->get_subscription_count() && fuse) {
+        visualization_msgs::msg::MarkerArray display;
+        visualization_msgs::msg::Marker clear;
+        clear.action = clear.DELETEALL;
+        display.markers.push_back(clear);
+        const auto values = smoother->calculateEstimate();
+        for (auto id : map.ids) {
+          if (!values.exists(A(id))) continue;
+          const auto a = values.at<gtsam::Point3>(A(id));
+          visualization_msgs::msg::Marker marker;
+          marker.header = out.header;
+          marker.ns = "estimated_anchor";
+          marker.id = id;
+          marker.type = marker.SPHERE;
+          marker.pose.orientation.w = 1;
+          marker.pose.position.x = a.x(); marker.pose.position.y = a.y(); marker.pose.position.z = a.z();
+          marker.scale.x = marker.scale.y = marker.scale.z = .6;
+          marker.color.r = 1; marker.color.g = .6; marker.color.a = 1;
+          marker.lifetime.sec = 2;
+          display.markers.push_back(marker);
+          marker.ns = "anchor_label";
+          marker.type = marker.TEXT_VIEW_FACING;
+          marker.pose.position.z += 1;
+          marker.text = "A" + std::to_string(id) + " estimated / provisional";
+          display.markers.push_back(marker);
+        }
+        visual_anchors->publish(display);
+      }
       auto publish_wall_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
       status(mode, state_reason, t);
       trajectory << session << ',' << t << ',' << now().seconds() << ',' << p.x() << ',' << p.y() << ',' << p.z() << ',' << q.x() << ',' << q.y() << ',' << q.z() << ',' << q.w()
@@ -1815,6 +1860,8 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub;
   rclcpp::Subscription<liuo_tunnel_msgs::msg::UwbRange>::SharedPtr uwb_sub;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr visual_cloud;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr visual_anchors;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr pub;
   rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diagnostics;
 };

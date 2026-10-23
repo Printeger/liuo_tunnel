@@ -197,6 +197,7 @@ the documented sparse-layout accuracy failures are unresolved.
 cd /home/dev/code/ws_tunnel/src/liuo_tunnel
 ./tools/build.sh
 export LIUO_RUN_ROOT="$PWD/log"
+export ROS_LOG_DIR="$PWD/log/launch"
 # 首轮 seed0 的同输入 TA+AA；TA-only替换为 phase3_self_calibrate_ta_only.json
 ./tools/run.sh --replay log/20261022T132941Z_415 \
   --config packages/liuo_tunnel/config/phase3_self_calibrate.json \
@@ -210,3 +211,30 @@ export LIUO_RUN_ROOT="$PWD/log"
 ```
 
 评估器对校准地图使用首轮声明的固定坐标规范，复用时不按第二起点对齐；首轮来源run必须保留供离线评估。原始输入、地图及二进制身份在metadata/manifests内记录。单run PASS仅覆盖运行合同，不能证明地图高度可靠、失效已恢复或阶段完成。以上为旧局部入口；最新完整路线与冻结对照见第三阶段交付报告。snapshot不代表rolling或真实Mid-360通过。
+# RViz 启动入口
+
+在本项目目录执行（ROS 2 Jazzy，已有 GPU 依赖）：
+
+```bash
+./tools/build.sh
+source /opt/ros/jazzy/setup.bash
+source install/local_setup.bash
+export LIUO_RUN_ROOT="$PWD/log"
+
+# 第一次：无基站坐标地图，联合估计轨迹、基站及安装参考
+ros2 launch liuo_tunnel first_mapping.launch.py
+
+# 第二次：显式指定第一次输出的地图；不自动猜测“最新地图”
+ros2 launch liuo_tunnel reuse_map.launch.py \
+  map:="$PWD/log/<第一次运行目录>/export/map/calibrated_map.json"
+```
+
+两个入口默认打开 RViz，运行 360 s 的代表性仿真路线，使用 GPU。第一次地图初始化可能需约 50 s；初始化未完成前不显示虚构的全局点云或基站。原始测距数值可先显示，当前帧点云在有效估计输出后显示。默认起点仅传给仿真器：首次 `200 0 1.2 0`，复用 `220 0.2 1.6 1.5707963267948966`。
+
+地图路径会随本次运行打印的 run 目录确定。首次输出是带相关协方差的 **UWB 基站/安装参考地图**；未初始化的基站不在已知坐标中。导出的 provisional 地图及 DEGRADED 状态不等于部署认证。
+
+RViz 显示当前帧（降采样 snapshot 点云）、点云累积地图、当前图内的基站估计，以及接收的原始测距和状态。点云累积仅用于显示：0.4 m 体素、最多 150,000 点、旧点淘汰、不做历史位姿重优化，不作为第二次定位的先验，也不是另一个已保存的稠密 SLAM 地图。基站橙色球及文字是估计，不是真值。测距连线用最近 60 ms 内估计位姿和当前基站估计绘制，数字是原始接收值；连线长度不等于原始测距，接收也不等于被优化器接受。缺少端点时仅显示数字。
+
+可用参数：`rviz:=false`（仍发布显示话题）、`duration:=80`、`wall_timeout:=180`、`capture:=true`、`formal:=true`、`seed:=0`、`sim_start:="200 0 1.2 0"`；`replay:=/绝对路径/已有run` 复用冻结输入。正式证据仍要求干净提交。已有命令行入口 `tools/run.sh` 保留，可加 `--rviz` 或 `--visualize`。所有进程在同一 run 和隔离的 ROS domain 下，由运行器统一收尾；关闭 RViz 提前退出会记录为中断/失败，不静默继续。Ctrl+C 停止本次运行。
+
+RViz 固定坐标系是 `map`。可在 Views 调整视角，或选中点云按 F 聚焦；长路线不会自动追随机器人。桌面运行需要有效 DISPLAY/Wayland 会话。仅查看原始传感器帧可在 RViz 手动添加 `/sensors/lidar/points`，将 Fixed Frame 改为 `lidar`；该模式不能同时对齐全局地图，初始化前没有合法的全局变换。

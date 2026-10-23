@@ -1,0 +1,68 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Global Options:
+    Background Color: 25; 25; 25
+    Fixed Frame: map
+    Frame Rate: 20
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Name: Grid
+      Enabled: true
+      Cell Size: 5
+      Plane Cell Count: 100
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Current scan (estimated pose, snapshot)
+      Enabled: true
+      Topic:
+        Value: /liuo/visual/current_cloud
+        Reliability Policy: Reliable
+        History Policy: Keep Last
+        Depth: 2
+      Size (m): 0.12
+      Style: Points
+      Color Transformer: FlatColor
+      Color: 0; 255; 180
+    - Class: rviz_default_plugins/PointCloud2
+      Name: Display cloud map (bounded, no loop correction)
+      Enabled: true
+      Topic:
+        Value: /liuo/visual/cloud_map
+        Reliability Policy: Reliable
+        History Policy: Keep Last
+        Depth: 1
+      Size (m): 0.06
+      Style: Points
+      Color Transformer: AxisColor
+      Axis: Z
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Joint anchor estimates (provisional)
+      Enabled: true
+      Marker Topic:
+        Value: /liuo/visual/anchors
+        Reliability Policy: Reliable
+        Depth: 2
+    - Class: rviz_default_plugins/MarkerArray
+      Name: Received raw ranges and health
+      Enabled: true
+      Marker Topic:
+        Value: /liuo/visual/ranges
+        Reliability Policy: Reliable
+        Depth: 2
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 60
+      Pitch: 0.5
+      Yaw: 0.8
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+Window Geometry:
+  Width: 1400
+  Height: 900
