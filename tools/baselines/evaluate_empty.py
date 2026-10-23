@@ -27,6 +27,9 @@ def main():
         'reuse_ta': ('本方法有图 TA-only', 'Ours: reuse, TA only', '#9467bd'),
     })
     spec = json.loads(spec_path.read_text())
+    if any(k.endswith('_ta') for k in spec['runs']):
+        NAMES['self'] = ('本方法无图 TA+AA', 'Ours: self, TA+AA', '#009E73')
+        NAMES['reuse'] = ('本方法有图 TA+AA', 'Ours: reuse, TA+AA', '#CC79A7')
     truth = load(ROOT / spec['source'] / 'export/simulation/truth.csv')
     tr = Slerp(truth[:, 0], Rotation.from_quat(truth[:, 4:8]))
     def truth_xyz(t):
@@ -53,6 +56,28 @@ def main():
                       lifecycle=manifest['lifecycle'], poses=len(values),
                       coverage_percent=float(100 * masks[key].mean()),
                       trajectory_sha256=hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None)
+        if key.endswith('_ta'):
+            config = json.loads((run / 'metadata/config/phase1.json').read_text())
+            if config['uwb'].get('use_aa', False) is not False:
+                raise ValueError('TA-only comparison config enables AA: ' + key)
+            range_path = run / 'export/odometry/uwb.csv'
+            ranges = list(csv.DictReader(range_path.open())) if range_path.exists() else []
+            graph_path = run / 'export/odometry/graph.csv'
+            graphs = list(csv.DictReader(graph_path.open())) if graph_path.exists() else []
+            aa_fields = ('uwb_aa', 'aa_summary_factors', 'aa_accumulated_measurements')
+            aa_max = {field: max([int(row[field]) for row in graphs], default=0) for field in aa_fields}
+            accepted_aa = sum(row['reason'] == 'ACCEPT_AA' for row in ranges)
+            accepted_ta = sum(row['reason'] == 'ACCEPT_TA' for row in ranges)
+            if accepted_aa or any(aa_max.values()):
+                raise ValueError('AA information entered disabled run: ' + key)
+            inherited = None
+            if config['uwb']['mode'] == 'reuse_map':
+                inherited = json.loads((run / 'metadata/config/map.json').read_text()).get('uwb_information')
+                if not inherited or inherited.get('use_aa') is not False or inherited.get('accepted_aa_measurements') != 0:
+                    raise ValueError('TA-only reuse inherited AA or unknown information')
+            result['aa_disabled_audit'] = dict(accepted_aa=accepted_aa, accepted_ta=accepted_ta,
+                disabled_aa=sum(row['reason'] == 'AA_ABLATION_DISABLED' for row in ranges), graph_max=aa_max,
+                inherited_map_information=inherited, graph_rows=len(graphs))
         failure = run / 'metadata/manifests/input_failure.json'
         if failure.exists(): result['failure'] = json.loads(failure.read_text())
         if len(values):
