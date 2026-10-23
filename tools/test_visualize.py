@@ -2,6 +2,8 @@
 import os
 from pathlib import Path
 import unittest
+import yaml
+from types import SimpleNamespace
 import rclpy
 from nav_msgs.msg import Odometry
 from rosgraph_msgs.msg import Clock
@@ -11,11 +13,23 @@ from visualize import Display
 
 
 class DisplayTest(unittest.TestCase):
+    def test_rviz_marker_topics(self):
+        root = Path(__file__).resolve().parents[1]
+        config = yaml.safe_load((root / 'packages/liuo_tunnel/rviz/tunnel.rviz').read_text())
+        markers = [d for d in config['Visualization Manager']['Displays'] if d['Class'] == 'rviz_default_plugins/MarkerArray']
+        self.assertEqual({d['Topic']['Value'] for d in markers}, {'/liuo/visual/anchors', '/liuo/visual/ranges'})
+        self.assertTrue(all('Marker Topic' not in d for d in markers))
+
     def test_frames_timestamps_reset(self):
         os.environ['LIUO_VIS_CONFIG'] = str(Path(__file__).resolve().parents[1] / 'packages/liuo_tunnel/config/phase3_self_calibrate.json')
         rclpy.init()
         node = Display()
         try:
+            displayed = []
+            node.range_pub = SimpleNamespace(publish=displayed.append)
+            node.publish()
+            self.assertIn('INITIALIZING', displayed[-1].markers[-1].text)
+            self.assertIn('map is not available yet', displayed[-1].markers[-1].text)
             header = Header(frame_id='map')
             header.stamp.sec = 10
             node.cloud(create_cloud_xyz32(header, [(1., 2., 3.), (1.01, 2.01, 3.01)]))

@@ -5,6 +5,14 @@ Panels:
     Name: Views
 Visualization Manager:
   Class: ""
+  Enabled: true
+  Value: true
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
   Global Options:
     Background Color: 25; 25; 25
     Fixed Frame: map
@@ -43,14 +51,14 @@ Visualization Manager:
     - Class: rviz_default_plugins/MarkerArray
       Name: Joint anchor estimates (provisional)
       Enabled: true
-      Marker Topic:
+      Topic:
         Value: /liuo/visual/anchors
         Reliability Policy: Reliable
         Depth: 2
     - Class: rviz_default_plugins/MarkerArray
       Name: Received raw ranges and health
       Enabled: true
-      Marker Topic:
+      Topic:
         Value: /liuo/visual/ranges
         Reliability Policy: Reliable
         Depth: 2

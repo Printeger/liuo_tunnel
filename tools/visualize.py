@@ -114,7 +114,7 @@ class Display(Node):
         return Point(x=p.x + v[0], y=p.y + v[1], z=p.z + v[2])
 
     def publish(self):
-        if self.header is None:
+        if self.header is None or not self.poses:
             self.header = Header(frame_id='map', stamp=self.get_clock().now().to_msg())
         self.map_pub.publish(point_cloud2.create_cloud_xyz32(self.header, list(self.cells.values())))
         self.stats['map_publications'] += 1
@@ -149,7 +149,8 @@ class Display(Node):
         label.scale.z = .5
         label.color.r = label.color.g = label.color.b = label.color.a = 1.
         label.lifetime.sec = 2
-        label.text = self.health + '\nRAW received (not acceptance):\n' + '\n'.join(lines)
+        label.text = (self.health if self.poses else 'INITIALIZING: waiting for a resolved pose; map is not available yet')
+        label.text += '\nRAW received (not acceptance):\n' + '\n'.join(lines)
         out.markers.append(label)
         self.range_pub.publish(out)
 
