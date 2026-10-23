@@ -49,6 +49,7 @@ def main():
         type=Path,
         help="explicit frozen-replay UWB transport fault profile",
     )
+    p.add_argument("--capture-only", action="store_true", help="live raw capture and observer only; no estimator or localization acceptance")
     p.add_argument("--duration", type=float, default=45)
     p.add_argument(
         "--sim-start",
@@ -105,6 +106,10 @@ def main():
     )
     p.add_argument("--inject-failure", choices=["simulation", "odometry"])
     args = p.parse_args()
+    if args.capture_only:
+        if args.replay or args.visualize or args.rviz or args.debug_throw or args.inject_failure:
+            p.error("--capture-only requires live nonvisual sensor generation")
+        args.capture = True
     if not math.isfinite(args.duration) or args.duration <= 0:
         p.error("duration must be finite and positive")
     if not math.isfinite(args.no_progress_timeout) or args.no_progress_timeout <= 0:
@@ -161,6 +166,8 @@ def main():
         config = run / "metadata/config/phase1.json"
         shutil.copyfile(args.config, config)
         effective_config = json.loads(config.read_text())
+        if args.capture_only and effective_config["uwb"]["mode"] != "record_only":
+            raise RuntimeError("capture-only requires record_only configuration; no estimator map/installation")
         effective_config["logging"]["raw_bag"] = args.capture
         config.write_text(json.dumps(effective_config, indent=2) + "\n")
         rd.register_config_snapshot(run, config)
@@ -305,7 +312,10 @@ def main():
                 ("simulation", "liuo_tunnel_sim", "liuo_rail_sim"),
             ]
         }
+        if args.capture_only:
+            binaries.pop("odometry")
         identity = {
+            "capture_only": args.capture_only,
             "source_iap_commit": "fbccae16802402d7300bb817d2627f86e6a495df",
             "config_sha256": digest(config),
             "seed": args.seed,
@@ -399,6 +409,8 @@ def main():
             f"rate:={args.rate}",
             "-p",
             f"capture:={str(args.capture).lower()}",
+            "-p",
+            f"required_sensor_consumers:={1 if args.capture_only else 2}",
         ]
         if args.sim_start is not None:
             for key, value in zip(["start_x", "start_y", "start_z", "start_yaw"], args.sim_start):
@@ -442,7 +454,7 @@ def main():
             rd.register_config_snapshot(run, rviz_config)
             commands['rviz'] = ['/opt/ros/jazzy/bin/rviz2', '-d', str(rviz_config), '--ros-args', '-p', 'use_sim_time:=true']
             process_order.append('rviz')
-        process_order += ['odometry', 'simulation']
+        process_order += ['simulation'] if args.capture_only else ['odometry', 'simulation']
         for name in process_order:
             f = open(run / f"runtime/{name}_console.log", "w")
             handles.append(f)
@@ -475,6 +487,8 @@ def main():
             "simulation": [run / "export/simulation/wall_clock.csv", -1, start],
             "odometry": [run / "profiling/odometry.csv", -1, start],
         }
+        if args.capture_only:
+            progress.pop("odometry")
         calibration_progress = (
             run / "profiling/calibration_branches.csv"
             if effective_config["uwb"]["mode"] == "self_calibrate"
@@ -532,7 +546,7 @@ def main():
                 raise RuntimeError(reason)
             time.sleep(0.1)
         time.sleep(2)
-        for name in ["odometry", "observer"]:
+        for name in (["observer"] if args.capture_only else ["odometry", "observer"]):
             if children[name].poll() is not None:
                 raise RuntimeError(
                     f"{name} exited during sensor drain: {children[name].returncode}"
@@ -587,6 +601,16 @@ def main():
                 },
             )
         rd.finalize_run(run, lifecycle=lifecycle)
+    if lifecycle == "completed" and args.capture_only:
+        audit = json.loads((run / "metadata/manifests/observation_audit.json").read_text())
+        runtime = json.loads((run / "export/simulation/runtime.json").read_text())
+        valid = not audit["violations"] and not audit.get("duplicate_uwb") and audit["counts"] == runtime["published_counts"]
+        rd.write_subordinate_manifest(run, "capture_only_result", {"raw_input_valid": valid, "counts": audit["counts"], "localization": "NOT_RUN"})
+        manifest_path = run / "metadata/run_manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest["acceptance"] = "raw_input_only_pass" if valid else "raw_input_only_fail"
+        rd._atomic_write_json(manifest_path, manifest)
+        return 0 if valid else 1
     if lifecycle == "completed":
         try:
             result = subprocess.run(

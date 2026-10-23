@@ -22,6 +22,8 @@ class RailSim : public rclcpp::Node {
 public:
   RailSim() : Node("liuo_rail_sim"), renderer(make_renderer()) {
     cfg = liuo_tunnel::load_config(declare_parameter<std::string>("config_file", ""));
+    required_sensor_consumers = declare_parameter<int>("required_sensor_consumers", 2);
+    if (required_sensor_consumers < 1 || required_sensor_consumers > 2) throw std::runtime_error("required sensor consumers must be 1 or 2");
     seed = declare_parameter<int>("seed", 0);
     duration = declare_parameter<double>("duration_s", 45);
     rate = declare_parameter<double>("rate", 1.0);
@@ -120,7 +122,7 @@ private:
   }
   void tick() {
     if (!ready) {
-      if (imu_pub->get_subscription_count() < 2 || cloud_pub->get_subscription_count() < 2 || uwb_pub->get_subscription_count() < 2) {
+      if (imu_pub->get_subscription_count() < static_cast<size_t>(required_sensor_consumers) || cloud_pub->get_subscription_count() < static_cast<size_t>(required_sensor_consumers) || uwb_pub->get_subscription_count() < static_cast<size_t>(required_sensor_consumers)) {
         if (std::chrono::steady_clock::now() - startup > std::chrono::seconds(20)) throw std::runtime_error("sensor subscriber readiness timed out");
         return;
       }
@@ -348,6 +350,7 @@ private:
   std::chrono::steady_clock::time_point startup = std::chrono::steady_clock::now(), simulation_started;
   nlohmann::json cfg;
   int seed = 0, loaded = -100;
+  int required_sensor_consumers = 2;
   double duration = 45, reset_at = -1, rate = 1, start_yaw = 0;
   Eigen::Vector3d start{0, 0, 1.2};
   bool reset_done = false, return_trip = false, local_calibration = false, calibration_route = false;

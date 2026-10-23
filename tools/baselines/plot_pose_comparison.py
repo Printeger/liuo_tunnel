@@ -30,6 +30,10 @@ def main():
         values = load(path)
         if np.any(np.diff(values[:, 0]) <= 0):
             raise ValueError('Nonmonotonic timestamps: ' + key)
+        if not len(values):
+            metadata[key] = dict(path=str(path.relative_to(ROOT)), sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+                                 poses=0, failure='NO_ESTIMATE; not plotted or treated as zero error')
+            continue
         first = values[0]
         r = truth_rot(first[0]) * Rotation.from_quat(first[4:8]).inv()
         target = np.array([np.interp(first[0], truth[:, 0], truth[:, i]) for i in (1, 2, 3)])
@@ -50,7 +54,7 @@ def main():
     for mode in ('native', 'first_pose'):
         title = ('Native coordinates: different frames; NOT absolute error comparison' if mode == 'native'
                  else 'One first-pose transform per method; NO whole-trajectory fit')
-        curves = [('Truth', 'black', truth)] + [(NAMES[k][1], NAMES[k][2], data[k][mode]) for k in keys]
+        curves = [('Truth', 'black', truth)] + [(NAMES[k][1], NAMES[k][2], data[k][mode]) for k in keys if k in data]
         for quantity in ('xyz', 'rpy'):
             fig, axes = plt.subplots(3, 1, figsize=(12, 9), sharex=True)
             for label, color, values in curves:

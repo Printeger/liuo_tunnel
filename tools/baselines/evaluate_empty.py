@@ -63,15 +63,16 @@ def main():
             resource = run / 'metadata/manifests/baseline_result.json'
             if resource.exists(): result['external_runtime'] = json.loads(resource.read_text())
         results[key] = result
-    common = np.logical_and.reduce(list(masks.values()))
+    active = [k for k in raw if len(raw[k]) and raw[k][-1,0] >= 360.]
+    common = np.logical_and.reduce([masks[k] for k in active]) if active else np.zeros(len(grid), dtype=bool)
     errors = {}
     for key, w in world.items():
         own = w[matched[key][masks[key]]]
         if len(own): results[key]['own_window_fixed_datum_ape'] = stats(own[:,1:4]-truth_xyz(own[:,0]))
-        chosen = w[matched[key][common]]
+        chosen = w[matched[key][common & masks[key]]]
         if not len(chosen): continue
         error = chosen[:,1:4] - truth_xyz(chosen[:,0])
-        errors[key] = error
+        errors[key] = (common & masks[key], error)
         result = results[key]
         result['common_fixed_datum_ape'] = stats(error)
         attitude = (tr(chosen[:,0]).inv()*Rotation.from_quat(chosen[:,4:8])).magnitude()
@@ -79,11 +80,11 @@ def main():
         v = raw[key]
         r0 = tr(v[0,0]) * Rotation.from_quat(v[0,4:8]).inv()
         t0 = truth_xyz([v[0,0]])[0] - r0.apply(v[0,1:4])
-        c = v[matched[key][common]]
+        c = v[matched[key][common & masks[key]]]
         result['common_first_pose_ape'] = stats(r0.apply(c[:,1:4])+t0-truth_xyz(c[:,0]))
     out = ROOT/'docs'; figs = out/'figures'
     metadata = dict(source=spec['source'], calibration=spec['calibration'], common_samples=int(common.sum()),
-                    grid_samples=len(grid), policy='Fixed declared original simulation datum, no fitted transform; offline only', results=results)
+                    grid_samples=len(grid), common_methods=active, excluded_incomplete_methods=[k for k in raw if k not in active], policy='Fixed declared original simulation datum, no fitted transform; offline only', results=results)
     (out/'empty_tunnel_results.json').write_text(json.dumps(metadata,indent=2,ensure_ascii=False)+'\n')
     plt.rcParams.update({'axes.grid':True,'grid.alpha':.25,'figure.dpi':150})
     curves = [('Truth','black',truth)] + [(NAMES[k][1],NAMES[k][2],v) for k,v in world.items()]
@@ -107,9 +108,9 @@ def main():
     fig.suptitle('Empty tunnel | fixed original datum | NO trajectory fitting\nIndependent axis scales; read ticks')
     fig.tight_layout();fig.savefig(figs/'empty_tunnel_fixed_3d.png');plt.close(fig)
     fig,axes=plt.subplots(4,1,figsize=(12,10),sharex=True)
-    for key,e in errors.items():
+    for key,(mask,e) in errors.items():
         for i,ax in enumerate(axes):
-            ax.plot(grid[common],np.linalg.norm(e,axis=1) if i==0 else e[:,i-1],label=NAMES[key][1],color=NAMES[key][2],lw=1)
+            ax.plot(grid[mask],np.linalg.norm(e,axis=1) if i==0 else e[:,i-1],label=NAMES[key][1],color=NAMES[key][2],lw=1)
     for ax,label in zip(axes,['APE norm [m]','X error [m]','Y error [m]','Z error [m]']): ax.set_ylabel(label)
     axes[0].legend();axes[-1].set_xlabel('ROS measurement stamp [s]')
     fig.suptitle('Empty tunnel | fixed datum errors | no fitted alignment')
