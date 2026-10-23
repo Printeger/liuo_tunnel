@@ -8,6 +8,8 @@ inline nlohmann::json load_config(const std::string& path) {
   std::ifstream f(path);
   if (!f) throw std::runtime_error("missing config_file: " + path);
   auto j = nlohmann::json::parse(f);
+  if (!j.at("uwb").contains("use_aa")) j["uwb"]["use_aa"] = false;
+  if (!j.at("uwb").at("use_aa").is_boolean()) throw std::runtime_error("uwb.use_aa must be boolean");
   if (j.at("scan_model") != "snapshot") throw std::runtime_error("scan_model: only explicit snapshot is validated in phase one");
   if (j.at("uwb").at("mode") != "record_only" && j.at("uwb").at("mode") != "fuse" && j.at("uwb").at("mode") != "self_calibrate" && j.at("uwb").at("mode") != "reuse_map") throw std::runtime_error("uwb.mode must be record_only, fuse, self_calibrate or reuse_map");
   for (const char* key :

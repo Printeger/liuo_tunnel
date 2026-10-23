@@ -61,6 +61,7 @@ class TunnelNode : public rclcpp::Node {
 public:
   TunnelNode() : Node("liuo_tunnel_node") {
     cfg = load_config(declare_parameter<std::string>("config_file", ""));
+    use_aa = cfg.at("uwb").at("use_aa").get<bool>();
     backend = cfg.at("odometry").at("backend");
     if (backend != "gpu" && backend != "cpu") throw std::runtime_error("unknown backend");
     if (backend == "gpu") {
@@ -117,6 +118,8 @@ public:
       }
     }
     logger = create_module_logger("odometry");
+    logger->info("UWB AA fusion enabled={} (TA unchanged); inherited map UWB information={}", use_aa,
+      calibrated_map ? calibrated_map->document.value("uwb_information", nlohmann::json::object()).dump() : "NO_INHERITED_MAP");
     auto& logs = RunLogManager::instance();
     logs.write_run_info({{"backend", backend + "_RAW_MULTIFRAME_VGICP"}, {"uwb", fuse ? "FUSED_RAW" : "RECORD_ONLY"}, {"gpu_device", gpu_name}});
     status_log.open(logs.export_path("odometry/status.csv"));
@@ -375,6 +378,13 @@ private:
     }
     if (o.a_type == 0 && o.a != 0) {
       log_range(o, "UNKNOWN_TAG");
+      return;
+    }
+    // Disabled AA must not require initialized map endpoints or affect health.
+    // Keep field/session/dedup validation and let the owner log the disabled sample.
+    if (!use_aa && o.a_type == 1 && o.b_type == 1) {
+      const auto reason = range_queue.push(o);
+      if (reason != "QUEUED") log_range(o, reason);
       return;
     }
     try {
@@ -675,6 +685,7 @@ private:
       {"installation_provenance", {{"input", installation_input->source}, {"already_absorbed", true}}},
       {"not_initialized", missing}, {"anchors", anchors}, {"reference_mean", {line[0],line[1]}},
       {"joint_covariance", matrix},
+      {"uwb_information", {{"use_aa", use_aa}, {"accepted_aa_measurements", aa_measurements}, {"ta_enabled", true}}},
       {"estimated_vehicle_bounds_m", {{lower.x(),lower.y(),lower.z()},{upper.x(),upper.y(),upper.z()}}},
       {"bounds_scope", "current retained vehicle states only; not a certified reuse region"},
       {"absorbed_information", "all accepted first-session raw factors up to measurement_stamp; do not reload installation or first-run ranges as independent observations"}
@@ -943,7 +954,7 @@ private:
     for (const auto& frame : frames) poses[frame.t] = X(frame.id);
     poses[t] = X(count);
     for (const auto& observation : range_queue.take_until(t)) {
-      if (observation.a_type == 1 && !cfg.at("uwb").value("use_aa", true)) { log_range(observation, "AA_ABLATION_DISABLED"); continue; }
+      if (observation.a_type == 1 && !use_aa) { log_range(observation, "AA_ABLATION_DISABLED"); continue; }
       auto bracket = count == 0
           ? static_alignment_bracket(poses, observation.stamp, first_imu, first_imu + cfg.at("odometry").at("initialization_s").get<double>())
           : range_bracket(poses, observation.stamp);
@@ -968,7 +979,7 @@ private:
     for (const auto& frame : frames) poses[frame.t] = X(frame.id);
     poses[t] = X(count);
     for (const auto& o : range_queue.take_until(t)) {
-      if (o.a_type == 1 && !cfg.at("uwb").value("use_aa", true)) { log_range(o, "AA_ABLATION_DISABLED"); continue; }
+      if (o.a_type == 1 && !use_aa) { log_range(o, "AA_ABLATION_DISABLED"); continue; }
       auto bracket = count == 0 && cfg.at("uwb").value("use_static_alignment_ranges", false)
                        ? static_alignment_bracket(poses, o.stamp, first_imu, first_imu + cfg.at("odometry").at("initialization_s").get<double>())
                        : range_bracket(poses, o.stamp);
@@ -1754,6 +1765,8 @@ private:
       installation_observations += dynamic_cast<const InstallationOffsetFactor*>(factor.get()) != nullptr;
     }
     if (self_calibrate && installation_observations != 1) throw std::runtime_error("CALIBRATION_INSTALLATION_INFORMATION_LIFECYCLE_VIOLATION");
+    if (!use_aa && (new_aa != 0 || aa_measurements != 0 || !aa_summaries.empty()))
+      throw std::logic_error("AA_DISABLED_BUT_ACCUMULATED_INFORMATION");
     if (reuse_map && (joint_map_priors != 1 || surveyed_priors != 0 || installation_observations != 0))
       throw std::runtime_error("REUSE_MAP_INFORMATION_LIFECYCLE_VIOLATION");
     size_t active = (smoother->timestamps().size() - anchors) / 3;
@@ -1781,6 +1794,7 @@ private:
   }
   std::unique_ptr<gtsam_points::StreamTempBufferRoundRobin> streams;
   std::string backend, gpu_name;
+  bool use_aa = false;
   bool fuse = false, bootstrapped = true, self_calibrate = false, calibration_prepared = false, reuse_map = false, bounded_bootstrap_work = false;
   std::optional<CalibratedMap> calibrated_map;
   size_t map_export_session = 0, map_export_anchor_count = 0;

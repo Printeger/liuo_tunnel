@@ -524,3 +524,24 @@ TEST(UwbFactors, OptimisticGeometryUsesCommonWorldTranslationNotTwoIndependentPo
   }
   EXPECT_LT((factor.optimistic_translation_information(values) - J.transpose() * J).norm(), 1e-6);
 }
+
+#include <liuo_tunnel/common/sensors.hpp>
+#include <filesystem>
+#include <unistd.h>
+TEST(UwbConfiguration, AaDefaultsOffAndRequiresExplicitBooleanOptIn) {
+  const auto source = std::filesystem::path(__FILE__).parent_path().parent_path() / "config/phase3_self_calibrate.json";
+  std::ifstream input(source);
+  auto j = nlohmann::json::parse(input);
+  const auto path = std::filesystem::path("/home/dev/code/ws_tunnel/src/liuo_tunnel/build/liuo_tunnel") /
+    ("aa_config_test_" + std::to_string(getpid()) + ".json");
+  auto write = [&]() { std::ofstream output(path); output << j.dump(); };
+  j["uwb"].erase("use_aa"); write();
+  EXPECT_FALSE(load_config(path.string())["uwb"]["use_aa"].get<bool>());
+  j["uwb"]["use_aa"] = true; write();
+  EXPECT_TRUE(load_config(path.string())["uwb"]["use_aa"].get<bool>());
+  j["uwb"]["use_aa"] = false; write();
+  EXPECT_FALSE(load_config(path.string())["uwb"]["use_aa"].get<bool>());
+  j["uwb"]["use_aa"] = "false"; write();
+  EXPECT_THROW(load_config(path.string()), std::runtime_error);
+  std::filesystem::remove(path);
+}

@@ -52,7 +52,8 @@
     "installation_seeds": true,
     "installation_factors": true,
     "use_static_alignment_ranges": true,
-    "continuous_installation_walls": true
+    "continuous_installation_walls": true,
+    "use_aa": false
   },
   "logging": {
     "raw_bag": false

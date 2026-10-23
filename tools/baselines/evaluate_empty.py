@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Frozen empty-corridor comparison; no whole-window fitted transform."""
+import argparse
 import csv
 import hashlib
 import json
@@ -16,7 +17,15 @@ from evaluation_frames import map_evaluation_datum
 
 
 def main():
-    spec_path = ROOT / 'tools/baselines/empty_runs.json'
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--runs', type=Path, default=ROOT / 'tools/baselines/empty_runs.json')
+    parser.add_argument('--prefix', default='empty_tunnel')
+    args = parser.parse_args()
+    spec_path = args.runs
+    NAMES.update({
+        'self_ta': ('本方法无图 TA-only', 'Ours: self, TA only', '#D55E00'),
+        'reuse_ta': ('本方法有图 TA-only', 'Ours: reuse, TA only', '#9467bd'),
+    })
     spec = json.loads(spec_path.read_text())
     truth = load(ROOT / spec['source'] / 'export/simulation/truth.csv')
     tr = Slerp(truth[:, 0], Rotation.from_quat(truth[:, 4:8]))
@@ -95,7 +104,7 @@ def main():
     out = ROOT/'docs'; figs = out/'figures'
     metadata = dict(source=spec['source'], calibration=spec['calibration'], common_samples=int(common.sum()),
                     grid_samples=len(grid), common_methods=active, excluded_incomplete_methods=[k for k in raw if k not in active], policy='Fixed declared original simulation datum, no fitted transform; offline only', results=results)
-    (out/'empty_tunnel_results.json').write_text(json.dumps(metadata,indent=2,ensure_ascii=False)+'\n')
+    (out/f'{args.prefix}_results.json').write_text(json.dumps(metadata,indent=2,ensure_ascii=False)+'\n')
     plt.rcParams.update({'axes.grid':True,'grid.alpha':.25,'figure.dpi':150})
     curves = [('Truth','black',truth)] + [(NAMES[k][1],NAMES[k][2],v) for k,v in world.items()]
     for quantity in ('xyz','rpy'):
@@ -109,14 +118,14 @@ def main():
                 ax.set_ylabel((('X','Y','Z')[i]+' [m]') if quantity=='xyz' else (('Roll','Pitch','Yaw')[i]+' [deg]'))
         axes[0].legend();axes[-1].set_xlabel('ROS measurement stamp [s]')
         fig.suptitle('Empty tunnel | fixed original datum | NO trajectory fitting')
-        fig.tight_layout();fig.savefig(figs/f'empty_tunnel_fixed_{quantity}.png');plt.close(fig)
+        fig.tight_layout();fig.savefig(figs/f'{args.prefix}_fixed_{quantity}.png');plt.close(fig)
     fig=plt.figure(figsize=(12,8));ax=fig.add_subplot(111,projection='3d')
     for label,color,v in curves:
         p=v[:,1:4].copy();p[np.flatnonzero(np.diff(v[:,0])>.25)+1]=np.nan
         ax.plot(*p.T,color=color,label=label,ls='--' if label=='Truth' else '-',lw=1)
     ax.set(xlabel='X [m]',ylabel='Y [m]',zlabel='Z [m]');ax.set_box_aspect((2.5,1,1));ax.legend()
     fig.suptitle('Empty tunnel | fixed original datum | NO trajectory fitting\nIndependent axis scales; read ticks')
-    fig.tight_layout();fig.savefig(figs/'empty_tunnel_fixed_3d.png');plt.close(fig)
+    fig.tight_layout();fig.savefig(figs/f'{args.prefix}_fixed_3d.png');plt.close(fig)
     fig,axes=plt.subplots(4,1,figsize=(12,10),sharex=True)
     for key,(mask,e) in errors.items():
         for i,ax in enumerate(axes):
@@ -124,7 +133,7 @@ def main():
     for ax,label in zip(axes,['APE norm [m]','X error [m]','Y error [m]','Z error [m]']): ax.set_ylabel(label)
     axes[0].legend();axes[-1].set_xlabel('ROS measurement stamp [s]')
     fig.suptitle('Empty tunnel | fixed datum errors | no fitted alignment')
-    fig.tight_layout();fig.savefig(figs/'empty_tunnel_fixed_errors.png');plt.close(fig)
+    fig.tight_layout();fig.savefig(figs/f'{args.prefix}_fixed_errors.png');plt.close(fig)
     print(json.dumps({k:{'poses':v['poses'],'ape':v.get('common_fixed_datum_ape'),'states':v.get('state_counts')} for k,v in results.items()},ensure_ascii=False,indent=2))
 
 if __name__=='__main__': main()

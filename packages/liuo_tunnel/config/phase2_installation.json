@@ -54,7 +54,8 @@
     ],
     "bootstrap_s": 8.0,
     "bootstrap_multistart": true,
-    "installation_seeds": true
+    "installation_seeds": true,
+    "use_aa": false
   },
   "logging": {
     "raw_bag": false

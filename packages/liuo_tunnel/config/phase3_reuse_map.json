@@ -57,7 +57,8 @@
       0,
       0,
       0
-    ]
+    ],
+    "use_aa": false
   },
   "logging": {
     "raw_bag": false

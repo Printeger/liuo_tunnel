@@ -243,3 +243,7 @@ RViz 显示当前帧（降采样 snapshot 点云）、点云累积地图、当�
 可用参数：`rviz:=false`（仍发布显示话题）、`duration:=80`、`wall_timeout:=180`、`capture:=true`、`formal:=true`、`seed:=0`、`sim_start:="0 0 1.2 0"`；`replay:=/绝对路径/已有run` 复用冻结输入。正式证据仍要求干净提交。已有命令行入口 `tools/run.sh` 保留，可加 `--rviz` 或 `--visualize`。所有进程在同一 run 和隔离的 ROS domain 下，由运行器统一收尾；关闭 RViz 提前退出会记录为中断/失败，不静默继续。Ctrl+C 停止本次运行。
 
 RViz 固定坐标系是 `map`。可在 Views 调整视角，或选中点云按 F 聚焦；长路线不会自动追随机器人。桌面运行需要有效 DISPLAY/Wayland 会话。仅查看原始传感器帧可在 RViz 手动添加 `/sensors/lidar/points`，将 Fixed Frame 改为 `lidar`；该模式不能同时对齐全局地图，初始化前没有合法的全局变换。
+
+### TA 基础与可选 AA
+
+`uwb.use_aa` 默认 `false`：TA 与 LiDAR/IMU 紧耦合保持开启；设为 `true` 才加入新的基站—基站 AA 信息。缺省字段同样按关闭处理，必须使用 JSON 布尔值。原始 AA 仍可接收和记录，关闭时标记 `AA_ABLATION_DISABLED`，不进入初始化、扩图、滑窗或 AA 摘要。已有地图内吸收的 AA 不能通过这个开关移除；完整 TA-only 复用需由 TA-only 首次运行生成地图。历史 AA 开启实验在新版复现时须显式 `use_aa=true`。本轮协议见 [AA 可选能力验证](docs/aa_optional_comparison_protocol.md)。

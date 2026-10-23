@@ -51,7 +51,8 @@
       1.0,
       0.5
     ],
-    "bootstrap_s": 8.0
+    "bootstrap_s": 8.0,
+    "use_aa": false
   },
   "logging": {
     "raw_bag": false

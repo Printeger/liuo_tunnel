@@ -42,7 +42,8 @@
     "sigma_m": 0.1,
     "exchange_budget_hz": 250,
     "ta_round_hz": 20,
-    "aa_link_hz": 1
+    "aa_link_hz": 1,
+    "use_aa": false
   },
   "logging": {
     "raw_bag": false
