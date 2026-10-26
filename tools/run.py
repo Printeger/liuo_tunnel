@@ -523,7 +523,7 @@ def main():
                 runtime = {}
                 for name, child in children.items():
                     maps = Path(f"/proc/{child.pid}/maps").read_text()
-                    if "/iap/" in maps or "/ws_iap/" in maps:
+                    if "/src/iap/" in maps or "/src/demo/" in maps:
                         raise RuntimeError("forbidden loaded runtime library")
                     runtime[name] = {
                         "pid": child.pid,
