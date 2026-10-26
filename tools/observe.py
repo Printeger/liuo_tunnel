@@ -136,8 +136,13 @@ class Observer(Node):
             identity = observation_identity(m, o, self.network)
             if identity in self.identities:
                 self.result["duplicate_uwb"].append(list(identity))
+            if identity not in self.identities and len(self.identities) >= 200000:
+                raise RuntimeError("observer identity capacity exhausted; audit cannot forget old reports")
+            if len(self.result["duplicate_uwb"]) > 4096:
+                raise RuntimeError("observer duplicate evidence capacity exhausted")
             self.identities.add(identity)
             if m.driver_session_id not in self.result["sessions"]:
+                if len(self.result["sessions"]) >= 64: raise RuntimeError("observer session capacity exhausted")
                 self.result["sessions"].append(m.driver_session_id)
             if m.header.frame_id or not math.isfinite(o.distance_m) or o.distance_m <= 0:
                 self.reject("UWB fields")

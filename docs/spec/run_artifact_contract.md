@@ -2,7 +2,7 @@
 
 Normative. Adapted from IAP `docs/spec/run_artifact_contract.md` at `fbccae16802402d7300bb817d2627f86e6a495df`. Schema: `liuo_tunnel_run_artifact_v1`.
 
-One owner allocates and finalizes a run. `LIUO_RUN_ROOT` is the public absolute root; source runs default to this project's `log/`, installed standalone applications to `${XDG_STATE_HOME:-~/.local/state}/liuo_tunnel/log`. Internal `LIUO_RUN_DIR` identifies the exact existing run adopted by every child. Children never allocate a nested run, change `latest`, or finalize the primary manifest.
+One owner allocates and finalizes a run. `LIUO_RUN_ROOT` is the public absolute root; the supported `data-run` entrypoint supplies a data-disk root. Build/install/message-underlay/tool logs use the explicit paths in `tools/environment.sh`. Standalone fallback paths are not authorized host experiment destinations. Internal `LIUO_RUN_DIR` identifies the exact existing run adopted by every child. Children never allocate a nested run, change `latest`, or finalize the primary manifest.
 
 IDs are UTC `YYYYMMDDTHHMMSSZ_mmm`, with optional collision suffix `_NN`. Allocation uses atomic mkdir; latest updates and retention use root locks. `latest` is a relative, atomically replaced symlink. A regular file or directory named latest is preserved and causes failure. Non-run tooling symlinks do not outrank actual run IDs.
 
@@ -26,7 +26,7 @@ Ordinary retention applies only to recognized, direct, nonsymlink development ru
 
 Phase-one UWB is `RECORD_ONLY`: no associated graph keys, residual, innovation or robust weight is invented. Raw range values above 800 m remain valid when the pre-noise geometric range was within the limit. Publish per-link effective timestamps, session/sequence identities and actual scheduling/visibility counts. Truth may be consumed only by simulation and independent evaluation. Snapshot point times are zero; rolling/deskew remains explicitly unverified.
 
-Build/test tooling uses ignored `log/build`, `log/test` and `log/tooling` directories, which are not runtime runs and are ineligible for retention. Test-created temporary directories are automatically cleaned. Frozen failure evidence remains unchanged; later reports must explicitly supersede an incorrect historical interpretation instead of rewriting it.
+Build/test tooling uses explicit data-disk `$LIUO_TOOL_LOG` directories, which are not runtime runs and are ineligible for retention. Test-created temporary directories are automatically cleaned. Frozen failure evidence remains unchanged; later reports must explicitly supersede an incorrect historical interpretation instead of rewriting it.
 
 Phase-two evaluation policy (user revision 2026-10-22): numerical position,
 axial and attitude target exceedances, including the entrance sanity target,

@@ -122,7 +122,6 @@ public:
     logger->info("UWB AA fusion enabled={} (TA unchanged); inherited map UWB information={}", use_aa,
       calibrated_map ? calibrated_map->document.value("uwb_information", nlohmann::json::object()).dump() : "NO_INHERITED_MAP");
     auto& logs = RunLogManager::instance();
-    logs.write_run_info({{"backend", backend + "_RAW_MULTIFRAME_VGICP"}, {"uwb", fuse ? "FUSED_RAW" : "RECORD_ONLY"}, {"gpu_device", gpu_name}});
     status_log.open(logs.export_path("odometry/status.csv"));
     status_log << std::setprecision(16) << "session,stamp,state,reason,rejected_total,last_rejection,uwb_recovery_until\n";
     trajectory.open(logs.export_path("odometry/trajectory.csv"));
@@ -171,7 +170,7 @@ public:
     const auto topic = declare_parameter<std::string>("uwb_topic", "/liuo/uwb/observations");
     const int depth = declare_parameter<int>("uwb_qos_depth", 100);
     if (depth <= 0 || depth > 10000) throw std::invalid_argument("INVALID_UWB_QOS_DEPTH");
-    logs.write_run_info({{"uwb_topic", topic}, {"uwb_qos_depth", std::to_string(depth)}, {"uwb_input", cfg.at("uwb").at("input").dump()}});
+    logs.write_run_info({{"backend", backend + "_RAW_MULTIFRAME_VGICP"}, {"uwb", fuse ? "FUSED_RAW" : "RECORD_ONLY"}, {"gpu_device", gpu_name}, {"uwb_topic", topic}, {"uwb_qos_depth", std::to_string(depth)}, {"uwb_input", cfg.at("uwb").at("input").dump()}});
     uwb_sub = create_subscription<liuo_uwb_msgs::msg::UwbObservationBatch>(
       topic, rclcpp::QoS(rclcpp::KeepLast(depth)).best_effort().durability_volatile(),
       [this](liuo_uwb_msgs::msg::UwbObservationBatch::ConstSharedPtr m) { on_uwb(*m); });
@@ -1271,7 +1270,7 @@ private:
       failure_context = "GRAPH_BUILD_FAILED";
       int window = cfg.at("odometry").at("connection_window");
       size_t matching_keyframes = 0;
-      const size_t matching_keyframe_limit = cfg.at("odometry").at("max_keyframes");
+      const size_t matching_keyframe_limit = cfg.at("odometry").value("max_keyframes", 15u);
       for (auto it = frames.rbegin(); it != frames.rend(); ++it) {
         const bool recent = int(count - it->id) <= window;
         if (!recent && (!it->keyframe || (bounded_bootstrap_work && matching_keyframes >= matching_keyframe_limit))) continue;
