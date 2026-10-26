@@ -5,7 +5,7 @@
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <rosgraph_msgs/msg/clock.hpp>
-#include <liuo_tunnel_msgs/msg/uwb_range.hpp>
+#include <liuo_uwb_msgs/msg/uwb_observation_batch.hpp>
 #include <liuo_tunnel/common/sensors.hpp>
 #include <liuo_tunnel/util/run_log_manager.hpp>
 #include <liuo_tunnel/util/logging.hpp>
@@ -13,6 +13,8 @@
 #include <liuo_tunnel_sim/rail_world.hpp>
 #include <liuo_tunnel_sim/first_hit_lidar_renderer.hpp>
 #include <fstream>
+#include <map>
+#include <limits>
 #include <iomanip>
 #include <chrono>
 #include <sys/resource.h>
@@ -22,6 +24,10 @@ class RailSim : public rclcpp::Node {
 public:
   RailSim() : Node("liuo_rail_sim"), renderer(make_renderer()) {
     cfg = liuo_tunnel::load_config(declare_parameter<std::string>("config_file", ""));
+    for (const auto& node : cfg.at("uwb").at("input").at("nodes")) {
+      if (node.at("type") == 1) logical_anchors.emplace(node.at("internal_id").get<int>(), node.at("logical_id").get<uint8_t>());
+      else logical_tag = node.at("logical_id").get<uint8_t>();
+    }
     required_sensor_consumers = declare_parameter<int>("required_sensor_consumers", 2);
     if (required_sensor_consumers < 1 || required_sensor_consumers > 2) throw std::runtime_error("required sensor consumers must be 1 or 2");
     seed = declare_parameter<int>("seed", 0);
@@ -71,7 +77,7 @@ public:
     imu_pub = create_publisher<sensor_msgs::msg::Imu>("/sensors/imu", rclcpp::SensorDataQoS().keep_last(2048));
     cloud_pub = create_publisher<sensor_msgs::msg::PointCloud2>("/sensors/lidar/points", rclcpp::SensorDataQoS().keep_last(32));
     truth_pub = create_publisher<nav_msgs::msg::Odometry>("/sim/truth/odom", 100);
-    uwb_pub = create_publisher<liuo_tunnel_msgs::msg::UwbRange>("/sensors/uwb/range", rclcpp::SensorDataQoS().keep_last(2048));
+    uwb_pub = create_publisher<liuo_uwb_msgs::msg::UwbObservationBatch>(declare_parameter<std::string>("uwb_topic", "/liuo/uwb/observations"), rclcpp::QoS(rclcpp::KeepLast(100)).best_effort().durability_volatile());
     for (int i = 0; i < anchor_count; i++) links.push_back({0, 0, i, 0, 0});
     for (int i = 0; i < anchor_count; i++)
       for (int j = i + 1; j < anchor_count; j++) links.push_back({1, i, j, 0, 0});
@@ -323,28 +329,43 @@ private:
     auto& l = links[best];
     Eigen::Vector3d a = l.type ? anchor(l.a) : tag_w, b = anchor(l.b);
     // Full-world LOS checked independently of the local LiDAR block cache.
-    liuo_tunnel_msgs::msg::UwbRange u;
+    liuo_uwb_msgs::msg::UwbObservationBatch u;
+    liuo_uwb_msgs::msg::UwbObservation o;
+    // Explicit inverse of the configured logical registry; internal map IDs stay unchanged.
     u.header.stamp = stamp(1 + t);
-    u.producer_id = 1;
-    u.session_id = session;
-    u.sequence = sequence++;
-    u.node_a_type = l.type;
-    u.node_a_id = l.a;
-    u.node_b_type = 1;
-    u.node_b_id = l.b;
-    u.status = 0;
-    u.variance_m2 = .01;
-    u.propagation_status = 0;
-    u.range_m = range(a, b, seed, 1000 + l.type * 10000 + l.a * 100 + l.b, l.samples++);
-    capture(u, "/sensors/uwb/range");
+    u.driver_session_id = session;
+    u.batch_seq = sequence++;
+    u.receiver_id = logical_tag;
+    u.trigger_type = l.type;
+    o.kind = l.type;
+    o.node_a = l.type ? logical_anchors.at(l.a) : logical_tag;
+    o.node_b = logical_anchors.at(l.b);
+    o.reporter_id = o.node_a;
+    o.source_session_id = session;
+    o.source_frame_seq = static_cast<uint32_t>(u.batch_seq);
+    o.source_frame_seq_valid = true;
+    o.shard_count = 1;
+    o.source_frame_stamp = stamp(1 + t);
+    o.received_stamp = u.header.stamp;
+    o.time_basis = o.TIME_FRAME_LOCAL_MAPPED;
+    o.time_uncertainty_s = 0;
+    o.source_hold_age_ms = 65535;
+    o.fp_rssi = o.rx_rssi = std::numeric_limits<float>::quiet_NaN();
+    o.pair_measurement_freshness_verified = true;
+    const double physical_range = range(a, b, seed, 1000 + l.type * 10000 + l.a * 100 + l.b, l.samples++);
+    o.distance_m = static_cast<float>(physical_range);
+    u.observations.push_back(o);
+    capture(u, uwb_pub->get_topic_name());
     uwb_pub->publish(u);
-    uwblog << session << ',' << u.sequence << ',' << 1 + t << ',' << l.type << ',' << l.a << ',' << l.b << ',' << (a - b).norm() << ',' << u.range_m << ",0.01\n";
+    uwblog << session << ',' << u.batch_seq << ',' << 1 + t << ',' << l.type << ',' << l.a << ',' << l.b << ',' << (a - b).norm() << ',' << o.distance_m << ",0.01\n";
     if (l.type)
       aa_published++;
     else
       ta_published++;
     l.next = t + (l.type ? 1 : .05);
   }
+  std::map<int, uint8_t> logical_anchors;
+  uint8_t logical_tag = 0;
   std::unique_ptr<rosbag2_cpp::Writer> writer;
   bool ready = false;
   std::chrono::steady_clock::time_point startup = std::chrono::steady_clock::now(), simulation_started;
@@ -367,7 +388,7 @@ private:
   rclcpp::Publisher<rosgraph_msgs::msg::Clock>::SharedPtr clock_pub;
   rclcpp::Publisher<sensor_msgs::msg::Imu>::SharedPtr imu_pub;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_pub;
-  rclcpp::Publisher<liuo_tunnel_msgs::msg::UwbRange>::SharedPtr uwb_pub;
+  rclcpp::Publisher<liuo_uwb_msgs::msg::UwbObservationBatch>::SharedPtr uwb_pub;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr truth_pub;
   rclcpp::TimerBase::SharedPtr timer;
 };

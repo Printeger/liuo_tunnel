@@ -6,7 +6,7 @@ class DeliveryScheduleTest(unittest.TestCase):
     def test_nominal_preserves_all_bytes_and_order(self):
         source = [
             ("/clock", b"clock", 0),
-            ("/sensors/uwb/range", b"physical", 0),
+            ("/liuo/uwb/observations", b"physical", 0),
             ("/clock", b"later", 5_000_000),
         ]
         schedule = DeliverySchedule()
@@ -29,9 +29,9 @@ class DeliveryScheduleTest(unittest.TestCase):
         )
         source = [
             ("/clock", b"clock", 0),
-            ("/sensors/uwb/range", b"first", 0),
-            ("/sensors/uwb/range", b"second", 5_000_000),
-            ("/sensors/uwb/range", b"outage", 100_000_000),
+            ("/liuo/uwb/observations", b"first", 0),
+            ("/liuo/uwb/observations", b"second", 5_000_000),
+            ("/liuo/uwb/observations", b"outage", 100_000_000),
         ]
         result = list(schedule.events(iter(source)))
         self.assertEqual(
@@ -53,14 +53,14 @@ class DeliveryScheduleTest(unittest.TestCase):
             expired_delay_s=12,
         )
         event = list(
-            DeliverySchedule(profile).events(iter([("/sensors/uwb/range", b"unchanged", 0)]))
+            DeliverySchedule(profile).events(iter([("/liuo/uwb/observations", b"unchanged", 0)]))
         )[0]
         self.assertEqual(event[3], 12_000_000_000)
         self.assertEqual(event[4], "expired_delay")
         with self.assertRaisesRegex(ValueError, "queue limit"):
             list(
                 DeliverySchedule(profile, capacity=1).events(
-                    iter([("/sensors/uwb/range", b"one", 0), ("/sensors/uwb/range", b"two", 1)])
+                    iter([("/liuo/uwb/observations", b"one", 0), ("/liuo/uwb/observations", b"two", 1)])
                 )
             )
         with self.assertRaisesRegex(ValueError, "nonmonotonic"):
@@ -90,27 +90,21 @@ class DeliveryScheduleTest(unittest.TestCase):
         )
         source = [
             ("/clock", (), 0),
-            ("/sensors/uwb/range", (7,), 999999999),
-            ("/sensors/uwb/range", (7,), 1000000000),
-            ("/sensors/uwb/range", (4, 7), 1500000000),
-            ("/sensors/uwb/range", (4, 8), 1600000000),
-            ("/sensors/uwb/range", (7,), 2000000000),
+            ("/liuo/uwb/observations", (7,), 999999999),
+            ("/liuo/uwb/observations", (7,), 1000000000),
+            ("/liuo/uwb/observations", (4, 7), 1500000000),
+            ("/liuo/uwb/observations", (4, 8), 1600000000),
+            ("/liuo/uwb/observations", (7,), 2000000000),
         ]
-        events = list(DeliverySchedule(profile, anchor_ids=lambda data: data).events(source))
-        self.assertEqual(
-            [e[4] for e in events],
-            [
-                "original",
-                "original",
-                "anchor_outage_drop",
-                "anchor_outage_drop",
-                "original",
-                "original",
-            ],
-        )
+        schedule = DeliverySchedule(profile)
+        events = list(schedule.events(source))
+        self.assertTrue(all(e[4] == "original" for e in events))
         self.assertEqual([(e[0], e[1], e[2]) for e in events], source)
-        with self.assertRaisesRegex(ValueError, "decoder"):
-            list(DeliverySchedule(profile).events(source))
+        self.assertEqual([schedule.filter_observation(e[2] * 1e-9, e[1]) for e in events],
+                         [False, False, True, True, False, False])
+        # A mixed batch retains the unrelated entry, with its payload unchanged.
+        peers = [(7,), (4, 8)]
+        self.assertEqual([edge for edge in peers if not schedule.filter_observation(1.5, edge)], [(4, 8)])
         profile["anchor_outages"][0]["anchor_id"] = True
         with self.assertRaisesRegex(ValueError, "ID"):
             DeliverySchedule(profile, anchor_ids=lambda data: data)

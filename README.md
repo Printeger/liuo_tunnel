@@ -249,3 +249,26 @@ RViz 固定坐标系是 `map`。可在 Views 调整视角，或选中点云按 F
 ### TA 基础与可选 AA
 
 `uwb.use_aa` 默认 `false`：TA 与 LiDAR/IMU 紧耦合保持开启；设为 `true` 才加入新的基站—基站 AA 信息。缺省字段同样按关闭处理，必须使用 JSON 布尔值。原始 AA 仍可接收和记录，关闭时标记 `AA_ABLATION_DISABLED`，不进入初始化、扩图、滑窗或 AA 摘要。已有地图内吸收的 AA 不能通过这个开关移除；完整 TA-only 复用需由 TA-only 首次运行生成地图。历史 AA 开启实验在新版复现时须显式 `use_aa=true`。本轮协议见 [AA 可选能力验证](docs/aa_optional_comparison_protocol.md)。
+
+### UWB batch migration (in progress)
+
+The current development input is `liuo_uwb_msgs/msg/UwbObservationBatch` on
+`/liuo/uwb/observations`. See [input contract](docs/spec/uwb_observation_input_contract.md)
+and [current validation status](docs/uwb_observation_unification_results.md).
+The bundled noise/time models are explicitly simulation assumptions.
+
+Build and test using the protected data-disk environment:
+
+```bash
+cd /home/dev/code/ws_tunnel/src/liuo_tunnel
+data-run --check
+data-run -- tools/build.sh
+data-run -- tools/test.sh
+```
+
+The default build/install/message underlay lives at
+`/home/dev/ws_iap/liuo_observation`. `LIUO_DATA_ROOT`, `LIUO_BUILD_BASE`,
+`LIUO_INSTALL_BASE`, `LIUO_MSG_BASE` and `LIUO_TOOL_LOG` are explicit overrides
+which must remain on the data disk. The clean environment loads Jazzy, that
+message underlay and that target install. Existing historical bags are immutable;
+new replay rejects UwbRange bags with an instruction to use the historical version.

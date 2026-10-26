@@ -306,7 +306,7 @@ def main():
         )
         env["LIUO_DIAGNOSTIC_CAPTURE"] = "1" if args.diagnostic_capture else "0"
         binaries = {
-            name: ROOT / f"install/{pkg}/lib/{pkg}/{exe}"
+            name: Path(os.environ["LIUO_INSTALL_BASE"]) / f"{pkg}/lib/{pkg}/{exe}"
             for name, pkg, exe in [
                 ("odometry", "liuo_tunnel", "liuo_tunnel_node"),
                 ("simulation", "liuo_tunnel_sim", "liuo_rail_sim"),
@@ -315,6 +315,10 @@ def main():
         if args.capture_only:
             binaries.pop("odometry")
         identity = {
+            "uwb_schema": "liuo_uwb_msgs/msg/UwbObservationBatch",
+            "uwb_hash_schema": "liuo_uwb_observation_batch_v1",
+            "uwb_interface": {p.name: digest(p) for p in (ROOT.parent / "nlink_parser_uwb/packages/liuo_uwb_msgs/msg").glob("*.msg")},
+            "uwb_input": effective_config["uwb"]["input"],
             "capture_only": args.capture_only,
             "source_iap_commit": "fbccae16802402d7300bb817d2627f86e6a495df",
             "config_sha256": digest(config),
@@ -334,7 +338,7 @@ def main():
         }
         for name, binary in binaries.items():
             linked = subprocess.check_output(["ldd", str(binary)], text=True)
-            if "/iap/" in linked or "/ws_iap/" in linked:
+            if "/src/iap/" in linked or "/src/demo/" in linked:
                 raise RuntimeError("forbidden runtime dependency: " + linked)
             identity["binaries"][name] = {
                 "path": str(binary),
@@ -357,7 +361,7 @@ def main():
                         }
         caches = {}
         for package in ["liuo_tunnel", "liuo_tunnel_sim"]:
-            cache = ROOT / "build" / package / "CMakeCache.txt"
+            cache = Path(os.environ["LIUO_BUILD_BASE"]) / package / "CMakeCache.txt"
             caches[package] = {
                 "sha256": digest(cache),
                 "selected_options": [

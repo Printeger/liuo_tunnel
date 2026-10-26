@@ -2,6 +2,25 @@
 
 import json
 import struct
+import math
+
+
+def semantic_fields(value):
+    """All declared ROS fields, including invalid optional values; canonical NaN."""
+    if hasattr(value, "get_fields_and_field_types"):
+        return {name: semantic_fields(getattr(value, name)) for name in value.get_fields_and_field_types()}
+    if isinstance(value, (list, tuple)):
+        return [semantic_fields(item) for item in value]
+    if isinstance(value, float) and not math.isfinite(value):
+        return "NaN" if math.isnan(value) else ("+Infinity" if value > 0 else "-Infinity")
+    return value
+
+
+def observation_identity(batch, observation, network):
+    return (network, batch.driver_session_id, observation.reporter_id, observation.source_session_id,
+            observation.source_frame_seq_valid, observation.source_frame_seq, observation.kind,
+            observation.node_a, observation.node_b)
+
 
 
 def hash_message(hasher, kind, m):
@@ -27,19 +46,7 @@ def hash_message(hasher, kind, m):
                 list(m.linear_acceleration_covariance),
             ]
         elif kind == "uwb":
-            data += [
-                m.producer_id,
-                m.session_id,
-                m.sequence,
-                m.node_a_type,
-                m.node_a_id,
-                m.node_b_type,
-                m.node_b_id,
-                m.status,
-                m.range_m,
-                m.variance_m2,
-                m.propagation_status,
-            ]
+            data = ["liuo_uwb_observation_batch_v1", semantic_fields(m)]
         else:
             data += [
                 m.height,

@@ -16,6 +16,9 @@ struct RangeObservation {
   double stamp = 0, received = 0, range = 0, variance = 0;
   uint8_t a_type = 0, b_type = 1;
   uint32_t a = 0, b = 0;
+  std::string network;
+  uint64_t driver_session = 0;
+  bool identity_validated = false;
 };
 struct RangeBracket {
   std::string reason;
@@ -51,6 +54,11 @@ public:
     if (!std::isfinite(o.stamp) || o.stamp <= 0 || !std::isfinite(o.range) || o.range <= 0 || !std::isfinite(o.variance) || o.variance <= 0) return "INVALID_FIELDS";
     if (o.a_type > 1 || o.b_type > 1 || (o.a_type == 0 && o.b_type == 0)) return "UNSUPPORTED_LINK";
     if (o.a_type == o.b_type && o.a == o.b) return "INVALID_ENDPOINTS";
+    if (o.identity_validated) {
+      if (pending_.size() >= capacity_) return "QUEUE_LIMIT";
+      pending_.emplace(o.stamp, o);
+      return "QUEUED";
+    }
     auto identity = std::make_pair(o.producer, o.session);
     if (retired_.count(identity)) return "RETIRED_SESSION";
     auto active = active_.find(o.producer);

@@ -6,7 +6,7 @@ import hashlib
 import csv
 import itertools
 from delivery_schedule import DeliverySchedule
-from raw_identity import hash_message
+from raw_identity import hash_message, observation_identity
 import os
 from pathlib import Path
 import resource
@@ -37,7 +37,7 @@ def main():
         "/clock": "clock",
         "/sensors/imu": "imu",
         "/sensors/lidar/points": "cloud",
-        "/sensors/uwb/range": "uwb",
+        "/liuo/uwb/observations": "uwb",
         "/sim/truth/odom": "truth",
     }
     rclpy.init()
@@ -46,28 +46,23 @@ def main():
     types = {}
     counts = {"imu": 0, "cloud": 0, "uwb": 0, "clock": 0}
     for topic in reader.get_all_topics_and_types():
+        if topic.type == "liuo_tunnel_msgs/msg/UwbRange":
+            raise RuntimeError("Legacy UwbRange bag: use historical LIUO revision; no implicit conversion")
         if topic.name not in allowed:
             raise RuntimeError("unsupported frozen topic: " + topic.name)
         types[topic.name] = get_message(topic.type)
         reliable = topic.name in ["/clock", "/sim/truth/odom"]
         qos = QoSProfile(
-            depth=32 if allowed[topic.name] == "cloud" else 2048,
+            depth=32 if allowed[topic.name] == "cloud" else (100 if allowed[topic.name] == "uwb" else 2048),
             reliability=ReliabilityPolicy.RELIABLE if reliable else ReliabilityPolicy.BEST_EFFORT,
         )
         publishers[topic.name] = node.create_publisher(types[topic.name], topic.name, qos)
 
-    def anchor_ids(data):
-        message = deserialize_message(data, types["/sensors/uwb/range"])
-        return [
-            identity
-            for kind, identity in [
-                (message.node_a_type, message.node_a_id),
-                (message.node_b_type, message.node_b_id),
-            ]
-            if kind == 1
-        ]
-
-    scheduler = DeliverySchedule(profile, anchor_ids=anchor_ids)
+    input_config = json.loads((run / "metadata/config/phase1.json").read_text())["uwb"]["input"]
+    registry = {n["logical_id"]: (n["type"], n["internal_id"]) for n in input_config["nodes"]}
+    def anchor_ids(o):
+        return [registry[n][1] for n in (o.node_a, o.node_b) if n in registry and registry[n][0] == 1]
+    scheduler = DeliverySchedule(profile)
     if set(publishers) != set(allowed):
         raise RuntimeError("frozen input lacks required topics")
     (run / "metadata/processes/simulation.json").write_text(
@@ -86,7 +81,7 @@ def main():
     ready_deadline = time.monotonic() + 20
     while any(
         publishers[t].get_subscription_count() < 2
-        for t in ["/sensors/imu", "/sensors/lidar/points", "/sensors/uwb/range"]
+        for t in ["/sensors/imu", "/sensors/lidar/points", "/liuo/uwb/observations"]
     ):
         if time.monotonic() > ready_deadline:
             raise RuntimeError("replay consumers not ready")
@@ -128,28 +123,8 @@ def main():
         run / "export/simulation/delivery.csv"
     ).open("w") as delivery_log:
         delivery_csv = csv.writer(delivery_log)
-        delivery_csv.writerow(
-            [
-                "producer",
-                "session",
-                "sequence",
-                "measurement_stamp",
-                "source_elapsed_s",
-                "delivery_elapsed_s",
-                "action",
-                "a_type",
-                "a",
-                "b_type",
-                "b",
-                "base_propagation_status",
-                "base_variance_m2",
-                "variance_after_stress_m2",
-                "base_range_m",
-                "range_after_stress_m",
-                "injected_bias_m",
-                "propagation_status",
-            ]
-        )
+        delivery_csv.writerow(["network", "driver_session", "producer", "session", "sequence", "a_type", "a", "b_type", "b",
+                               "measurement_stamp", "source_elapsed_s", "delivery_elapsed_s", "action", "base_range_m", "range_after_stress_m", "injected_bias_m"])
         clock_log.write("session,stamp,scheduled_wall_ns,published_wall_ns\n")
         for topic, data, record_ns, delivery_ns, action in scheduler.events(
             itertools.chain(prefix, records())
@@ -174,35 +149,21 @@ def main():
             message = deserialize_message(data, types[topic])
             kind = allowed[topic]
             if kind == "uwb":
-                identity = [message.producer_id, message.session_id, message.sequence]
-                measurement_stamp = message.header.stamp.sec + message.header.stamp.nanosec * 1e-9
-                base_range, base_status, base_variance, bias = scheduler.apply_range_stress(
-                    message, (record_ns - first_stamp) * 1e-9
-                )
-                delivery_csv.writerow(
-                    identity
-                    + [
-                        measurement_stamp,
-                        (record_ns - first_stamp) * 1e-9,
-                        (delivery_ns - first_stamp) * 1e-9,
-                        action,
-                        message.node_a_type,
-                        message.node_a_id,
-                        message.node_b_type,
-                        message.node_b_id,
-                        base_status,
-                        base_variance,
-                        message.variance_m2,
-                        base_range,
-                        message.range_m,
-                        bias,
-                        message.propagation_status,
-                    ]
-                )
-                if action in ["outage_drop", "anchor_outage_drop"]:
-                    continue
-                if action == "duplicate":
-                    duplicates.append(identity)
+                kept = []
+                elapsed = (record_ns - first_stamp) * 1e-9
+                for o in message.observations:
+                    identity = list(observation_identity(message, o, input_config["network_instance"]))
+                    edge_action = "anchor_outage_drop" if scheduler.filter_observation(elapsed, anchor_ids(o)) else action
+                    original, bias = scheduler.apply_range_stress(o, elapsed, anchor_ids(o))
+                    row_identity = [input_config["network_instance"], message.driver_session_id, o.reporter_id, o.source_session_id, o.source_frame_seq, *registry[o.node_a], *registry[o.node_b]]
+                    delivery_csv.writerow(row_identity + [o.source_frame_stamp.sec + o.source_frame_stamp.nanosec * 1e-9,
+                        elapsed, (delivery_ns - first_stamp) * 1e-9, edge_action, original, o.distance_m, bias])
+                    if edge_action not in ("outage_drop", "anchor_outage_drop"):
+                        kept.append(o)
+                        if action == "duplicate": duplicates.append(identity)
+                if action == "outage_drop": continue
+                if message.observations and not kept: continue
+                message.observations = kept
             publishers[topic].publish(message)
             if time.monotonic_ns() - deadline > 250_000_000:
                 raise RuntimeError(

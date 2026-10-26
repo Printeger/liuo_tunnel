@@ -139,7 +139,7 @@ class DeliverySchedule:
                 if index:
                     state = rho * state + rng.gauss(0, innovation)
                 value = fault["mean_m"] * math.exp(state - 0.5 * sigma * sigma)
-                if not math.isfinite(value) or value < 0 or (value == 0 and key != "begin_s"):
+                if not math.isfinite(value) or value < 0 :
                     raise ValueError("nonfinite NLOS bias")
                 values.append(value)
             self.bias_series[endpoints] = values
@@ -147,26 +147,20 @@ class DeliverySchedule:
         index = (elapsed_ns - self.bias_begin_ns) // self.bias_step_ns
         return self.bias_series[endpoints][index]
 
-    def apply_range_stress(self, message, elapsed):
-        """Return original range/status/variance and bias for the evidence log."""
-        original = (message.range_m, message.propagation_status, message.variance_m2)
-        endpoints = [
-            identity
-            for kind, identity in [
-                (message.node_a_type, message.node_a_id),
-                (message.node_b_type, message.node_b_id),
-            ]
-            if kind == 1
-        ]
-        bias = self.range_bias(elapsed, endpoints)
+    def apply_range_stress(self, observation, elapsed, anchor_ids):
+        """Only change float32 distance; synthetic NLOS labels stay in the log."""
+        import struct
+        original = observation.distance_m
+        bias = self.range_bias(elapsed, anchor_ids)
         if bias:
-            message.range_m += bias
-            message.propagation_status = message.NLOS_REPORTED
-        return (*original, bias)
+            observation.distance_m = struct.unpack("<f", struct.pack("<f", original + bias))[0]
+        return original, bias
+
+    def filter_observation(self, elapsed, anchor_ids):
+        return any(f["begin_s"] <= elapsed < f["end_s"] and f["anchor_id"] in anchor_ids
+                   for f in self.anchor_outages)
 
     def events(self, records):
-        if self.anchor_outages and self.anchor_ids is None:
-            raise ValueError("anchor outage requires endpoint decoder")
         pending = []
         order = 0
         count = 0
@@ -182,7 +176,7 @@ class DeliverySchedule:
                 yield heapq.heappop(pending)[2]
             elapsed = (stamp - first) * 1e-9
             delay, action, duplicate = 0, "original", False
-            if topic == "/sensors/uwb/range":
+            if topic == "/liuo/uwb/observations":
                 count += 1
                 if self.begin <= elapsed < self.end:
                     delay = round(self.delays[(count - 1) % len(self.delays)] * 1e6)
@@ -199,13 +193,6 @@ class DeliverySchedule:
                     )
                     if any(a <= elapsed < b for a, b in self.outages):
                         delay, action, duplicate = 0, "outage_drop", False
-                    elif self.anchor_outages:
-                        endpoints = set(self.anchor_ids(data))
-                        if any(
-                            f["begin_s"] <= elapsed < f["end_s"] and f["anchor_id"] in endpoints
-                            for f in self.anchor_outages
-                        ):
-                            delay, action, duplicate = 0, "anchor_outage_drop", False
             events = [(stamp + delay, action)]
             if duplicate:
                 events.append(

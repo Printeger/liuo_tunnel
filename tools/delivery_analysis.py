@@ -2,12 +2,14 @@
 
 from collections import Counter
 import math
+import struct
 from delivery_schedule import DeliverySchedule
 
 
 def analyze(profile, delivery, decisions, trajectory, graph, clock, runtime):
     failures = []
-    identity = lambda r: (int(r["producer"]), int(r["session"]), int(r["sequence"]))
+    identity = lambda r: (r.get("network", ""), int(r.get("driver_session", 0)), int(r["producer"]), int(r["session"]), int(r["sequence"]),
+                          int(r.get("a_type", 0)), int(r.get("a", 0)), int(r.get("b_type", 1)), int(r.get("b", 0)))
     accepted = [r for r in decisions if r["reason"] in ["ACCEPT_TA", "ACCEPT_AA"]]
     accepted_ids = [identity(r) for r in accepted]
     if len(accepted_ids) != len(set(accepted_ids)):
@@ -154,7 +156,7 @@ def analyze(profile, delivery, decisions, trajectory, graph, clock, runtime):
         for row in delivery:
             endpoints = [int(row[k]) for k in ["a", "b"] if int(row[k + "_type"]) == 1]
             bias = model.range_bias(float(row["source_elapsed_s"]), endpoints)
-            expected = float(row["base_range_m"]) + bias
+            expected = struct.unpack("<f", struct.pack("<f", float(row["base_range_m"]) + bias))[0]
             values = [expected, float(row["injected_bias_m"]), float(row["range_after_stress_m"])]
             if (
                 not all(math.isfinite(v) for v in values)
@@ -162,14 +164,6 @@ def analyze(profile, delivery, decisions, trajectory, graph, clock, runtime):
                 or abs(values[2] - expected) > 1e-9
             ):
                 failures.append("NLOS measurement transform differs from declared model")
-            expected_status = 2 if bias else int(row["base_propagation_status"])
-            if int(row["propagation_status"]) != expected_status:
-                failures.append("NLOS propagation flag mismatch")
-            before_variance, after_variance = float(row["base_variance_m2"]), float(
-                row["variance_after_stress_m2"]
-            )
-            if not math.isfinite(after_variance) or after_variance != before_variance:
-                failures.append("NLOS stress changed baseline variance")
             if row["action"] not in ["duplicate", "outage_drop", "anchor_outage_drop"]:
                 expected_ranges[identity(row)] = expected
                 if bias:

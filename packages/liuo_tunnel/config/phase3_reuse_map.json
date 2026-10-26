@@ -58,7 +58,64 @@
       0,
       0
     ],
-    "use_aa": false
+    "use_aa": false,
+    "input": {
+      "network_instance": "liuo_simulation",
+      "receiver_id": 0,
+      "nodes": [
+        {
+          "logical_id": 0,
+          "type": 0,
+          "internal_id": 0
+        },
+        {
+          "logical_id": 1,
+          "type": 1,
+          "internal_id": 0
+        },
+        {
+          "logical_id": 2,
+          "type": 1,
+          "internal_id": 1
+        },
+        {
+          "logical_id": 3,
+          "type": 1,
+          "internal_id": 2
+        },
+        {
+          "logical_id": 4,
+          "type": 1,
+          "internal_id": 3
+        },
+        {
+          "logical_id": 5,
+          "type": 1,
+          "internal_id": 4
+        },
+        {
+          "logical_id": 6,
+          "type": 1,
+          "internal_id": 5
+        },
+        {
+          "logical_id": 7,
+          "type": 1,
+          "internal_id": 6
+        }
+      ],
+      "model": {
+        "id": "synthetic_independent_sigma_0_10_v1",
+        "source": "rail_sim independent noise streams only; not hardware calibration",
+        "clock_domain": "ROS simulation clock",
+        "time_evidence": "exact scheduled sample time; one edge per physical event",
+        "noise_evidence": "simulation assumption sigma=0.10 m, variance=0.01 m2",
+        "independence_evidence": "new independent per-edge sample; freshness required; first available AA reporter only",
+        "ta_sigma_m": 0.1,
+        "aa_sigma_m": 0.1,
+        "max_time_uncertainty_s": 0.0
+      }
+    }
   },
   "logging": {
     "raw_bag": false

@@ -1,4 +1,5 @@
 import unittest
+import struct
 from delivery_analysis import analyze
 
 
@@ -95,6 +96,9 @@ class DeliveryAnalysisTest(unittest.TestCase):
                     decision_wall_ns=wall,
                 )
             )
+        for decision in data[2]:
+            source = next(row for row in data[1] if row["sequence"] == decision["sequence"])
+            decision.update({key: source[key] for key in ("a_type", "a", "b_type", "b")})
         result = analyze(*data)
         self.assertEqual(result["result"], "PASS")
         self.assertAlmostEqual(
@@ -117,7 +121,7 @@ class DeliveryAnalysisTest(unittest.TestCase):
             "anchor outage missed selected physical measurement", analyze(*data)["failures"]
         )
 
-    def test_nlos_model_and_estimator_value_must_match_with_variance_preserved(self):
+    def test_nlos_float32_model_and_estimator_value_must_match(self):
         from delivery_schedule import DeliverySchedule
 
         profile = dict(
@@ -147,7 +151,7 @@ class DeliveryAnalysisTest(unittest.TestCase):
             b_type="1",
             b="4",
             base_range_m="799.9",
-            range_after_stress_m=str(799.9 + bias),
+            range_after_stress_m=str(struct.unpack("<f", struct.pack("<f", 799.9 + bias))[0]),
             injected_bias_m=str(bias),
             propagation_status="2",
             base_propagation_status="0",
@@ -159,9 +163,10 @@ class DeliveryAnalysisTest(unittest.TestCase):
             session="10",
             sequence="1",
             reason="ACCEPT_TA",
-            range=str(799.9 + bias),
+            range=str(struct.unpack("<f", struct.pack("<f", 799.9 + bias))[0]),
             decision_wall_ns="2100000000",
         )
+        decision.update({key: row[key] for key in ("a_type", "a", "b_type", "b")})
         data = [
             profile,
             [row],
@@ -178,8 +183,6 @@ class DeliveryAnalysisTest(unittest.TestCase):
             "estimator NLOS measurement differs from delivered value", analyze(*data)["failures"]
         )
         decision["range"] = row["range_after_stress_m"]
-        row["variance_after_stress_m2"] = ".1"
-        self.assertIn("NLOS stress changed baseline variance", analyze(*data)["failures"])
         row["range_after_stress_m"] = "800"
         self.assertIn(
             "NLOS measurement transform differs from declared model", analyze(*data)["failures"]

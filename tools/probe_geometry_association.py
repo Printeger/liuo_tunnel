@@ -96,7 +96,7 @@ def main():
         rosbag2_py.StorageOptions(uri=str(bag), storage_id="mcap"),
         rosbag2_py.ConverterOptions("cdr", "cdr"),
     )
-    selected = ["/sensors/lidar/points", "/sensors/imu", "/sensors/uwb/range"]
+    selected = ["/sensors/lidar/points", "/sensors/imu", "/liuo/uwb/observations"]
     types = {
         t.name: get_message(t.type)
         for t in reader.get_all_topics_and_types()
@@ -121,15 +121,12 @@ def main():
                     message, field_names=("x", "y", "z"), skip_nans=True
                 )
                 clouds[target] = np.asarray(cloud, dtype=float).reshape(-1, 3)
-            if topic == "/sensors/uwb/range" and abs(stamp - target) <= 0.1:
-                # ID and raw ranging only; propagation truth labels are not used.
-                if message.node_a_type == 0 and message.status == 0:
-                    ranges[target].append(
-                        dict(
-                            anchor_id=int(message.node_b_id),
-                            range_m=float(message.range_m),
-                        )
-                    )
+            if topic == "/liuo/uwb/observations":
+                registry = {n["logical_id"]: n for n in config["uwb"]["input"]["nodes"]}
+                for o in message.observations:
+                    source_stamp = o.source_frame_stamp.sec + o.source_frame_stamp.nanosec * 1e-9
+                    if o.kind == 0 and o.time_basis in (1,2) and abs(source_stamp - target) <= .1 and o.node_b in registry:
+                        ranges[target].append(dict(anchor_id=registry[o.node_b]["internal_id"], range_m=float(o.distance_m)))
     assert len(clouds) == 2 and len(acceleration) >= 390
     gravity = np.mean(acceleration, axis=0)
     # Gravity supplies a local vertical only, not a map height or yaw.

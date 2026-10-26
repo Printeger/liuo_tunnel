@@ -532,7 +532,7 @@ TEST(UwbConfiguration, AaDefaultsOffAndRequiresExplicitBooleanOptIn) {
   const auto source = std::filesystem::path(__FILE__).parent_path().parent_path() / "config/phase3_self_calibrate.json";
   std::ifstream input(source);
   auto j = nlohmann::json::parse(input);
-  const auto path = std::filesystem::path("/home/dev/code/ws_tunnel/src/liuo_tunnel/build/liuo_tunnel") /
+  const auto path = std::filesystem::temp_directory_path() /
     ("aa_config_test_" + std::to_string(getpid()) + ".json");
   auto write = [&]() { std::ofstream output(path); output << j.dump(); };
   j["uwb"].erase("use_aa"); write();

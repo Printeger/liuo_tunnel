@@ -20,7 +20,7 @@ nlohmann::json sample() {
 }
 TEST(CalibratedMap, RoundTripKeepsJointInformationAndCost) {
   const auto m=CalibratedMap::parse(sample(), {{"test",1}});
-  auto directory=std::filesystem::path("/home/dev/code/ws_tunnel/src/liuo_tunnel/build/liuo_tunnel")/("joint_map_test_"+std::to_string(getpid()));
+  auto directory=std::filesystem::temp_directory_path()/("joint_map_test_"+std::to_string(getpid()));
   m.save_atomic(directory/"map.json");
   const auto loaded=CalibratedMap::load(directory/"map.json", {{"test",1}});
   EXPECT_EQ(loaded.ids,m.ids);

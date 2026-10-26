@@ -4,7 +4,7 @@ import json
 import csv
 import numpy as np
 import hashlib
-from raw_identity import hash_message
+from raw_identity import hash_message, observation_identity
 import time
 import os
 from pathlib import Path
@@ -14,7 +14,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import qos_profile_sensor_data, QoSProfile, ReliabilityPolicy, HistoryPolicy
 from sensor_msgs.msg import Imu, PointCloud2
-from liuo_tunnel_msgs.msg import UwbRange
+from liuo_uwb_msgs.msg import UwbObservationBatch
 from rosgraph_msgs.msg import Clock
 from nav_msgs.msg import Odometry
 
@@ -40,12 +40,13 @@ class Observer(Node):
         self.first_clock = None
         self.last_clock = 0
         self.identities = set()
+        self.network = json.loads((Path(os.environ["LIUO_RUN_DIR"]) / "metadata/config/phase1.json").read_text())["uwb"]["input"]["network_instance"]
         self.result["duplicate_uwb"] = []
         self.imu_log = open(Path(os.environ["LIUO_RUN_DIR"]) / "export/capture/imu.csv", "w")
         self.imu_log.write("stamp,ax,ay,az,wx,wy,wz\n")
         self.create_subscription(Imu, "/sensors/imu", self.imu, self.sensor_qos)
         self.create_subscription(PointCloud2, "/sensors/lidar/points", self.cloud, self.sensor_qos)
-        self.create_subscription(UwbRange, "/sensors/uwb/range", self.uwb, self.sensor_qos)
+        self.create_subscription(UwbObservationBatch, self.declare_parameter("uwb_topic", "/liuo/uwb/observations").value, self.uwb, QoSProfile(depth=100, reliability=ReliabilityPolicy.BEST_EFFORT))
         self.create_subscription(Clock, "/clock", self.clock, self.sensor_qos)
         self.result["odometry_count"] = 0
         self.odom_log = open(Path(os.environ["LIUO_RUN_DIR"]) / "export/capture/odometry.csv", "w")
@@ -129,20 +130,18 @@ class Observer(Node):
     def uwb(self, m):
         self.hash_message("uwb", m)
         self.result["counts"]["uwb"] += 1
-        identity = (m.producer_id, m.session_id, m.sequence)
-        if identity in self.identities:
-            self.result["duplicate_uwb"].append(list(identity))
-        self.identities.add(identity)
-        if m.session_id not in self.result["sessions"]:
-            self.result["sessions"].append(m.session_id)
-        if (
-            m.header.frame_id
-            or abs(m.variance_m2 - 0.01) > 1e-10
-            or not math.isfinite(m.range_m)
-            or m.range_m <= 0
-            or m.propagation_status != 0
-        ):
-            self.reject("UWB fields")
+        self.result.setdefault("uwb_observation_count", 0)
+        self.result["uwb_observation_count"] += len(m.observations)
+        for o in m.observations:
+            identity = observation_identity(m, o, self.network)
+            if identity in self.identities:
+                self.result["duplicate_uwb"].append(list(identity))
+            self.identities.add(identity)
+            if m.driver_session_id not in self.result["sessions"]:
+                self.result["sessions"].append(m.driver_session_id)
+            if m.header.frame_id or not math.isfinite(o.distance_m) or o.distance_m <= 0:
+                self.reject("UWB fields")
+        self.result["uwb_unique_report_count"] = len(self.identities)
 
     def clock(self, m):
         self.hash_message("clock", m)

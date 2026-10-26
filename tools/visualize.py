@@ -17,7 +17,7 @@ from diagnostic_msgs.msg import DiagnosticArray
 from rosgraph_msgs.msg import Clock
 from std_msgs.msg import Header
 from visualization_msgs.msg import Marker, MarkerArray
-from liuo_tunnel_msgs.msg import UwbRange
+from liuo_uwb_msgs.msg import UwbObservationBatch
 
 
 def seconds(stamp):
@@ -36,13 +36,15 @@ class Display(Node):
         self.last_clock = -1
         self.stats = dict(clouds=0, map_publications=0, received_ranges=0, drawn_links=0, max_voxels=0, max_anchors=0, resets=0)
         self.health = 'INITIALIZING: no certified pose'
-        self.tag = json.loads(Path(os.environ['LIUO_VIS_CONFIG']).read_text())['sensors']['T_BU_translation']
+        config = json.loads(Path(os.environ['LIUO_VIS_CONFIG']).read_text())
+        self.tag = config['sensors']['T_BU_translation']
+        self.registry = {n['logical_id']: (n['type'], n['internal_id']) for n in config['uwb']['input']['nodes']}
         self.map_pub = self.create_publisher(PointCloud2, '/liuo/visual/cloud_map', 1)
         self.range_pub = self.create_publisher(MarkerArray, '/liuo/visual/ranges', 2)
         self.create_subscription(PointCloud2, '/liuo/visual/current_cloud', self.cloud, 2)
         self.create_subscription(MarkerArray, '/liuo/visual/anchors', self.anchor, 2)
         self.create_subscription(Odometry, '/liuo/odom', self.pose, 100)
-        self.create_subscription(UwbRange, '/sensors/uwb/range', self.range, qos_profile_sensor_data)
+        self.create_subscription(UwbObservationBatch, self.declare_parameter('uwb_topic', '/liuo/uwb/observations').value, self.range, qos_profile_sensor_data)
         self.create_subscription(DiagnosticArray, '/liuo/diagnostics', self.status, 10)
         self.create_subscription(Clock, '/clock', self.clock, qos_profile_sensor_data)
         self.create_timer(1.0, self.publish)
@@ -72,11 +74,11 @@ class Display(Node):
         self.poses.append(msg)
 
     def range(self, msg):
-        self.stats['received_ranges'] += 1
-        # Last raw observation per link; unknown anchors remain numeric-only.
-        self.ranges[(msg.node_a_type, msg.node_a_id, msg.node_b_type, msg.node_b_id)] = msg
-        if len(self.ranges) > 256:
-            self.ranges.pop(next(iter(self.ranges)))
+        self.stats['received_ranges'] += len(msg.observations)
+        for o in msg.observations:
+            if o.node_a not in self.registry or o.node_b not in self.registry: continue
+            self.ranges[(*self.registry[o.node_a], *self.registry[o.node_b])] = o
+            if len(self.ranges) > 256: self.ranges.pop(next(iter(self.ranges)))
 
     def cloud(self, msg):
         self.stats['clouds'] += 1
@@ -99,7 +101,7 @@ class Display(Node):
         self.stats['max_voxels'] = max(self.stats['max_voxels'], len(self.cells))
 
     def endpoint(self, kind, ident, stamp):
-        if kind == UwbRange.NODE_ANCHOR:
+        if kind == 1:
             return self.anchors.get(ident)
         if not self.poses:
             return None
@@ -124,14 +126,14 @@ class Display(Node):
         now = self.get_clock().now().nanoseconds * 1e-9
         lines = []
         for key, r in self.ranges.items():
-            stamp = seconds(r.header.stamp)
+            stamp = seconds(r.source_frame_stamp)
             if not 0 <= now - stamp <= 2:
                 continue
-            label = f'{"T" if key[0] == 0 else "A"}{key[1]}-A{key[3]} {r.range_m:.2f} m (status {r.status})'
+            label = f'{"T" if key[0] == 0 else "A"}{key[1]}-A{key[3]} {r.distance_m:.2f} m (time basis {r.time_basis})'
             lines.append(label)
             a = self.endpoint(key[0], key[1], stamp)
             b = self.endpoint(key[2], key[3], stamp)
-            if a is None or b is None or r.status != UwbRange.STATUS_OK:
+            if a is None or b is None or r.time_basis not in (1, 2):
                 continue
             marker = Marker(header=self.header, ns='raw_range_links', id=len(out.markers), type=Marker.LINE_LIST)
             marker.pose.orientation.w = 1.

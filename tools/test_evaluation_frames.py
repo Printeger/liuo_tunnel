@@ -56,7 +56,7 @@ class CalibratedMapFrames(unittest.TestCase):
         import tempfile
         from pathlib import Path
         from evaluation_frames import run_world_estimates, map_local_truth
-        with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parent.parent / "build") as directory:
+        with tempfile.TemporaryDirectory() as directory:
             first, second = Path(directory) / "first", Path(directory) / "second"
             for run in (first, second):
                 (run / "metadata/config").mkdir(parents=True)
