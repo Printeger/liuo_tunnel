@@ -87,3 +87,10 @@ propagation, and 360-second representative calibration plus independent reuse.
 Physical equivalence must retain exact pre-float32 generated samples and mapped
 identities; same seed alone is not accepted. Current adapter component tests are
 not a substitute for graph-side assertions in those runs.
+
+Metadata/default correction built successfully (`evidence/m1-build-3.log`).
+Clean commit `f7edbfa`, repeated OFF replay `20261026T131233Z_175`:
+**single-run contracts PASS**, no failures, frozen_input_verified=true and
+GPU execution identity verified. Evidence `evidence/replay-smoke-3.log` and the
+run's export/analysis/report.json. This remains six-second record-only smoke
+coverage, not TA/AA fusion, load, or representative-route acceptance.
