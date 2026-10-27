@@ -44,6 +44,7 @@ def main():
     rd._atomic_write_json(manifest, meta)
     children, handles = [], []
     node = None
+    static_publisher = None
     lifecycle = 'failed'
     try:
         if shutil.disk_usage(run).free < 8 * 1024**3:
@@ -123,8 +124,14 @@ def main():
         def odometry(message):
             progress[:] = [time.monotonic(), message.header.stamp.sec + 1e-9 * message.header.stamp.nanosec]
         subscription = node.create_subscription(Odometry, '/liuo/odom', odometry, 100)
+        if config['uwb'].get('static_edges'):
+            from static_replay import StaticReplayPublisher
+            registry = {int(item['logical_id']): (int(item['type']), int(item['internal_id']))
+                        for item in config['uwb']['input']['nodes']}
+            static_publisher = StaticReplayPublisher(node, source, run, registry, config['uwb']['static_edges'])
         ready = time.monotonic() + 20
-        while any(publishers[t].get_subscription_count() < 2 for t in kinds):
+        while (any(publishers[t].get_subscription_count() < 2 for t in kinds) or
+               (static_publisher and static_publisher.publisher.get_subscription_count() < 1)):
             if time.monotonic() > ready or any(c.poll() is not None for c in children): raise RuntimeError('road replay consumers not ready')
             rclpy.spin_once(node, timeout_sec=.01)
         # DDS graph discovery precedes completed reader matching. No sensor or
@@ -162,10 +169,12 @@ def main():
             message = deserialize_message(data, types[topic])
             publishers[topic].publish(message)
             kind = kinds[topic]; counts[kind] += 1; hash_message(hashes[kind], kind, message)
+            if static_publisher and kind == 'uwb': static_publisher.publish(message)
             if kind == 'cloud': cloud_stamps.append(message.header.stamp.sec + 1e-9 * message.header.stamp.nanosec)
             rclpy.spin_once(node, timeout_sec=0.)
             if time.monotonic() - deadline > .25: raise TimeoutError('1x replay deadline exceeded 250 ms')
         publish_wall_s = time.monotonic() - started
+        if static_publisher: static_publisher.close()
         expected_hashes = {k: v.hexdigest() for k, v in hashes.items()}
         rd.write_subordinate_manifest(run, 'published_input', dict(counts=counts, raw_sha256=expected_hashes,
                                       publish_wall_s=publish_wall_s, requested_seconds=args.seconds))

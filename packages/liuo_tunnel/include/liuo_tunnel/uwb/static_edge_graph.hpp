@@ -32,6 +32,21 @@ public:
     }
   }
 
+  // Read-only likelihood snapshot for one unknown candidate joined to known A.
+  // Reading never absorbs a leaf or changes explicit factor ownership.
+  std::map<Pair, GaussianRangeSummary> candidate_summaries(uint32_t unknown, const gtsam::Values& known) const {
+    if (transaction_) throw std::logic_error("STATIC_CANDIDATE_DURING_UPDATE");
+    if (known.exists(gtsam::symbol_shorthand::A(unknown))) throw std::invalid_argument("STATIC_CANDIDATE_ALREADY_KNOWN");
+    std::map<Pair, GaussianRangeSummary> summaries;
+    for (const auto& [id, block] : pending_) {
+      if (block.first != unknown && block.second != unknown) continue;
+      const auto other = block.first == unknown ? block.second : block.first;
+      if (!known.exists(gtsam::symbol_shorthand::A(other))) continue;
+      summaries[{std::min(block.first, block.second), std::max(block.first, block.second)}].add(block.range, block.variance);
+    }
+    return summaries;
+  }
+
   gtsam::FactorIndices stage(gtsam::NonlinearFactorGraph& graph, const gtsam::Values& known) {
     if (transaction_) throw std::logic_error("STATIC_GRAPH_UPDATE_ALREADY_STAGED");
     std::vector<StaticRangeBlock> ready;

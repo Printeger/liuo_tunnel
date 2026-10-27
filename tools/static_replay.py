@@ -1,6 +1,6 @@
 """Derive project-local static leaves from delivered synthetic raw exchanges.
 
-Only the audited rail simulator mapping is supported here. This never reads the
+Only explicitly audited synthetic physical-exchange mappings are supported here. This never reads the
 physical/global UWB log, anchor coordinates, or vehicle truth.
 """
 import hashlib
@@ -13,7 +13,7 @@ from rclpy.qos import QoSProfile, ReliabilityPolicy
 
 class StaticReplayPublisher:
     def __init__(self, node, source, run, registry, config):
-        if config.get("source_model") != "rail_sim_independent_exchange_v1":
+        if config.get("source_model") not in {"rail_sim_independent_exchange_v1", "road_sim_global_exchange_v1"}:
             raise ValueError("unsupported static source model")
         files = sorted((source / "export/capture/raw").glob("*.mcap"))
         if len(files) != 1:
@@ -50,9 +50,20 @@ class StaticReplayPublisher:
             first, second = sorted((a[1], b[1]))
             identity = (f'{self.config["source_identity"]}:{observation.source_session_id}:'
                         f'{observation.source_frame_seq}:{first}:{second}')
+            physical_source = a[1]
+            if self.config["source_model"] == "road_sim_global_exchange_v1":
+                if (observation.time_basis != 2 or not observation.source_hold_age_valid or
+                    not observation.source_local_time_valid or not observation.source_system_time_valid or
+                    observation.source_session_id != observation.reporter_id + 1 or observation.source_frame_seq == 0):
+                    raise ValueError("road source clock/physical provenance mismatch")
+                # road_scene uses one global physical index before any delivery.
+                # Reporter direction and driver restarts cannot create new leaves.
+                identity = (f'{self.config["source_identity"]}:road-exchange:'
+                            f'{observation.source_frame_seq}:{first}:{second}')
+                physical_source = first  # canonical endpoint of synthetic exchange
             leaf = StaticRangeLeaf()
             leaf.physical_id = identity
-            leaf.physical_source = a[1]
+            leaf.physical_source = physical_source
             leaf.acquisition_stamp = observation.source_frame_stamp
             leaf.acquisition_stamp_valid = True
             leaf.time_basis = "shared_simulation_clock"
@@ -77,6 +88,7 @@ class StaticReplayPublisher:
                 raise RuntimeError("static replay physical identity capacity")
 
     def close(self):
+        (self.run / "export/simulation").mkdir(parents=True, exist_ok=True)
         (self.run / "export/simulation/static_delivery.json").write_text(json.dumps({
             "records": self.count, "unique_physical_ids": sorted(self.identities),
             "strategy": "same-time derivation from delivered raw AA only",

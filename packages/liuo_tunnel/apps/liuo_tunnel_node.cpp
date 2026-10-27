@@ -1003,6 +1003,12 @@ private:
           } else continue;
           if (o.a_type==0) batch.oldest=std::min(batch.oldest,o.stamp);
         }
+        if (static_edges && use_aa) {
+          const auto summaries=static_edges->candidate_summaries(id,current);
+          log(id,"CANDIDATE_STATIC_EDGES",summaries.size(),static_edges->pending());
+          for (const auto& [pair,summary] : summaries)
+            batch.graph.emplace_shared<AnchorAnchorRangeFactor>(A(pair.first),A(pair.second),summary.mean,summary.sigma(),summary.scatter);
+        }
         for (const auto& entry : candidate_aa) {
           const auto& stats=entry.second;
           batch.graph.emplace_shared<AnchorAnchorRangeFactor>(A(entry.first.first),A(entry.first.second),stats.mean,stats.sigma(),stats.scatter);
@@ -1107,7 +1113,20 @@ private:
       const auto& stats=entry.second;
       additions.emplace_shared<AnchorAnchorRangeFactor>(A(entry.first.first),A(entry.first.second),stats.mean,stats.sigma(),stats.scatter);
     }
-    smoother->update(additions,new_values,{{A(id),t}},removed_installation);
+    const auto static_before=static_edges ? static_edges->fused() : 0;
+    if (static_edges && use_aa) {
+      auto ready=current; ready.insert(new_values);
+      const auto remove=static_edges->stage(additions,ready);
+      removed_installation.insert(removed_installation.end(),remove.begin(),remove.end());
+    }
+    try {
+      smoother->update(additions,new_values,{{A(id),t}},removed_installation);
+      if (static_edges && use_aa) static_edges->commit(smoother->getISAM2Result().newFactorsIndices);
+    } catch (...) { if (static_edges && use_aa) static_edges->abort(); throw; }
+    if (static_edges && use_aa) {
+      new_aa+=static_edges->fused()-static_before;
+      log(id,"STATIC_CANDIDATE_COMMITTED",static_edges->fused()-static_before,static_edges->factor_count());
+    }
     for (const auto& entry : pair_indices) {
       auto& summary=aa_summaries[entry.first]; summary.statistics=new_pairs.at(entry.first);
       summary.factor_index=smoother->getISAM2Result().newFactorsIndices.at(entry.second);

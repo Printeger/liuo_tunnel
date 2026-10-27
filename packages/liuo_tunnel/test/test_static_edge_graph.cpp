@@ -55,3 +55,37 @@ TEST(StaticEdgeGraph, UnknownEndpointsWaitThenOneFactorIsReplacedWithoutRepeated
   EXPECT_EQ(edges.fused(), 0u);
   EXPECT_EQ(edges.pending(), 2u);
 }
+
+TEST(StaticEdgeGraph, CandidateReadDoesNotAbsorbLeavesOrDuplicateMainGraphInformation) {
+  StaticEdgeGraph edges("network", "deployment", 16);
+  const StaticRangeBlock first{"network", "deployment", 4, 9, "p1", "independent-gaussian-v1", 10, .01};
+  const StaticRangeBlock second{"network", "deployment", 9, 4, "p2", "independent-gaussian-v1", 10.2, .01};
+  edges.offer({first, second});
+  gtsam::Values known;
+  known.insert(A(4), gtsam::Point3(0, 0, 0));
+  for (int i = 0; i < 1000; ++i) {
+    edges.offer({first});
+    const auto snapshot = edges.candidate_summaries(9, known);
+    ASSERT_EQ(snapshot.size(), 1u);
+    EXPECT_NEAR(snapshot.begin()->second.mean, 10.1, 1e-12);
+    EXPECT_NEAR(snapshot.begin()->second.sigma(), std::sqrt(.005), 1e-12);
+  }
+  EXPECT_EQ(edges.pending(), 2u);
+  EXPECT_EQ(edges.fused(), 0u);
+  EXPECT_TRUE(edges.candidate_summaries(7, known).empty());
+  known.insert(A(9), gtsam::Point3(10, 0, 0));
+  EXPECT_THROW(edges.candidate_summaries(9, known), std::invalid_argument);
+  gtsam::NonlinearFactorGraph graph;
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(A(4), known.at<gtsam::Point3>(A(4)), gtsam::noiseModel::Isotropic::Sigma(3, 1));
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(A(9), known.at<gtsam::Point3>(A(9)), gtsam::noiseModel::Isotropic::Sigma(3, 1));
+  const auto removed = edges.stage(graph, known);
+  gtsam::ISAM2 solver;
+  const auto result = solver.update(graph, known, removed);
+  edges.commit(result.newFactorsIndices);
+  EXPECT_EQ(edges.fused(), 2u);
+  EXPECT_EQ(edges.factor_count(), 1u);
+  EXPECT_EQ(edges.pending(), 0u);
+  gtsam::Values unknown_again;
+  unknown_again.insert(A(4), gtsam::Point3(0, 0, 0));
+  EXPECT_TRUE(edges.candidate_summaries(9, unknown_again).empty());
+}
