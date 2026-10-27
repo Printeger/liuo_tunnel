@@ -85,3 +85,22 @@ TEST(LocalInstallation, FloorAssociationUsesMeasuredSurfaceAndRejectsSubfloorBra
   EXPECT_NEAR(floor.signed_height(body.transformTo(gtsam::Point3(0, 5.52, 0))), 0, 1e-8);
   EXPECT_GT(floor.margin(body.transformTo(gtsam::Point3(10, 5.52, 0))), floor.margin(floor.center));
 }
+
+#include <liuo_tunnel/uwb/anchor_relative_candidate.hpp>
+TEST(AnchorRelativeCandidate, IndependentWorldGaugeChangesPreserveSameVehicleRelativeGeometry) {
+  const gtsam::Pose3 pose(gtsam::Rot3::RzRyRx(.2, -.1, .5), {15, 2, 1});
+  const gtsam::Point3 anchor(19, -3, 4);
+  const auto before = AnchorRelativeCandidate::from_joint(42, pose, anchor);
+  const gtsam::Pose3 gauge(gtsam::Rot3::RzRyRx(-.4, .2, 1.2), {100, -90, 50});
+  const auto after = AnchorRelativeCandidate::from_joint(42, gauge.compose(pose), gauge.transformFrom(anchor));
+  ASSERT_TRUE(before.displacement(after));
+  EXPECT_NEAR(*before.displacement(after), 0, 1e-12);
+  const auto moved = AnchorRelativeCandidate::from_joint(42, gauge.compose(pose), gauge.transformFrom(gtsam::Point3(anchor + pose.rotation().rotate(gtsam::Point3(.6, 0, 0)))));
+  EXPECT_NEAR(*before.displacement(moved), .6, 1e-12);
+  EXPECT_GT(*before.displacement(moved), .5);
+}
+TEST(AnchorRelativeCandidate, DifferentVehicleTimeCannotSupplyConsistencyEvidence) {
+  const auto first = AnchorRelativeCandidate::from_joint(42, gtsam::Pose3(), {1, 2, 3});
+  const auto other = AnchorRelativeCandidate::from_joint(43, gtsam::Pose3(), {1, 2, 3});
+  EXPECT_FALSE(first.displacement(other));
+}
