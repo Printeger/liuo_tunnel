@@ -131,6 +131,8 @@ def check(run):
     for topic, data, timestamp in itertools.chain([first], remaining()):
         if timestamp - start > round(identity['seconds'] * 1e9):
             break
+        if identity.get('end_exclusive', False) and timestamp - start >= round(identity['seconds'] * 1e9):
+            break
         if topic != '/liuo/uwb/observations':
             continue
         batch = deserialize_message(data, UwbObservationBatch)

@@ -140,3 +140,5 @@ free 模式每秒及 A 集合改变时，从实际图导出 `export/map/calibrat
 配置可显式声明 `BIND_FROZEN_INPUT_SHA256`，owner只在原始MCAP摘要核验后将其替换为确切sha256命名空间，保存到本run配置快照；旧固定摘要配置不自动替换。静态记录继续按S的原始物理来源session/sequence映射，绝不借驱动交付身份重生样本。生产审计按声明的S/L source_model选择物理身份合同，仍只读取已交付原始包。
 
 旧S录包含 `/sim/truth/odom`。S入口仅识别该额外话题名并排除，在第一次read_next前安装四个传感器话题的StorageFilter，不反序列化、不创建真值publisher；`sensor_access_boundary.json`记录可发布和排除话题。其他额外话题仍拒绝，L仍严格要求仅四个传感器话题。原包保持不变，离线真值检查与此访问边界分开。首个S接入191153因严格白名单发现此差异而失败，在输入发布前终止，保留失败记录。
+
+S片段按[start,start+seconds)半开交付区间截取，身份manifest明确end_exclusive；逐原始AA审计使用相同端点。191231的20秒首次回放误含恰好边界的第201帧snapshot，而该帧缺少后续IMU（生产队列要求latest_imu>scan_stamp），末帧消费检查失败。修复只排除边界上下一片段的消息，不改传感器时间、不放宽末帧检查；完整540秒原包本来就在半开区间。L帧末交付与末端IMU合同保持不变。

@@ -101,7 +101,8 @@ def main():
                 if path.is_absolute() and path.is_file(): libraries[str(path)] = digest(path)
         rd.write_subordinate_manifest(run, 'input_identity', dict(source_run=str(source), raw_sha256=sha,
             config_sha256=digest(config_path), binary_sha256=digest(binary), shared_libraries=libraries,
-            scene=args.scene, scan_model=scan_model, state_reference='frame_start' if scan_model == 'rolling' else 'snapshot_instant', rate=1., seconds=args.seconds))
+            scene=args.scene, scan_model=scan_model, state_reference='frame_start' if scan_model == 'rolling' else 'snapshot_instant',
+            end_exclusive=args.scene == 'straight', rate=1., seconds=args.seconds))
         installation = None
         if config['uwb'].get('local_installation', False):
             if args.installation is None: raise ValueError('local mode requires explicit installation metadata')
@@ -213,6 +214,7 @@ def main():
         for topic, data, timestamp in itertools.chain(prefix, remaining()):
             elapsed = (timestamp - first) * 1e-9
             if elapsed > args.seconds + 1e-8: break
+            if args.scene == 'straight' and timestamp-first >= round(args.seconds*1e9): break
             deadline = started + elapsed
             while time.monotonic() < deadline:
                 rclpy.spin_once(node, timeout_sec=min(.005, max(0., deadline-time.monotonic())))
