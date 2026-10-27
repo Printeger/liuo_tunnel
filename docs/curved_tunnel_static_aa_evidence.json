@@ -666,6 +666,23 @@
         "state": "LOST"
       },
       "limitation": "This replay finite candidates also had small world separation; initialization alone is not a controlled causal proof of the common-frame gate change."
+    },
+    "S_FINITE_TRIAL_110_FAILED": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T194432Z_323",
+      "source_commit": "681e4f9",
+      "requested_seconds": 110,
+      "stage_acceptance": "FAILED_FINITE_PATCH_LINEARIZATION",
+      "initialized_anchor_ids": [
+        1
+      ],
+      "initialization_stamp": 99.3,
+      "accepted_initial_TA": 192,
+      "failure": {
+        "measurement_stamp": 99.505,
+        "reason": "OPTIMIZATION_FAILED",
+        "detail": "LOCAL_INSTALLATION_OUTSIDE_OBSERVED_PATCH;linearization=1;along=495.749259"
+      },
+      "limitation": "Trial-cost protection does not prevent an invalid linearization reference. Root cause still under investigation; no accepted full calibration or reuse."
     }
   },
   "limitations": [

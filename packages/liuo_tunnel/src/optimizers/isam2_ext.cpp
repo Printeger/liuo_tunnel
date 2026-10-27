@@ -23,6 +23,8 @@
 #include <gtsam/base/timing.h>
 #include <gtsam/inference/BayesTree-inst.h>
 #include <gtsam/nonlinear/LinearContainerFactor.h>
+#include <gtsam/geometry/Pose3.h>
+#include <gtsam/inference/Symbol.h>
 
 #include <liuo_tunnel/optimizers/isam2_ext.hpp>
 #include <gtsam_points/optimizers/dogleg_optimizer_ext_impl.hpp>
@@ -466,90 +468,125 @@ ISAM2ResultExt ISAM2Ext::update(
 
 /* ************************************************************************* */
 ISAM2ResultExt ISAM2Ext::update(const NonlinearFactorGraph& newFactors, const Values& newTheta, const ISAM2UpdateParams& updateParams) {
-  gttic(ISAM2_update);
-  optimization_start_time = std::chrono::high_resolution_clock::now();
+  try {
+    gttic(ISAM2_update);
+    optimization_start_time = std::chrono::high_resolution_clock::now();
 
-  this->update_count_ += 1;
-  UpdateImpl::LogStartingUpdate(newFactors, *this);
-  ISAM2ResultExt result(params_.enableDetailedResults);
-  UpdateImpl update(params_, updateParams);
+    this->update_count_ += 1;
+    UpdateImpl::LogStartingUpdate(newFactors, *this);
+    ISAM2ResultExt result(params_.enableDetailedResults);
+    UpdateImpl update(params_, updateParams);
 
-  linearization_hook->clear_counts();
+    linearization_hook->clear_counts();
 
-  // Finish the OLD graph's delta before adding new keys: its Bayes tree,
-  // gradient and Newton step must describe the same variable set. Inserting
-  // newTheta first makes Dogleg's gradient and Newton vectors incompatible.
-  if (update.relinarizationNeeded(update_count_)) updateDelta(updateParams.forceFullSolve);
-  addVariables(newTheta, result.details());
+    // Finish the OLD graph's delta before adding new keys: its Bayes tree,
+    // gradient and Newton step must describe the same variable set. Inserting
+    // newTheta first makes Dogleg's gradient and Newton vectors incompatible.
+    if (update.relinarizationNeeded(update_count_)) updateDelta(updateParams.forceFullSolve);
+    addVariables(newTheta, result.details());
 
-  // 1. Add any new factors \Factors:=\Factors\cup\Factors'.
-  update.pushBackFactors(newFactors, &nonlinearFactors_, &linearFactors_, &variableIndex_, &result.newFactorsIndices, &result.keysWithRemovedFactors);
-  update.computeUnusedKeys(newFactors, variableIndex_, result.keysWithRemovedFactors, &result.unusedKeys);
+    // 1. Add any new factors \Factors:=\Factors\cup\Factors'.
+    update.pushBackFactors(newFactors, &nonlinearFactors_, &linearFactors_, &variableIndex_, &result.newFactorsIndices, &result.keysWithRemovedFactors);
+    update.computeUnusedKeys(newFactors, variableIndex_, result.keysWithRemovedFactors, &result.unusedKeys);
 
-  // 2. Compute new error to check for relinearization
-  if (params_.evaluateNonlinearError) {
-    auto estimate = calculateEstimate();
-    linearization_hook->clear();
-    linearization_hook->add(nonlinearFactors_);
-    linearization_hook->linearize(theta_);
-    linearization_hook->error(estimate);
+    // 2. Compute new error to check for relinearization
+    if (params_.evaluateNonlinearError) {
+      auto estimate = calculateEstimate();
+      linearization_hook->clear();
+      linearization_hook->add(nonlinearFactors_);
+      linearization_hook->linearize(theta_);
+      linearization_hook->error(estimate);
 
-    update.error(nonlinearFactors_, estimate, &result.errorBefore);
-  }
-
-  // 3. Mark linear update
-  update.gatherInvolvedKeys(newFactors, nonlinearFactors_, result.keysWithRemovedFactors, &result.markedKeys);
-  update.updateKeys(result.markedKeys, &result);
-
-  KeySet relinKeys;
-  result.variablesRelinearized = 0;
-  if (update.relinarizationNeeded(update_count_)) {
-    // 4. Mark keys in \Delta above threshold \beta:
-    relinKeys = update.gatherRelinearizeKeys(roots_, delta_, fixedVariables_, &result.markedKeys);
-    update.recordRelinearizeDetail(relinKeys, result.details());
-    if (!relinKeys.empty()) {
-      // 5. Mark cliques that involve marked variables \Theta_{J} and ancestors.
-      update.findFluid(roots_, relinKeys, &result.markedKeys, result.details());
-      // 6. Update linearization point for marked variables:
-      // \Theta_{J}:=\Theta_{J}+\Delta_{J}.
-      theta_.retractMasked(delta_, relinKeys);
+      update.error(nonlinearFactors_, estimate, &result.errorBefore);
     }
-    result.variablesRelinearized = result.markedKeys.size();
-  }
 
-  // 7. Linearize new factors
-  linearization_hook->clear();
-  linearization_hook->add(newFactors);
-  linearization_hook->linearize(theta_);
+    // 3. Mark linear update
+    update.gatherInvolvedKeys(newFactors, nonlinearFactors_, result.keysWithRemovedFactors, &result.markedKeys);
+    update.updateKeys(result.markedKeys, &result);
 
-  update.linearizeNewFactors(newFactors, theta_, nonlinearFactors_.size(), result.newFactorsIndices, &linearFactors_);
-  update.augmentVariableIndex(newFactors, result.newFactorsIndices, &variableIndex_);
+    KeySet relinKeys;
+    result.variablesRelinearized = 0;
+    if (update.relinarizationNeeded(update_count_)) {
+      // 4. Mark keys in \Delta above threshold \beta:
+      relinKeys = update.gatherRelinearizeKeys(roots_, delta_, fixedVariables_, &result.markedKeys);
+      update.recordRelinearizeDetail(relinKeys, result.details());
+      if (!relinKeys.empty()) {
+        // 5. Mark cliques that involve marked variables \Theta_{J} and ancestors.
+        update.findFluid(roots_, relinKeys, &result.markedKeys, result.details());
+        // 6. Update linearization point for marked variables:
+        // \Theta_{J}:=\Theta_{J}+\Delta_{J}.
+        theta_.retractMasked(delta_, relinKeys);
+      }
+      result.variablesRelinearized = result.markedKeys.size();
+    }
 
-  // 8. Redo top of Bayes tree and update data structures
-  recalculate(updateParams, relinKeys, &result);
-  if (!result.unusedKeys.empty()) removeVariables(result.unusedKeys);
-  result.cliques = this->nodes().size();
-
-  if (params_.evaluateNonlinearError) {
-    auto estimate = calculateEstimate();
+    // 7. Linearize new factors
     linearization_hook->clear();
-    linearization_hook->add(nonlinearFactors_);
+    linearization_hook->add(newFactors);
     linearization_hook->linearize(theta_);
-    linearization_hook->error(estimate);
 
-    update.error(nonlinearFactors_, estimate, &result.errorAfter);
+    update.linearizeNewFactors(newFactors, theta_, nonlinearFactors_.size(), result.newFactorsIndices, &linearFactors_);
+    update.augmentVariableIndex(newFactors, result.newFactorsIndices, &variableIndex_);
+
+    // 8. Redo top of Bayes tree and update data structures
+    recalculate(updateParams, relinKeys, &result);
+    if (!result.unusedKeys.empty()) removeVariables(result.unusedKeys);
+    result.cliques = this->nodes().size();
+
+    if (params_.evaluateNonlinearError) {
+      auto estimate = calculateEstimate();
+      linearization_hook->clear();
+      linearization_hook->add(nonlinearFactors_);
+      linearization_hook->linearize(theta_);
+      linearization_hook->error(estimate);
+
+      update.error(nonlinearFactors_, estimate, &result.errorAfter);
+    }
+
+    result.update_count = update_count_;
+    result.delta = delta_.norm();
+    result.gpu_evaluation_count = linearization_hook->evaluation_count();
+    result.gpu_linearization_count = linearization_hook->linearization_count();
+    result.elapsed_time = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - optimization_start_time).count() / 1e9;
+
+    result.num_factors = this->nonlinearFactors_.size();
+    result.num_values = this->theta_.size();
+
+    return result;
+  } catch (...) {
+    // Preserve the failing optimizer state, without calling calculateEstimate
+    // (which could optimize again) or altering recovery/acceptance behavior.
+    try {
+      auto* logs = RunLogManager::get_if_initialized();
+      if (logs) {
+        nlohmann::json record = {{"update", update_count_}, {"key_count", theta_.size()}, {"truncated", theta_.size() > 512}};
+        record["variables"] = nlohmann::json::array();
+        size_t saved = 0;
+        for (const auto key : theta_.keys()) {
+          if (saved++ == 512) break;
+          nlohmann::json row = {{"key", gtsam::DefaultKeyFormatter(key)}, {"fixed_linearization", fixedVariables_.exists(key)}};
+          const auto symbol = gtsam::Symbol(key).chr();
+          if (symbol == 'x') {
+            const auto pose = theta_.at<gtsam::Pose3>(key);
+            const auto q = pose.rotation().toQuaternion();
+            row["theta_translation"] = {pose.x(), pose.y(), pose.z()};
+            row["theta_quaternion_wxyz"] = {q.w(), q.x(), q.y(), q.z()};
+          } else if (symbol == 'a') {
+            const auto point = theta_.at<gtsam::Point3>(key);
+            row["theta_point"] = {point.x(), point.y(), point.z()};
+          }
+          if (delta_.exists(key)) {
+            const auto& delta = delta_.at(key);
+            row["delta"] = std::vector<double>(delta.data(), delta.data() + delta.size());
+          }
+          record["variables"].push_back(row);
+        }
+        std::ofstream(logs->profiling_path("optimizer_failure_state.json")) << record.dump(2) << std::endl;
+      }
+    } catch (...) { /* Keep the original failure. */
+    }
+    throw;
   }
-
-  result.update_count = update_count_;
-  result.delta = delta_.norm();
-  result.gpu_evaluation_count = linearization_hook->evaluation_count();
-  result.gpu_linearization_count = linearization_hook->linearization_count();
-  result.elapsed_time = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - optimization_start_time).count() / 1e9;
-
-  result.num_factors = this->nonlinearFactors_.size();
-  result.num_values = this->theta_.size();
-
-  return result;
 }
 
 /* ************************************************************************* */
