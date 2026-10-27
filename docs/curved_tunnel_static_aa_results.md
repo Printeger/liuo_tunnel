@@ -141,3 +141,9 @@ data-run -- tools/run.sh --formal --capture-only --duration 8 --config packages/
 # 在 tools/environment.sh 同等 ROS/消息环境下执行：
 data-run -- python3 tools/check_straight_reporter_delivery.py /home/dev/ws_iap/.runtime/0/liuo/20261027T162701Z_360 --reference /home/dev/ws_iap/.runtime/0/liuo/20261027T162639Z_700
 ```
+
+### 有限局部墙面生产诊断（实施中）
+
+基于上一项全 pending 的生产证据，新增不含全局 L 的 `LocalInstallationFactor(X,A)` 和有限观测域，合同见 `docs/spec/curved_tunnel_estimator_contract.md` C04 节。四个定向测试通过：body 墙面在旋转坐标下的中心/符号及范围检查、无半径输入的缓弯/强弯差异、右扰动/Anchor 导数有限差分（1e-7）、synthetic 元数据字段与来源拒绝。开发时先因缺模块失败，随后修复 GTSAM OptionalMatrixType 及显式 Point3 重载编译问题；未改变几何或数值判据。
+
+首个生产诊断预声明为 L 冻结包前 60 s，GPU、1×、原噪声，仅新增实际点云的有限局部约束和既有 synthetic 偏距；不读 Anchor 坐标/高度。观测与候选日志必须显示实际支持、分支及是否加入 A；A=0 仍为初始化未完成。该步骤不是完整 C04/C14 验收，也未实现 A-only 地图往返。

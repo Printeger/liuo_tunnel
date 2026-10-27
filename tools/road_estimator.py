@@ -28,6 +28,7 @@ def main():
     parser.add_argument('--source-run', type=Path, required=True)
     parser.add_argument('--config', type=Path, required=True)
     parser.add_argument('--seconds', type=float, default=20.)
+    parser.add_argument('--installation', type=Path, help='coordinate-free synthetic local offsets; never a coordinate map')
     args = parser.parse_args()
     if not 3 <= args.seconds <= 392.6:
         raise ValueError('replay duration must be in [3,392.6] seconds')
@@ -79,8 +80,16 @@ def main():
         rd.write_subordinate_manifest(run, 'input_identity', dict(source_run=str(source), raw_sha256=sha,
             config_sha256=digest(config_path), binary_sha256=digest(binary), shared_libraries=libraries,
             scan_model='rolling', state_reference='frame_start', rate=1., seconds=args.seconds))
+        installation = None
+        if config['uwb'].get('local_installation', False):
+            if args.installation is None: raise ValueError('local mode requires explicit installation metadata')
+            installation = run / 'metadata/config/local_installation.json'
+            shutil.copyfile(args.installation, installation)
+            rd.write_subordinate_manifest(run, 'local_installation_input', dict(source=str(args.installation), sha256=digest(installation)))
+        elif args.installation is not None: raise ValueError('installation input forbidden in nonlocal mode')
         commands = [[str(binary), '--ros-args', '-p', 'config_file:=' + str(config_path), '-p', 'use_sim_time:=true'],
                     [sys.executable, str(ROOT / 'tools/observe.py'), '--ros-args', '-p', 'use_sim_time:=true']]
+        if installation: commands[0] += ['-p', 'installation_file:=' + str(installation)]
         for name, command in zip(['odometry', 'observer'], commands):
             handle = (run / 'runtime' / (name + '.log')).open('w')
             handles.append(handle)

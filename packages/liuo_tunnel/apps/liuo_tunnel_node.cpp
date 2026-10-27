@@ -30,6 +30,8 @@
 #include <liuo_tunnel/uwb/lateral_initialization.hpp>
 #include <liuo_tunnel/uwb/installation_factors.hpp>
 #include <liuo_tunnel/uwb/body_wall_observation.hpp>
+#include <liuo_tunnel/uwb/local_installation.hpp>
+#include <liuo_tunnel/uwb/local_offset_input.hpp>
 #include <liuo_tunnel/uwb/measurement_queue.hpp>
 #include <gtsam_points/optimizers/levenberg_marquardt_ext.hpp>
 #include <liuo_tunnel/uwb/stepped_bootstrap_lm.hpp>
@@ -85,6 +87,8 @@ public:
     self_calibrate = cfg.at("uwb").at("mode") == "self_calibrate";
     free_calibrate = cfg.at("uwb").at("mode") == "self_calibrate_free";
     reuse_map = cfg.at("uwb").at("mode") == "reuse_map";
+    local_installation = cfg.at("uwb").value("local_installation", false);
+    if (local_installation && !free_calibrate) throw std::invalid_argument("LOCAL_INSTALLATION_REQUIRES_FREE_CALIBRATION");
     fuse = free_calibrate || self_calibrate || reuse_map || cfg.at("uwb").at("mode") == "fuse";
     bounded_bootstrap_work = free_calibrate || self_calibrate || reuse_map || cfg.at("uwb").value("bounded_bootstrap_work", false);
     if (fuse) {
@@ -96,12 +100,17 @@ public:
       try {
         const auto map_file = declare_parameter<std::string>("map_file", "");
         if (free_calibrate) {
-          if (!map_file.empty() || !declare_parameter<std::string>("installation_file", "").empty() ||
+          const auto installation_file = declare_parameter<std::string>("installation_file", "");
+          if (!map_file.empty() || (!local_installation && !installation_file.empty()) ||
               cfg.at("uwb").value("installation_factors", false) || cfg.at("uwb").value("continuous_installation_walls", false))
             throw std::invalid_argument("FREE_CALIBRATION_FORBIDS_MAP_OR_INSTALLATION_INPUT");
           for (const auto& item : cfg.at("uwb").at("input").at("nodes"))
             if (item.at("type").get<int>() == 1) free_anchor_ids.insert(item.at("internal_id").get<uint32_t>());
           if (free_anchor_ids.empty() || free_anchor_ids.size() > 18) throw std::invalid_argument("FREE_ANCHOR_REGISTRY_CAPACITY");
+          if (local_installation) {
+            local_offsets = SyntheticLocalOffsets::load(installation_file);
+            for (const auto& record : local_offsets->offsets) if (!free_anchor_ids.count(record.first)) throw std::invalid_argument("LOCAL_INSTALLATION_UNKNOWN_ID");
+          }
           map.mode = "self_calibrate_free"; map.id = "ONLINE_FREE_ANCHORS"; map.frame = "odom";
         } else if (self_calibrate) {
           if (!map_file.empty()) throw std::invalid_argument("SELF_CALIBRATION_FORBIDS_MAP_INPUT");
@@ -257,6 +266,7 @@ private:
     for (const auto& pending : pending_calibration_ranges) log_range(pending.observation, "CLOCK_RESET", pending.bracket);
     pending_calibration_ranges.clear();
     for (const auto& pending : extension_ranges) log_range(pending.observation,"CLOCK_RESET",pending.bracket);
+    local_patches.clear();
     extension_ranges.clear(); extension_batch.reset(); extension_previous.clear(); extension_last_attempt.clear();
     calibration_prepared = false;
     calibration_previous.reset();
@@ -875,6 +885,9 @@ private:
     if (!bootstrapped || extension_ranges.empty()) return;
     const double lag = cfg.at("odometry").at("lag_s");
     auto current = smoother->calculateEstimate();
+    for (auto it=local_patches.begin();it!=local_patches.end();) {
+      if (!current.exists(it->first)) it=local_patches.erase(it); else ++it;
+    }
     auto known = [&](uint32_t id) { return current.exists(A(id)); };
     auto usable = [&](const PendingCalibrationRange& p) {
       return p.observation.a_type == 1 || (p.observation.stamp >= t - lag &&
@@ -907,7 +920,36 @@ private:
         const auto id=entry.first;
         if (extension_last_attempt.count(id) && t-extension_last_attempt.at(id)<2.) continue;
         UnknownAnchorSeeds seeds;
-        if (free_calibrate) seeds = free_anchor_seeds(entry.second);
+        std::optional<LocalAnchorAssociation> local;
+        if (local_installation && local_offsets->offsets.count(id)) {
+          seeds.reason="LOCAL_PATCH_PENDING";
+          double closest=15.;
+          for (const auto& pending : extension_ranges) if (pending.observation.a_type==0 && pending.observation.b==id && pending.observation.range<closest) {
+            for (const auto& patch : local_patches) if (std::abs(patch.second.first-pending.observation.stamp)<=.05+1e-8 && patch.second.first>=t-lag/2) {
+              local=LocalAnchorAssociation{patch.first,patch.second.first,patch.second.second,local_offsets->offsets.at(id)};
+              closest=pending.observation.range;
+            }
+          }
+          if (local && entry.second.size()>=8) {
+            const auto& patch=local->observation;
+            const auto vertical=patch.normal.cross(patch.tangent).normalized().eval();
+            for (double fraction : {.15,.5,.85}) {
+              const double height=patch.minimum_height+fraction*(patch.maximum_height-patch.minimum_height);
+              gtsam::Point3 base=patch.normal*(patch.center_offset+local->offset);
+              base += vertical*((height-patch.up.dot(base))/patch.up.dot(vertical));
+              const auto difference=(base-tag).eval();
+              const double along=patch.tangent.dot(difference);
+              const double squared=closest*closest-difference.squaredNorm()+along*along;
+              if (squared<0) continue;
+              for (double sign : {-1.,1.}) {
+                const gtsam::Point3 point=base+patch.tangent*(-along+sign*std::sqrt(squared));
+                if (patch.supports(point)) seeds.points.push_back(current.at<gtsam::Pose3>(local->pose).transformFrom(point));
+              }
+            }
+            seeds.reason="LOCAL_PATCH_SPHERE_SEEDS";
+          }
+          if (!local) seeds.reason="LOCAL_PATCH_NOT_ASSOCIATED";
+        } else if (free_calibrate) seeds = free_anchor_seeds(entry.second);
         else {
           const auto row=std::distance(installation_input->ids.begin(),std::find(installation_input->ids.begin(),installation_input->ids.end(),id));
           seeds=unknown_anchor_seeds(entry.second,normal,line[1],installation_input->offsets[row]);
@@ -923,12 +965,14 @@ private:
         }
         extension_batch=std::make_unique<ExtensionBatch>();
         auto& batch=*extension_batch;
-        batch.id=id; batch.stamp=t; batch.oldest=t; batch.initial=current; batch.seeds=seeds.points;
+        batch.id=id; batch.stamp=t; batch.oldest=t; batch.initial=current; batch.seeds=seeds.points; batch.local=local;
+        if (local) batch.oldest=std::min(batch.oldest,local->stamp);
         const auto& old=smoother->getFactors();
         const size_t replaced=free_calibrate ? old.size() : installation_subset_index(old,map.ids);
         for (size_t i=0;i<old.size();++i) if (old[i] && i!=replaced) batch.graph.push_back(old[i]->clone());
         auto ids=map.ids; ids.push_back(id);
         if (!free_calibrate) batch.graph.add(joint_installation_factor(*installation_input,ids));
+        if (local) batch.graph.emplace_shared<LocalInstallationFactor>(local->pose,A(id),local->observation,local->offset);
         std::map<std::pair<uint32_t,uint32_t>,GaussianRangeSummary> candidate_aa;
         for (const auto& p : extension_ranges) {
           const auto& o=p.observation; const auto& b=p.bracket;
@@ -968,8 +1012,12 @@ private:
       if (batch.failure) std::rethrow_exception(batch.failure);
       if (!batch.optimizer->advance()) return;
       const auto solution=batch.optimizer->values().at<gtsam::Point3>(A(batch.id));
-      const double cost=batch.optimizer->error();
-      if (!solution.allFinite() || !std::isfinite(cost)) throw std::runtime_error("NONFINITE_ANCHOR_CANDIDATE");
+      double cost=batch.optimizer->error();
+      if (batch.local && !batch.local->observation.supports(batch.optimizer->values().at<gtsam::Pose3>(batch.local->pose).transformTo(solution))) {
+        log(batch.id,"CANDIDATE_OUTSIDE_OBSERVED_HEIGHT");
+        cost=std::numeric_limits<double>::infinity();
+      }
+      if (!solution.allFinite() || std::isnan(cost)) throw std::runtime_error("NONFINITE_ANCHOR_CANDIDATE");
       log(batch.id,"CANDIDATE_ITERATIONS",batch.optimizer->iterations(),cost);
       batch.solutions.push_back(solution); batch.costs.push_back(cost); batch.optimizer.reset();
       log(batch.id,"CANDIDATE_SOLVED",solution.z(),cost);
@@ -980,9 +1028,10 @@ private:
     if (batch.solutions.size()<batch.seeds.size()) return;
     const uint32_t id=batch.id;
     const size_t best=std::distance(batch.costs.begin(),std::min_element(batch.costs.begin(),batch.costs.end()));
+    if (!std::isfinite(batch.costs[best])) { log(id,"NO_VALID_LOCAL_HEIGHT_BRANCH"); extension_previous.erase(id); extension_batch.reset(); return; }
     const auto point=batch.solutions[best];
-    for (const auto& alternative : batch.solutions) if ((alternative-point).norm()>=.5) {
-      log(id,"UNRESOLVED_POSITION_BRANCH",(alternative-point).norm());
+    for (size_t i=0;i<batch.solutions.size();++i) if (std::isfinite(batch.costs[i]) && (batch.solutions[i]-point).norm()>=.5) {
+      log(id,"UNRESOLVED_POSITION_BRANCH",(batch.solutions[i]-point).norm());
       extension_previous.erase(id); extension_batch.reset(); return;
     }
     const bool stable=extension_previous.count(id) && (extension_previous.at(id)-point).norm()<.5;
@@ -995,6 +1044,7 @@ private:
     auto ids=map.ids; ids.push_back(id);
     gtsam::NonlinearFactorGraph additions;
     if (!free_calibrate) additions.add(joint_installation_factor(*installation_input,ids));
+    if (batch.local) additions.emplace_shared<LocalInstallationFactor>(batch.local->pose,A(id),batch.local->observation,batch.local->offset);
     gtsam::Values new_values; new_values.insert(A(id),point);
     std::map<std::pair<uint32_t,uint32_t>,GaussianRangeSummary> new_pairs;
     size_t accepted_ta=0,accepted_aa=0;
@@ -1253,6 +1303,7 @@ private:
     std::vector<Eigen::Vector4d> points;
     const double line_angle_scale = (self_calibrate || reuse_map || cfg.at("uwb").value("continuous_installation_walls", false)) ? 1000.0 : 1.0;
     const bool ongoing_walls = (bootstrapped || self_calibrate) && fuse && body_walls && cfg.at("uwb").value("continuous_installation_walls", false) && count % 10 == 0;
+    const bool collect_local_patch=local_installation && count%10==0;
     std::vector<gtsam::Vector3> wall_points;
     size_t raw_index = 0;
     float previous_point_time = -1;
@@ -1270,7 +1321,7 @@ private:
       Eigen::Vector3d q(*x, *y, *z);
       if (!q.allFinite()) continue;
       q = motion ? motion->point(q, *dt, T_BL) : T_BL * q;
-      if (dedicated_wall_point(ongoing_walls, raw_index)) {
+      if (dedicated_wall_point(ongoing_walls || collect_local_patch, raw_index)) {
         wall_points.push_back(q);
         continue;
       }
@@ -1446,6 +1497,21 @@ private:
         lidar.add(f);
         factors.add(f);
       }
+    }
+    if (collect_local_patch) {
+      std::ofstream audit(RunLogManager::instance().profiling_path("local_wall_patches.csv"),std::ios::app);
+      if (audit.tellp()==0) audit << "stamp,pose,event,points,width,center_offset,sigma,minimum_height,maximum_height,surface_model_error\n";
+      audit << std::setprecision(16) << t << ',' << count << ',';
+      try {
+        const auto observed=local_installation_observation(wall_points,state.pose().rotation(),state.pose().rotation().unrotate(state.velocity()),cfg.at("sensors").at("sigma_lidar_range"));
+        local_patches.insert_or_assign(X(count),std::make_pair(t,observed));
+        for (auto it=local_patches.begin();it!=local_patches.end();) {
+          if (it->second.first<t-cfg.at("odometry").at("lag_s").get<double>()) it=local_patches.erase(it); else ++it;
+        }
+        if (local_patches.size()>size_t(std::ceil(cfg.at("odometry").at("lag_s").get<double>()))+2) throw std::runtime_error("LOCAL_PATCH_CAPACITY");
+        audit << "OBSERVED," << wall_points.size() << ',' << observed.width << ',' << observed.center_offset << ',' << observed.sigma << ','
+              << observed.minimum_height << ',' << observed.maximum_height << ',' << observed.surface_model_error << '\n';
+      } catch (const std::invalid_argument& error) { audit << error.what() << ',' << wall_points.size() << ",,,,,,\n"; }
     }
     if (ongoing_walls) {
       failure_context = "CONTINUOUS_WALL_OBSERVATION_FAILED";
@@ -1964,7 +2030,10 @@ private:
   std::string backend, gpu_name;
   bool use_aa = false;
   std::set<uint32_t> free_anchor_ids;
-  bool free_calibrate = false;
+  bool free_calibrate = false, local_installation = false;
+  std::optional<SyntheticLocalOffsets> local_offsets;
+  std::map<gtsam::Key,std::pair<double,LocalInstallationObservation>> local_patches;
+  struct LocalAnchorAssociation { gtsam::Key pose; double stamp; LocalInstallationObservation observation; double offset; };
   bool fuse = false, bootstrapped = true, self_calibrate = false, calibration_prepared = false, reuse_map = false, bounded_bootstrap_work = false;
   std::optional<CalibratedMap> calibrated_map;
   size_t map_export_session = 0, map_export_anchor_count = 0;
@@ -1980,6 +2049,7 @@ private:
     gtsam::NonlinearFactorGraph graph;
     gtsam::Values initial;
     std::vector<gtsam::Point3> seeds, solutions;
+    std::optional<LocalAnchorAssociation> local;
     std::vector<double> costs;
     std::unique_ptr<SteppedBootstrapLM> optimizer;
     std::exception_ptr failure;
