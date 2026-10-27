@@ -352,3 +352,7 @@ data-run -- bash -c '
 不恢复 ring、不合成朝向、不去畸变。未来配置须显式使用秒时间单位、40 线、10 Hz、
 本场景单位外参及无朝向观测 IMU。旧适配器仍是 snapshot-only，旧配置外参不适用；
 本次不声称任何现有定位入口已支持此场景，亦不运行算法验证。
+
+已完成数据及S01–S12证据见[7 km场景制作结果](docs/road_tunnel_7km_scene_results.md)。
+完整数据保留于 `/home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968`；
+`tools/road_scene_acceptance.py` 可独立复核文件摘要、贴墙几何、UWB遮挡与噪声统计。
