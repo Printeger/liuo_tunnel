@@ -532,7 +532,7 @@
     }
   },
   "limitations": [
-    "Legacy S inputs lack reporter reachability. New full 540 s CAL input passed the independent gate audit; independent REUSE capture is running and not yet accepted.",
+    "Legacy S inputs lack reporter reachability. New full 540 s CAL and REUSE inputs passed coverage, reachability and independent noise checks; full ordinary S algorithm calibration is running.",
     "Legacy S calibration leaves four anchors uninitialized; full ordinary S calibration remains pending. L full CAL initialized only four anchors; vertical and branch ambiguity remain unresolved.",
     "Native S/L input seams and L independent posterior ledger are verified, but full dual-scene localization effectiveness, comparisons and required static-pair/fault/load evidence remain incomplete."
   ],
@@ -550,6 +550,17 @@
       "review": "standards and spec; duplicate pending TA and masked LOST fixed and rechecked",
       "independent_reuse_verified": true,
       "limitation": "Production attachment and exact posterior ledger verified; full-route localization effectiveness remains unverified"
+    },
+    "static_delivery_strategies": {
+      "state": "MESSAGE_TESTED_PRODUCTION_PAIR_PENDING",
+      "source_commit": "2c29438",
+      "tests": 3,
+      "strategies": [
+        "same_time",
+        "cache_sync",
+        "continuous_report"
+      ],
+      "scope": "unchanged frozen raw physical set; finite same-reporter delivery opportunities only"
     }
   },
   "inputs": {
@@ -611,6 +622,109 @@
         "max_physical_exchanges_per_second": 84,
         "maximum_independent_reporter_distance_error_m": 2.0119614418945275e-08,
         "bag_delivered_samples": 39960
+      },
+      "algorithm_acceptance": "NOT_ASSESSED"
+    },
+    "S_REUSE_FULL_INDEPENDENT": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T191449Z_257",
+      "source": {
+        "git_commit": "42d7270c671e354b5927963a8de506b10e7f3576",
+        "git_worktree_clean": true
+      },
+      "input_check": {
+        "result": "PASS_FULL_S_INDEPENDENT_INPUTS",
+        "scope": "ordinary S raw input only; no localization acceptance",
+        "first": {
+          "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933",
+          "seed": 0,
+          "raw_sha256": {
+            "export/capture/raw/raw_0.mcap": "8de5439e8e35ae747ee42842aa505b8ec5290548a70b4386b47c71df82ccdd7a"
+          },
+          "semantic_sha256": {
+            "imu": "b2320e602c000db59955473036e2b623ed8bfb98aa3bb88ede665572c2d7f532",
+            "cloud": "bb9a65a0a1cb806284f020d901d4c6b902e6f1ca1cfbde2e457ddf3d8866543e",
+            "uwb": "413ad19563426759f0bd295f00183e7e052618f3492716885ba2fcf762a5dd3c",
+            "clock": "66bb6e3bbcede3084b00aef9efb71b0c58e449ac23c54467980a2049572e79d1"
+          },
+          "simulation_binary_sha256": "de4b6a007f10e75b2e5687a75cd6f824270bfec55e5c226bfa6b483e272490a8",
+          "counts": {
+            "imu": 108000,
+            "cloud": 5400,
+            "uwb": 39960,
+            "clock": 108000
+          },
+          "start": [
+            0.0,
+            0.0,
+            1.2
+          ],
+          "end": [
+            2350.0,
+            0.0,
+            1.2
+          ],
+          "last_truth_stamp": 540.9
+        },
+        "second": {
+          "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T191449Z_257",
+          "seed": 1,
+          "raw_sha256": {
+            "export/capture/raw/raw_0.mcap": "1621fe02e414c14a788f5f1d8c73fb6d9779e4be41a48201a30f59c80e48e329"
+          },
+          "semantic_sha256": {
+            "imu": "2993f8d98a09e91dbdddc0343840980dc7de9f8ea9f2050723c65c4e27af6347",
+            "cloud": "95b79f97beac269aa4fee792801ceba33591e6c1c71b9c7d76355c31dd6cea04",
+            "uwb": "78f8eda1841fb60d7682c669e416ac2b3c1de44cfd6aed30bfaeb2447fa3d643",
+            "clock": "66bb6e3bbcede3084b00aef9efb71b0c58e449ac23c54467980a2049572e79d1"
+          },
+          "simulation_binary_sha256": "de4b6a007f10e75b2e5687a75cd6f824270bfec55e5c226bfa6b483e272490a8",
+          "counts": {
+            "imu": 108000,
+            "cloud": 5400,
+            "uwb": 39827,
+            "clock": 108000
+          },
+          "start": [
+            0.0,
+            0.2,
+            1.6
+          ],
+          "end": [
+            2350.0,
+            0.2,
+            1.6
+          ],
+          "last_truth_stamp": 540.9
+        },
+        "imu_white_noise_correlations": [
+          0.005091469005332747,
+          -0.00021168993447226786,
+          -0.00025702847082359443,
+          0.0018899074773954488,
+          0.004943835157868167,
+          -0.006648464930394037
+        ],
+        "uwb_noise_correlations": {
+          "0": {
+            "samples": 37876,
+            "correlation": -0.004832676456324376
+          },
+          "1": {
+            "samples": 3240,
+            "correlation": 0.02998416634068218
+          }
+        }
+      },
+      "delivery": {
+        "scope": "S ordinary reporter delivery and physical budget only",
+        "result": "PASS",
+        "physical_samples": 41268,
+        "physical_aa": 3240,
+        "aa_delivered": 1799,
+        "aa_blocked": 1441,
+        "max_physical_exchanges_per_second": 84,
+        "maximum_independent_reporter_distance_error_m": 2.011915967159439e-08,
+        "bag_delivered_samples": 39827
       },
       "algorithm_acceptance": "NOT_ASSESSED"
     }
