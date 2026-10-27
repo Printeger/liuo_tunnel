@@ -190,7 +190,7 @@ def main():
                 if case is None:
                     continue
                 message = case[1]
-            if kind == "uwb" and fixture is None:
+            if kind == "uwb" and fixture is None and not args.replay_declared_contract:
                 kept = []
                 elapsed = (record_ns - first_stamp) * 1e-9
                 for o in message.observations:
