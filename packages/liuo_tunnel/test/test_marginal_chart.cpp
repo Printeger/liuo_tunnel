@@ -11,17 +11,97 @@ namespace {
 // It is not installed in the estimator or used as a production pose prior.
 class RelativePoint : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Point3> {
 public:
-  RelativePoint(gtsam::Key x, gtsam::Key a) : NoiseModelFactor2(gtsam::noiseModel::Isotropic::Sigma(3, .1), x, a) {}
+  RelativePoint(gtsam::Key x, gtsam::Key a, const gtsam::Point3& target = gtsam::Point3(0, 2.8, 1))
+  : NoiseModelFactor2(gtsam::noiseModel::Isotropic::Sigma(3, .1), x, a),
+    target_(target) {}
   gtsam::Vector evaluateError(const gtsam::Pose3& x, const gtsam::Point3& a, gtsam::OptionalMatrixType Hx = nullptr, gtsam::OptionalMatrixType Ha = nullptr) const override {
     gtsam::Matrix36 X;
     gtsam::Matrix33 A;
     const auto p = x.transformTo(a, X, A);
     if (Hx) *Hx = X;
     if (Ha) *Ha = A;
-    return p - gtsam::Point3(0, 2.8, 1);
+    return p - target_;
   }
+
+private:
+  gtsam::Point3 target_;
 };
 }  // namespace
+
+TEST(MarginalChart, NewFiniteFactorUsesConsistentExistingPoseAndNewAnchorChart) {
+  using namespace gtsam;
+  const Key x = Symbol('x', 0), a = Symbol('a', 1);
+  ISAM2Params params;
+  params.relinearizeSkip = 1;
+  params.relinearizeThreshold = .05;
+  params.setOptimizationParams(ISAM2DoglegParams());
+  liuo_tunnel::solver::ISAM2Ext isam(params);
+  NonlinearFactorGraph initial;
+  initial.emplace_shared<PriorFactor<Pose3>>(x, Pose3(), noiseModel::Isotropic::Sigma(6, 100));
+  Values values;
+  values.insert(x, Pose3());
+  isam.update(initial, values);
+  NonlinearFactorGraph move;
+  move.emplace_shared<PriorFactor<Pose3>>(x, Pose3(Rot3(), Point3(.02, 0, 0)), noiseModel::Isotropic::Sigma(6, .01));
+  isam.update(move);
+  const auto current = isam.calculateEstimate().at<Pose3>(x);
+  ASSERT_NEAR(current.x(), .02, 1e-7);
+  ASSERT_NEAR(isam.getLinearizationPoint().at<Pose3>(x).x(), 0, 1e-10);
+  const Point3 local(9.99, 2.8, 1);
+  Values added;
+  added.insert(a, current.transformFrom(local));
+  liuo_tunnel::LocalInstallationObservation patch{};
+  patch.normal = Vector3::UnitY();
+  patch.tangent = Vector3::UnitX();
+  patch.up = Vector3::UnitZ();
+  patch.width = 6;
+  patch.sigma = .02;
+  NonlinearFactorGraph factors;
+  factors.emplace_shared<RelativePoint>(x, a, local);
+  factors.emplace_shared<liuo_tunnel::LocalInstallationFactor>(x, a, patch, 2.8);
+  ASSERT_NO_THROW(isam.update(factors, added));
+  const auto estimate = isam.calculateEstimate();
+  EXPECT_LT((estimate.at<Pose3>(x).transformTo(estimate.at<Point3>(a)) - local).norm(), 1e-6);
+  EXPECT_TRUE(std::isfinite(factors.error(estimate)));
+}
+
+TEST(MarginalChart, FiniteFactorEndpointsRelinearizeTogetherAtSupportBoundary) {
+  using namespace gtsam;
+  const Key x = Symbol('x', 0), a = Symbol('a', 1);
+  ISAM2Params params;
+  params.relinearizeSkip = 1;
+  FastMap<char, Vector> thresholds;
+  thresholds['x'] = Vector6::Constant(.01);
+  thresholds['a'] = Vector3::Constant(.05);
+  params.relinearizeThreshold = thresholds;
+  params.setOptimizationParams(ISAM2DoglegParams());
+  liuo_tunnel::solver::ISAM2Ext isam(params);
+  const Point3 local(9.99, 2.8, 1);
+  liuo_tunnel::LocalInstallationObservation patch{};
+  patch.normal = Vector3::UnitY();
+  patch.tangent = Vector3::UnitX();
+  patch.up = Vector3::UnitZ();
+  patch.width = 6;
+  patch.sigma = .02;
+  NonlinearFactorGraph graph;
+  graph.emplace_shared<PriorFactor<Pose3>>(x, Pose3(), noiseModel::Isotropic::Sigma(6, 100));
+  graph.emplace_shared<RelativePoint>(x, a, local);
+  graph.emplace_shared<liuo_tunnel::LocalInstallationFactor>(x, a, patch, 2.8);
+  Values values;
+  values.insert(x, Pose3());
+  values.insert(a, local);
+  isam.update(graph, values);
+  NonlinearFactorGraph move;
+  move.emplace_shared<PriorFactor<Pose3>>(x, Pose3(Rot3(), Point3(-.02, 0, 0)), noiseModel::Isotropic::Sigma(6, .01));
+  isam.update(move);
+  const auto before = isam.calculateEstimate();
+  ASSERT_NEAR(before.at<Pose3>(x).x(), -.02, 1e-7);
+  ASSERT_TRUE(std::isfinite(graph.error(before)));
+  ASSERT_NO_THROW(isam.update());
+  const auto estimate = isam.calculateEstimate();
+  EXPECT_LT((estimate.at<Pose3>(x).transformTo(estimate.at<Point3>(a)) - local).norm(), 1e-6);
+  EXPECT_TRUE(std::isfinite(graph.error(estimate)));
+}
 
 TEST(MarginalChart, FinitePatchSurvivesCommonMotionAfterAnchorMarginalization) {
   using namespace gtsam;

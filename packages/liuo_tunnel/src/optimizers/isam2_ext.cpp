@@ -28,6 +28,7 @@
 
 #include <liuo_tunnel/optimizers/isam2_ext.hpp>
 #include <liuo_tunnel/optimizers/manifold_marginal_factor.hpp>
+#include <liuo_tunnel/uwb/local_installation.hpp>
 #include <gtsam_points/optimizers/dogleg_optimizer_ext_impl.hpp>
 #include <gtsam_points/optimizers/linearization_hook.hpp>
 
@@ -478,12 +479,21 @@ ISAM2ResultExt ISAM2Ext::update(const NonlinearFactorGraph& newFactors, const Va
     ISAM2ResultExt result(params_.enableDetailedResults);
     UpdateImpl update(params_, updateParams);
 
+    // A newly inserted anchor is expressed at the current estimate, not at
+    // an old incident pose's theta. A finite-domain factor cannot linearize
+    // that mixed chart, even when the pose delta is below the usual threshold.
+    KeySet finite_new_keys;
+    for (const auto& factor : newFactors) {
+      if (factor && dynamic_cast<const LocalInstallationFactor*>(factor.get())) finite_new_keys.insert(factor->keys().begin(), factor->keys().end());
+    }
+    const bool relinearize = update.relinarizationNeeded(update_count_) || !finite_new_keys.empty();
+
     linearization_hook->clear_counts();
 
     // Finish the OLD graph's delta before adding new keys: its Bayes tree,
     // gradient and Newton step must describe the same variable set. Inserting
     // newTheta first makes Dogleg's gradient and Newton vectors incompatible.
-    if (update.relinarizationNeeded(update_count_)) updateDelta(updateParams.forceFullSolve);
+    if (relinearize) updateDelta(updateParams.forceFullSolve);
     addVariables(newTheta, result.details());
 
     // 1. Add any new factors \Factors:=\Factors\cup\Factors'.
@@ -507,9 +517,29 @@ ISAM2ResultExt ISAM2Ext::update(const NonlinearFactorGraph& newFactors, const Va
 
     KeySet relinKeys;
     result.variablesRelinearized = 0;
-    if (update.relinarizationNeeded(update_count_)) {
+    if (relinearize) {
       // 4. Mark keys in \Delta above threshold \beta:
       relinKeys = update.gatherRelinearizeKeys(roots_, delta_, fixedVariables_, &result.markedKeys);
+      relinKeys.insert(finite_new_keys.begin(), finite_new_keys.end());
+      // Close the selected set over finite-domain factors. Partial retraction
+      // of X/A can cross their support although the joint estimate is valid.
+      // This changes only linearization scheduling, never the support or cost.
+      bool expanded;
+      do {
+        expanded = false;
+        for (const auto& factor : nonlinearFactors_) {
+          if (!factor || !dynamic_cast<const LocalInstallationFactor*>(factor.get())) continue;
+          if (std::none_of(factor->keys().begin(), factor->keys().end(), [&](Key key) { return relinKeys.count(key); })) continue;
+          for (const auto key : factor->keys()) {
+            if (
+              fixedVariables_.exists(key) ||
+              (updateParams.noRelinKeys && std::find(updateParams.noRelinKeys->begin(), updateParams.noRelinKeys->end(), key) != updateParams.noRelinKeys->end()))
+              throw std::runtime_error("FINITE_DOMAIN_RELINEARIZATION_KEY_FIXED");
+            expanded = relinKeys.insert(key).second || expanded;
+          }
+        }
+      } while (expanded);
+      result.markedKeys.insert(relinKeys.begin(), relinKeys.end());
       update.recordRelinearizeDetail(relinKeys, result.details());
       if (!relinKeys.empty()) {
         // 5. Mark cliques that involve marked variables \Theta_{J} and ancestors.
