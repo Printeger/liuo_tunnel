@@ -1,0 +1,105 @@
+{
+  "schema": "road_tunnel_scene_v1",
+  "seed": 20261027,
+  "route_length_m": 7000,
+  "mesh_step_m": 1.0,
+  "lidar": {
+    "hz": 10,
+    "columns": 512,
+    "rings": 40,
+    "vertical_deg": [
+      -25,
+      25
+    ],
+    "range_m": 40,
+    "sigma_m": 0.02
+  },
+  "imu": {
+    "hz": 200,
+    "sigma_acc_sample": 0.02,
+    "sigma_gyro_sample": 0.001,
+    "sigma_ba_density": 0.001,
+    "sigma_bg_density": 0.0001,
+    "initial_acc_bias_sigma": 0.005,
+    "initial_gyro_bias_sigma": 0.001
+  },
+  "uwb": {
+    "range_m": 800,
+    "sigma_m": 0.1,
+    "ta_hz": 20,
+    "aa_hz": 1,
+    "report_hz": 5,
+    "budget_hz": 250,
+    "delivery_s": 0.012,
+    "assembly_s": 0.001,
+    "max_age_s": 1.2,
+    "queue_limit": 256,
+    "endpoint_tolerance_m": 0.002,
+    "antenna_inset_m": 0.08
+  },
+  "limits": {
+    "disk_reserve_bytes": 8589934592,
+    "wall_timeout_s": 7200
+  },
+  "tolerances": {
+    "route_position_m": 0.0001,
+    "mesh_surface_m": 0.005,
+    "finite_difference_acc_mps2": 0.002,
+    "finite_difference_omega_radps": 1e-05,
+    "speed_mps": 1e-05,
+    "acc_mps2": 1e-05,
+    "jerk_mps3": 1e-05,
+    "noiseless_restore_m": 0.005,
+    "clock_s": 1e-06,
+    "friction_coefficient": 0.6
+  },
+  "geometry_profile": {
+    "name": "symmetric_road_7km_v1",
+    "lane_width_m": 3.75,
+    "lateral_clearance_m": 0.75,
+    "walkway_m": 0.75,
+    "basic_clearance_width_m": 10.5,
+    "wall_half_width_m": 5.6,
+    "wall_spring_height_m": 5.2,
+    "crown_height_m": 7.2,
+    "grade": 0.005,
+    "crossfall": 0.02,
+    "radius_m": 3000,
+    "clothoid_m": 150,
+    "circular_m": 1200,
+    "bend_start_stations_m": [
+      1000,
+      4000
+    ],
+    "facility_source": "experimental; dimensions and explicit positions in exported facilities.json",
+    "crown_panels": 64
+  },
+  "vehicle_profile": {
+    "name": "continuous_chassis_offset_v1",
+    "lane_offset_m": -1.875,
+    "size_m": [
+      4.6,
+      1.8,
+      1.5
+    ],
+    "sensor_height_at_portal_m": 1.7,
+    "max_passive_height_change_m": 0.00421875,
+    "friction_coefficient": 0.6,
+    "speed_limit_mps": 22.22222222222222,
+    "acc_limits_mps2": [
+      -1.5,
+      1
+    ],
+    "jerk_limit_mps3": 0.5,
+    "holds_s": 5,
+    "speed_targets_kmh": [
+      60,
+      70,
+      80,
+      60,
+      70,
+      80,
+      0
+    ]
+  }
+}

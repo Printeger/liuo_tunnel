@@ -296,3 +296,59 @@ The default build/install/message underlay lives at
 which must remain on the data disk. The clean environment loads Jazzy, that
 message underlay and that target install. Existing historical bags are immutable;
 new replay rejects UwbRange bags with an instruction to use the historical version.
+
+## 7 km 道路场景：只生成数据，不运行定位
+
+新入口与旧 rail_sim、capture-only、baseline runner 分开。参数及预声明容差在
+`packages/liuo_tunnel_sim/road_scene/scene.json`，坐标、时间、安装偏距与信息隔离见
+[场景数据合同](docs/spec/road_tunnel_scene_data_contract.md)。依赖 ROS 2 Jazzy、现有只读
+`liuo_uwb_msgs` 安装，以及系统 NumPy/SciPy/Matplotlib；新增 mesh/Embree 依赖安装到数据盘。
+
+从本仓库执行（所有产物留在 `/home/dev/ws_iap`）：
+
+```bash
+data-run --check
+data-run -- timeout 180 tools/build_road_scene.sh
+# 独立几何、运动、网格收敛及接口夹具；开发时允许未提交源码
+data-run -- timeout 120 tools/road_scene.sh --check --allow-dirty
+# 高速短片段：原始 MCAP、200 Hz 真值、离线检查、图、C++ 无估计订阅检查
+data-run -- timeout 120 tools/road_scene.sh --start 180 --seconds 10 --allow-dirty
+# 全程生成/直接录包：要求工作树干净；不等待定位订阅者
+data-run -- timeout --signal=TERM --kill-after=20 7200 tools/road_scene.sh
+```
+
+每次输出一个 `LIUO_RUN_DIR`。唯一 owner 完成 manifest；失败记录不会被覆盖。
+`export/capture/raw/` 是可回放 MCAP，只有原始 LiDAR/IMU/UWB/clock；
+`export/simulation/` 的轨迹、站点、网格、设施是独立仿真真值。
+`metadata/config/installation_metadata.json` 只含身份、侧别和 synthetic 横向偏距定义。
+所有最终原始包和必要真值保留为后续实验输入。
+
+`export/analysis/` 包含路线平面/三维、断面、场景点云、运动、UWB 覆盖 PNG，以及
+`bag_audit.json`、`wire_check.json`、几何/运动检查和生成速率。点云图是明确标记的
+仿真真值可视化，不是发布给算法的点云。预览可直接打开这些文件。
+
+纯传感器回放/检查（无需读取 truth/config；将 RUN 改为实际目录）：
+
+```bash
+data-run -- bash -c '
+  source /opt/ros/jazzy/setup.bash
+  source /home/dev/ws_iap/uwb_ros2/install/setup.bash
+  export PYTHONDONTWRITEBYTECODE=1
+  export LIUO_RUN_DIR=/home/dev/ws_iap/.runtime/0/liuo/RUN
+  export ROS_LOG_DIR=$LIUO_RUN_DIR/runtime/ros
+  python3 tools/road_scene_io.py "$LIUO_RUN_DIR/export/capture/raw" \
+    --seconds 2 --cpp /home/dev/ws_iap/road_scene_build/road_scene_wire_check \
+    --report "$LIUO_RUN_DIR/export/analysis/wire_check_manual.json"
+'
+```
+
+常规 ROS 回放可在同样 data-run/ROS 环境运行
+`ros2 bag play "$LIUO_RUN_DIR/export/capture/raw" --rate 1.0`；原包已含 `/clock`，
+不要额外生成另一份时钟。可用 `ros2 bag record` 仅记录四个原始话题到该 run 的
+`export/capture/` 下新目录。不要启动任何旧定位 launch 来录制本场景。
+
+未来 FAST-LIO2 标准 PointCloud2 接口所需的 native `ring:uint16` 与 `time:float32`
+秒字段已经存在；`road_scene_io.native_fastlio_cloud` 只验证布局并原样传递，
+不恢复 ring、不合成朝向、不去畸变。未来配置须显式使用秒时间单位、40 线、10 Hz、
+本场景单位外参及无朝向观测 IMU。旧适配器仍是 snapshot-only，旧配置外参不适用；
+本次不声称任何现有定位入口已支持此场景，亦不运行算法验证。
