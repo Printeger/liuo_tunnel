@@ -157,13 +157,23 @@ def main():
         reader.open(rosbag2_py.StorageOptions(uri=str(bag), storage_id='mcap'), rosbag2_py.ConverterOptions('cdr', 'cdr'))
         kinds = {lidar_topic: 'cloud', '/sensors/imu': 'imu', '/liuo/uwb/observations': 'uwb', '/clock': 'clock'}
         publishers, types = {}, {}
+        excluded_topics = []
         for topic in reader.get_all_topics_and_types():
+            if args.scene == 'straight' and topic.name == '/sim/truth/odom':
+                excluded_topics.append(topic.name)
+                continue
             if topic.name not in kinds:
                 raise ValueError('non-sensor input forbidden: ' + topic.name)
             types[topic.name] = get_message(topic.type)
             publishers[topic.name] = node.create_publisher(types[topic.name], topic.name,
                 QoSProfile(depth=2048, reliability=ReliabilityPolicy.RELIABLE if topic.name == '/clock' else ReliabilityPolicy.BEST_EFFORT))
         if set(publishers) != set(kinds): raise ValueError('incomplete road sensor topics')
+        # Legacy S bags contain a recorded truth topic. The storage filter is
+        # installed before read_next: its messages are never decoded/published.
+        reader.set_filter(rosbag2_py.StorageFilter(topics=list(kinds)))
+        rd.write_subordinate_manifest(run, 'sensor_access_boundary', dict(
+            published_topics=sorted(kinds), excluded_source_topics=excluded_topics,
+            policy='storage-level sensor whitelist before any read_next; unknown extras rejected'))
         progress = [time.monotonic(), None]
         def odometry(message):
             progress[:] = [time.monotonic(), message.header.stamp.sec + 1e-9 * message.header.stamp.nanosec]

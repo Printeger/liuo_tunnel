@@ -138,3 +138,5 @@ free 模式每秒及 A 集合改变时，从实际图导出 `export/map/calibrat
 新A-only入口的S接入使用 `tools/road_estimator.sh --scene straight`，默认road行为保持；显式核对snapshot、`/sensors/lidar/points`、源capture-only成功和原始摘要、全部sensors/非单位外参相等，时长上限540秒。禁止将snapshot清零点时冒充rolling。S配置 `straight_local_static.json` / `straight_anchor_map_reuse.json` 沿用相同有界图设置，配 `straight_local_offsets.json` 的7个synthetic精确有符号偏距±2.8m；它们来自该合成场景的安装定义，只有ID/侧别/横向偏距，不含x、z、顺序或轴线控制点，不属于旧有噪声安装测量的等价实验。既有L墙面/地面观测和不确定度门限不改变，S能否初始化仍待实际证据。
 
 配置可显式声明 `BIND_FROZEN_INPUT_SHA256`，owner只在原始MCAP摘要核验后将其替换为确切sha256命名空间，保存到本run配置快照；旧固定摘要配置不自动替换。静态记录继续按S的原始物理来源session/sequence映射，绝不借驱动交付身份重生样本。生产审计按声明的S/L source_model选择物理身份合同，仍只读取已交付原始包。
+
+旧S录包含 `/sim/truth/odom`。S入口仅识别该额外话题名并排除，在第一次read_next前安装四个传感器话题的StorageFilter，不反序列化、不创建真值publisher；`sensor_access_boundary.json`记录可发布和排除话题。其他额外话题仍拒绝，L仍严格要求仅四个传感器话题。原包保持不变，离线真值检查与此访问边界分开。首个S接入191153因严格白名单发现此差异而失败，在输入发布前终止，保留失败记录。
