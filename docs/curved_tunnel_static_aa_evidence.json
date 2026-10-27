@@ -683,6 +683,22 @@
         "detail": "LOCAL_INSTALLATION_OUTSIDE_OBSERVED_PATCH;linearization=1;along=495.749259"
       },
       "limitation": "Trial-cost protection does not prevent an invalid linearization reference. Root cause still under investigation; no accepted full calibration or reuse."
+    },
+    "S_FINITE_CHART_DIAGNOSTIC_FAILED": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T195239Z_132",
+      "source_commit": "ba22f75",
+      "requested_seconds": 110,
+      "failure_stamp": 100.005,
+      "initialized_anchor_ids": [
+        1
+      ],
+      "initialization_stamp": 99.8,
+      "accepted_initial_TA": 193,
+      "failure_detail": "LOCAL_INSTALLATION_OUTSIDE_OBSERVED_PATCH;linearization=1;along=-28.267005",
+      "optimizer_state": "profiling/optimizer_failure_state.json",
+      "diagnostic": "export/analysis/finite_patch_chart_diagnostic.json",
+      "stage_acceptance": "FAILED",
+      "limitation": "Mixed fixed/relinearized chart evidence; not full accepted-state reconstruction. Exact failing factor association and optimizer regression remain to be established."
     }
   },
   "limitations": [
