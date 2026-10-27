@@ -1982,6 +1982,140 @@
         "rejected_batches": []
       },
       "result": "INPUT_VALID_NO_INITIALIZATION"
+    },
+    "L_STATIC_PAIR_150": {
+      "cache_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T212043Z_828",
+      "continuous_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T212350Z_070",
+      "source_commit": "dca32b7",
+      "algorithm_change": "836fa17",
+      "comparison": {
+        "result": "PASS_SAME_ABSORBED_AA_INFORMATION_DIFFERENT_TRAFFIC",
+        "scope": "actual posterior AA physical leaves and Gaussian scalar range sufficient statistics; not whole nonlinear trajectory equality or RF/MAC performance",
+        "runs": [
+          "/home/dev/ws_iap/.runtime/0/liuo/20261027T212043Z_828",
+          "/home/dev/ws_iap/.runtime/0/liuo/20261027T212350Z_070"
+        ],
+        "strategies": [
+          "cache_sync",
+          "continuous_report"
+        ],
+        "raw_sha256": "d146412b1e3e7a93939ff0809c44dd1baf31184070f7fcccf5de5ab678fffcfa",
+        "posterior_stamp": 150.0,
+        "absorbed_leaves": 413,
+        "edge_statistic_fields": [
+          "count",
+          "weight",
+          "weighted_range",
+          "weighted_squared_range"
+        ],
+        "edge_statistics": {
+          "5-18": [
+            85,
+            8500.0,
+            3401427.835083008,
+            1361142596.5714517
+          ],
+          "2-18": [
+            73,
+            7300.0,
+            2921066.8731689453,
+            1168853710.804538
+          ],
+          "3-16": [
+            188,
+            18800.0,
+            7522742.248535156,
+            3010194444.0401754
+          ],
+          "7-16": [
+            67,
+            6700.0,
+            2681396.2829589844,
+            1073117381.5867386
+          ]
+        },
+        "continuous_records": 6284,
+        "cache_records": 257,
+        "continuous_payload_bytes": 3644720,
+        "cache_payload_bytes": 149060,
+        "payload_reduction_fraction": 0.959102482495226
+      },
+      "cache_audit": {
+        "result": "PASS_INPUT_GRAPH_AND_EXACT_POSTERIOR_LEDGER",
+        "scope": "independent delivered records, prior lifecycle, exact posterior ledger and covariance; not localization acceptance",
+        "raw_sha256": "d146412b1e3e7a93939ff0809c44dd1baf31184070f7fcccf5de5ab678fffcfa",
+        "raw_records": 257,
+        "received_records": 257,
+        "unique_new_leaves": 257,
+        "inherited_map_leaves": 240,
+        "inherited_map_sha256": "3711dc38f5dc71f6d833aef417f0ab3cdbb201290ba0e255d0339a74ba05b73f",
+        "attachment_stamp": 140.7,
+        "known_anchor_ids": [
+          2,
+          3,
+          5,
+          7,
+          14,
+          15,
+          16,
+          18
+        ],
+        "final_fused_new_leaves": 174,
+        "final_pending_leaves": 83,
+        "explicit_edges": 3,
+        "eligible_new_leaves_by_edge": {
+          "7-16": 67,
+          "5-18": 13,
+          "3-16": 94
+        },
+        "map_frame_output_samples": 103,
+        "wire_frame_transition_checked": true,
+        "exact_reuse_posterior_ledger_exported": true,
+        "limitation": "Gaussian joint posterior and exact physical ledger checked; global initialization, accuracy and consistency not certified",
+        "posterior_stamp": 150.0,
+        "posterior_absorbed_old_leaves": 240,
+        "posterior_absorbed_new_leaves": 173,
+        "posterior_minimum_eigenvalue": 1.1813577451595435e-05
+      },
+      "continuous_audit": {
+        "result": "PASS_INPUT_GRAPH_AND_EXACT_POSTERIOR_LEDGER",
+        "scope": "independent delivered records, prior lifecycle, exact posterior ledger and covariance; not localization acceptance",
+        "raw_sha256": "d146412b1e3e7a93939ff0809c44dd1baf31184070f7fcccf5de5ab678fffcfa",
+        "raw_records": 257,
+        "received_records": 6284,
+        "unique_new_leaves": 257,
+        "inherited_map_leaves": 240,
+        "inherited_map_sha256": "3711dc38f5dc71f6d833aef417f0ab3cdbb201290ba0e255d0339a74ba05b73f",
+        "attachment_stamp": 81.7,
+        "known_anchor_ids": [
+          2,
+          3,
+          5,
+          7,
+          14,
+          15,
+          16,
+          18
+        ],
+        "final_fused_new_leaves": 174,
+        "final_pending_leaves": 83,
+        "explicit_edges": 3,
+        "eligible_new_leaves_by_edge": {
+          "7-16": 67,
+          "5-18": 13,
+          "3-16": 94
+        },
+        "map_frame_output_samples": 693,
+        "wire_frame_transition_checked": true,
+        "exact_reuse_posterior_ledger_exported": true,
+        "limitation": "Gaussian joint posterior and exact physical ledger checked; global initialization, accuracy and consistency not certified",
+        "posterior_stamp": 150.0,
+        "posterior_absorbed_old_leaves": 240,
+        "posterior_absorbed_new_leaves": 173,
+        "posterior_minimum_eigenvalue": 7.994609762905168e-06
+      },
+      "figure": "/home/dev/ws_iap/.runtime/0/liuo/20261027T212350Z_070/export/analysis/static_pair.png",
+      "stage_acceptance": "STATIC_INFORMATION_AND_SOFTWARE_TRAFFIC_ONLY"
     }
   },
   "limitations": [

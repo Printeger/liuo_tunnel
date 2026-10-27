@@ -64,6 +64,19 @@ def compare(first, second):
         continuous_payload_bytes=continuous['serialized_payload_bytes'],cache_payload_bytes=cached['serialized_payload_bytes'],
         payload_reduction_fraction=1-cached['serialized_payload_bytes']/continuous['serialized_payload_bytes'])
     (second/'export/analysis/static_pair.json').write_text(json.dumps(report,indent=2)+'\n')
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    fig,axes=plt.subplots(1,2,figsize=(10,4))
+    for ax,values,label in zip(axes,
+                              ([continuous['records'],cached['records']],
+                               [continuous['serialized_payload_bytes']/2**20,cached['serialized_payload_bytes']/2**20]),
+                              ('Published static records','Serialized payload (MiB)')):
+        bars=ax.bar(['Continuous report','Cache sync'],values,color=['tab:orange','tab:blue'])
+        ax.bar_label(bars,labels=[f'{v:,.3f}' if label.endswith('(MiB)') else str(v) for v in values],padding=3)
+        ax.set_ylabel(label);ax.set_ylim(0,max(values)*1.18);ax.grid(axis='y',alpha=.25)
+    fig.suptitle(f"Same {len(records0)} absorbed physical leaves at {models[0]['measurement_stamp']:g} s\nSoftware traffic only; no RF/MAC or trajectory-equivalence claim")
+    fig.tight_layout();fig.savefig(second/'export/analysis/static_pair.png',dpi=150);plt.close(fig)
     return report
 
 

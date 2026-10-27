@@ -450,3 +450,18 @@ L204511失败前160.1秒已开始移交A9，但尚未写JOINTLY_INITIALIZED，�
 `20261027T211614Z_498`绑定7fa8c70，算法836fa17，冻结S-CAL190229，straight_local_static.json/straight_local_offsets.json，110秒GPU1×完成：1100云/22000IMU/7080UWB/22000clock，1079输出3.1–110.9秒，墙钟109.995784秒。0A、无地图、350AA全部pending，静态检查INCOMPLETE_NO_EXPORTED_MAP返回非零。固定规范RMSE98.114507m，最大275.852415m，姿态0.366761deg、速度2.935023m/s；不称snapshot定位通过。
 
 候选终止日志9次预算停止、3次绝对cost变化停止；95.6秒批次最后在100.7秒SNAPSHOT_WINDOW_EXPIRED，不能将未完成批次记作已收敛镜像。95.5秒跨窗口相对变化19.889935m，末次完整有限批次未稳定。入口墙面观测9–13秒因LOCAL_WALL_PATCH_NOT_CONTIGUOUS拒绝，14秒才OBSERVED；这是当前完整对称支持要求的诊断事实，不表示已允许入口外推或放宽几何标准。
+
+
+### L STATIC-PAIR生产比较通过
+
+按预声明150秒执行cache_sync=`20261027T212043Z_828`、continuous_report=`20261027T212350Z_070`，均绑定dca32b7/实际算法836fa17，冻结输入182209与CAL201351地图相同。两组1500云/30001IMU/7979UWB/37980clock的语义hash逐项一致，GPU1×墙钟150.001159/150.000904秒，1479输出。命令采用road_anchor_map_reuse.json、同一--map/--installation、--seconds 150，仅--static-delivery-strategy不同。
+
+独立回调/精确账本均通过，原始257个独立AA叶全部交付；最终新174融合/83pending，150.0秒检查点旧240+新173=413叶完全相同，完整payload和逐边count/weight/weighted_range/weighted_squared_range相等。compare_static_delivery.py返回PASS_SAME_ABSORBED_AA_INFORMATION_DIFFERENT_TRAFFIC。连续组6284记录/3644720字节，缓存257记录/149060字节，序列化载荷减少95.910248%。物理测距计划未改变；不宣称RF/MAC节能。图和JSON在连续组export/analysis/static_pair.png/json。
+
+缓存组140.7秒接图、连续组81.7秒接图，初始化时刻明显不同；协方差和轨迹并不相同，本比较仅证明同一检查点实际AA叶及其标量高斯统计相同，不能证明整个非线性后验等价或定位有效。S STATIC-PAIR和60秒故障/负载矩阵仍未完成。
+
+### S入口原始点夹具
+
+新增extract_snapshot_patch_fixture.py只读取白名单snapshot点云和既有估计姿态/速度，核验冻结原包SHA，按原始索引每4点保留1点并应用已知T_BL；不读真值。local_patch_probe通过生产几何函数诊断，不作为独立验收。S211614的9秒扫描12795点、3199保留点（与生产日志相同），25m内3169点。每侧6个5m区间计数分别[0,0,257,798,148,39]和[0,0,261,801,145,37]；复现LOCAL_WALL_PATCH_NOT_CONTIGUOUS。地面沿向支持约[−1.011,16.580]/[−1.030,16.558]m，未使用Anchor坐标。
+
+夹具与诊断在S211614的export/analysis/snapshot_patch_9p000000.{csv,json}及_probe.json。姿态来自优化后的扫描输出，不是精确记录的在线更新前预测姿态，因此不冒称逐浮点复现。生产支持域尚未修改；后续研究必须限于实际观测覆盖，不能向洞外外推。
