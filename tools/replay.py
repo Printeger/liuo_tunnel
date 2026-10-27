@@ -21,6 +21,7 @@ import rosbag2_py
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--uwb-load-fixture", action="store_true")
     parser.add_argument("--uwb-contract-fixture", action="store_true")
     parser.add_argument("--source-run", type=Path, required=True)
     parser.add_argument("--delivery-profile", type=Path)
@@ -125,6 +126,10 @@ def main():
     if args.uwb_contract_fixture:
         from uwb_contract_fixture import cases
         fixture = iter(cases())
+    stream = itertools.chain(prefix, records())
+    if args.uwb_load_fixture:
+        from uwb_load_fixture import LoadFixture
+        stream = LoadFixture(source, run, source_topic).records(stream)
     first_stamp = None
     start_ns = None
     clock_session = 1
@@ -137,7 +142,7 @@ def main():
                                "measurement_stamp", "source_elapsed_s", "delivery_elapsed_s", "action", "base_range_m", "range_after_stress_m", "injected_bias_m"])
         clock_log.write("session,stamp,scheduled_wall_ns,published_wall_ns\n")
         for topic, data, record_ns, delivery_ns, action in scheduler.events(
-            itertools.chain(prefix, records())
+            stream
         ):
             if first_stamp is None:
                 first_stamp = record_ns
@@ -206,7 +211,7 @@ def main():
         "real_time_factor": duration / wall,
         "peak_rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
         "scan_model": "snapshot",
-        "input_mode": "software_contract_fixture" if fixture is not None else "frozen_replay",
+        "input_mode": "software_load_fixture" if args.uwb_load_fixture else ("software_contract_fixture" if fixture is not None else "frozen_replay"),
         "published_counts": counts,
         "delivered_sha256": {k: h.hexdigest() for k, h in hashes.items()},
         "duplicate_uwb": duplicates,
