@@ -1,5 +1,28 @@
 # LIUO Tunnel
 
+统一 UWB 接口使用 `liuo_uwb_msgs/msg/UwbObservationBatch`，默认
+`/liuo/uwb/observations`、best effort/volatile、depth 100。当前验收进展与失败见
+[接口统一结果](docs/uwb_observation_unification_results.md)，尚未宣布全部完成。
+
+```bash
+cd /home/dev/code/ws_tunnel/src/liuo_tunnel
+data-run --check
+data-run -- tools/build.sh
+data-run -- tools/test.sh
+# 默认 GPU 仿真；配置和产物由 owner 写到数据盘。
+data-run -- tools/run.sh --duration 6 --capture-only --capture --wall-timeout 60
+# 自定义 topic/depth 贯穿 simulator、生产节点、observer、capture/replay 和可视化。
+data-run -- tools/run.sh --duration 20 --uwb-topic /experiment/uwb --uwb-qos-depth 37
+# 首次未知基站建图：仅无坐标安装资料，显式开启 AA。
+data-run -- tools/run.sh --duration 360 --seed 0 --sim-start 200 0 1.2 0 --calibration-route --capture --config packages/liuo_tunnel/config/phase3_self_calibrate.json --installation packages/liuo_tunnel/config/installation/straight_simulated.json --use-aa --formal --wall-timeout 480
+# 用打印的首轮路径替换 FIRST_RUN；独立起点/朝向/噪声。
+data-run -- tools/run.sh --duration 360 --seed 1 --sim-start 220 .2 1.6 1.5707963267948966 --calibration-route --capture --config packages/liuo_tunnel/config/phase3_reuse_map.json --map FIRST_RUN/export/map/calibrated_map.json --use-aa --formal --wall-timeout 480
+```
+
+构建使用 `tools/environment.sh` 中的数据盘 build/install 和唯一消息 underlay。
+AA 默认仍关闭；`--use-aa` / `--no-use-aa` 仅显式覆盖当前运行配置。
+下面的旧报告和 log 路径属于历史证据；当前命令的输出不能写入源码树。
+
 TA 已作为基础能力，AA 默认关闭，可通过 `uwb.use_aa: true` 启用。[最新 TA-only 配对报告](docs/aa_optional_comparison.md)复用此前其他方法结果；新增无图运行存在漂移，有图初始化失败，包含完整图表和失败证据。
 
 最新空隧道入口启动对比（移除钢轨、枕木、柜体）：[FAST-LIO / 无图 / 有图的 APE、XYZ、三维轨迹与 RPY](docs/empty_tunnel_comparison.md)。主指标使用固定原始坐标约定，不拟合轨迹；保留初始化失败和有图漂移证据。
@@ -18,12 +41,12 @@ TA 已作为基础能力，AA 默认关闭，可通过 `uwb.use_aa: true` 启用
 
 ```bash
 cd /home/dev/code/ws_tunnel/src/liuo_tunnel
-./tools/build.sh
-./tools/test.sh
-./tools/run.sh --formal --duration 45 --seed 0
-./tools/run.sh --duration 20 --reset-at 10 --seed 0
-./tools/run.sh --duration 20 --inject-failure odometry
-python3 tools/evaluate.py log/<run_id>
+data-run -- tools/build.sh
+data-run -- tools/test.sh
+data-run -- tools/run.sh --formal --duration 45 --seed 0
+data-run -- tools/run.sh --duration 20 --reset-at 10 --seed 0
+data-run -- tools/run.sh --duration 20 --inject-failure odometry
+data-run -- python3 tools/evaluate.py /home/dev/ws_iap/.runtime/0/liuo/<run_id>
 ```
 
 Build/run wrappers discard inherited overlays, source `/opt/ros/jazzy`, and then load only this project's installation. Build scans only `packages/`. Dependencies: ROS 2 Jazzy, Eigen, PCL common, GTSAM, gtsam_points, spdlog, Boost filesystem, OpenMP. The required CUDA-enabled gtsam_points 1.2.1 uses public GPU binary matching factors and the extended incremental smoother. A working NVIDIA device/driver is required for the default configuration and GPU tests. Formal runs require GPU and requested rate 1.0; failures never switch to CPU. An explicit alternate configuration with odometry.backend=cpu is diagnostic only.

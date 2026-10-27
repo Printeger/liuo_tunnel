@@ -393,6 +393,12 @@ private:
       log_range(o, "RECORD_ONLY");
       return "RECORD_ONLY";
     }
+    // Pending observations may wait at most one lag on an advancing ROS clock.
+    // A mapped timestamp is not permission to retain arbitrarily distant data.
+    if (o.stamp > o.received + cfg.at("odometry").at("lag_s").get<double>()) {
+      log_range(o, "FUTURE_TIME_LIMIT");
+      return "FUTURE_TIME_LIMIT";
+    }
     if (o.a_type == 1 && o.b_type == 0) {
       std::swap(o.a_type, o.b_type);
       std::swap(o.a, o.b);

@@ -34,6 +34,14 @@ callback time is independently recorded. `uwb_batches.csv` preserves every batch
 as CDR hex plus callback time, batch identity, item count and batch-level reason.
 `uwb.csv` records per-item decisions, mapped endpoints, network and driver session.
 Callbacks validate and enqueue; the existing estimator update owns graph changes.
+`uwb_input_decisions.csv` records batch/item identity, logical endpoints, admission
+reason, queue/identity/retirement sizes, callback ROS and monotonic times, original
+received time and cumulative per-batch processing microseconds. `uwb.csv` records
+later consumption separately: admission is not fusion. In fused modes timestamps
+more than one configured `odometry.lag_s` ahead of callback ROS time are rejected
+as `FUTURE_TIME_LIMIT`; valid future records wait in the bounded queue. Association
+rejects expired TA rather than attaching it to the newest pose. ROS reset drains
+pending records with `CLOCK_RESET` and retires the dataset.
 
 ## Identity, resource bounds and AA
 
@@ -77,6 +85,25 @@ anchor outages filter individual entries. NLOS stress changes only float32
 It cannot set nonexistent message variance or propagation flags.
 
 Default QoS is best effort, volatile, keep last 100. The production node exposes
-`uwb_topic` and `uwb_qos_depth`; ROS remapping also applies. Tool-wide configurable
-topic/depth propagation and complete lifecycle/load integration remain subject to
-acceptance tests, not certified by this document.
+`uwb_topic` and `uwb_qos_depth`; ROS remapping also applies. The owner accepts `--uwb-topic` and `--uwb-qos-depth` (1–10000) and snapshots
+`uwb.transport` plus the effective commands. Simulator, estimator, observer,
+visualization, capture and replay use those values. Replay reads the source topic
+from its snapshot and publishes on the target topic; fault scheduling and readiness
+use the source/target mapping. Reliability remains best effort and durability
+volatile for every UWB endpoint. Depth does not guarantee lossless delivery.
+
+`--capture-derived` explicitly writes delivered replay messages into a new run's
+MCAP, retaining source hashes and transformation provenance. It never overwrites
+the source. Synthetic load and contract fixtures are named transformations, not
+unmodified frozen replay. Nominal evaluation failures for deliberately altered or
+malformed inputs remain preserved; separate predeclared audits cover those cases.
+
+The load fixture draws independent software Gaussian samples around interpolated
+captured geometric distances. Its 50 Hz local and 5 Hz remote schedules are solely
+software throughput inputs, separate from the original physical exchange schedule.
+The slow probe is an independent best-effort subscriber, not a stall inserted into
+the production callback. Actual received identities, loss and recovery are audited.
+`profiling/owner_resources.csv` samples owned processes from startup (including
+initialization); owner disk preflight/monitoring maintains a 2 GiB reserve.
+The observer retains up to 128 observed dataset IDs to audit rejected IDs beyond
+the production retirement limit; this does not enlarge production identity state.
