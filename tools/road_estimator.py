@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Owned 1x replay of native road sensor bags; no truth is read by this runner."""
+"""Owned 1x replay of native S/L sensor bags; no truth is read by this runner."""
 import argparse
 import csv
 import hashlib
@@ -28,15 +28,17 @@ def main():
     parser.add_argument('--source-run', type=Path, required=True)
     parser.add_argument('--config', type=Path, required=True)
     parser.add_argument('--seconds', type=float, default=20.)
+    parser.add_argument('--scene', choices=['road', 'straight'], default='road', help='explicit frozen input contract; no scan-model conversion')
     parser.add_argument('--map', type=Path, help='previous independent run A-only joint map')
     parser.add_argument('--installation', type=Path, help='coordinate-free synthetic local offsets; never a coordinate map')
     args = parser.parse_args()
-    if not 3 <= args.seconds <= 392.6:
-        raise ValueError('replay duration must be in [3,392.6] seconds')
+    limit = 392.6 if args.scene == 'road' else 540.
+    if not 3 <= args.seconds <= limit:
+        raise ValueError(f'replay duration must be in [3,{limit}] seconds')
     if rd._git_value('status', '--porcelain'):
         raise RuntimeError('commit changes before production replay')
     source = args.source_run.resolve(strict=True)
-    run = rd.resolve_run_directory(entrypoint='road_estimator', scenario='road_tunnel_7km')
+    run = rd.resolve_run_directory(entrypoint='road_estimator', scenario='road_tunnel_7km' if args.scene == 'road' else 'empty_tunnel_straight_v2')
     print(run, flush=True)
     manifest = run / 'metadata/run_manifest.json'
     meta = json.loads(manifest.read_text())
@@ -52,20 +54,38 @@ def main():
             raise RuntimeError('disk reserve below 8 GiB')
         config_path = run / 'metadata/config/phase1.json'
         shutil.copyfile(args.config, config_path)
-        rd.register_config_snapshot(run, config_path)
         config = json.loads(config_path.read_text())
         if config['odometry']['backend'] != 'gpu' or config['uwb']['mode'] not in {'record_only', 'self_calibrate_free', 'reuse_anchor_map'}:
             raise ValueError('road diagnostic requires GPU record_only, self_calibrate_free or reuse_anchor_map')
-        if config['scan_model'] != 'rolling':
-            raise ValueError('native road bag must retain rolling scan model')
+        scan_model = 'rolling' if args.scene == 'road' else 'snapshot'
+        lidar_topic = '/sensors/lidar' if args.scene == 'road' else '/sensors/lidar/points'
+        if config['scan_model'] != scan_model or config['sensors'].get('lidar_topic', '/sensors/lidar/points') != lidar_topic:
+            raise ValueError('native scene scan model/topic mismatch')
         bag = source / 'export/capture/raw'
         files = list(bag.glob('*.mcap'))
         if len(files) != 1:
             raise ValueError('expected one frozen road MCAP')
-        source_artifacts = json.loads((source / 'metadata/manifests/scene_artifacts.json').read_text())['files']
         sha = digest(files[0])
-        if sha != source_artifacts[str(files[0].relative_to(source))]['sha256']:
-            raise RuntimeError('frozen road MCAP content mismatch')
+        relative = str(files[0].relative_to(source))
+        if args.scene == 'road':
+            source_artifacts = json.loads((source / 'metadata/manifests/scene_artifacts.json').read_text())['files']
+            expected_sha = source_artifacts[relative]['sha256']
+        else:
+            source_config = json.loads((source / 'metadata/config/phase1.json').read_text())
+            source_status = json.loads((source / 'metadata/manifests/capture_only_result.json').read_text())
+            source_runtime = json.loads((source / 'export/simulation/runtime.json').read_text())
+            source_manifest = json.loads((source / 'metadata/run_manifest.json').read_text())
+            if (source_manifest['lifecycle'] != 'completed' or not source_status['raw_input_valid'] or
+                source_status['localization'] != 'NOT_RUN' or source_config['scan_model'] != scan_model or
+                config['sensors'] != source_config['sensors'] or args.seconds > source_runtime['simulation_s']):
+                raise ValueError('frozen straight capture lifecycle/sensor/duration mismatch')
+            expected_sha = json.loads((source / 'metadata/manifests/captured_inputs.json').read_text())[relative]
+        if sha != expected_sha:
+            raise RuntimeError('frozen MCAP content mismatch')
+        if config['uwb'].get('static_edges', {}).get('source_identity') == 'BIND_FROZEN_INPUT_SHA256':
+            config['uwb']['static_edges']['source_identity'] = 'sha256:' + sha
+            config_path.write_text(json.dumps(config, indent=2)+'\n')
+        rd.register_config_snapshot(run, config_path)
         env = os.environ.copy()
         env.update(LIUO_RUN_DIR=str(run), ROS_DOMAIN_ID=str(30 + os.getpid() % 180), ROS_LOG_DIR=str(run / 'runtime/ros'), ROS_LOCALHOST_ONLY='1')
         os.environ.update({k: env[k] for k in ['LIUO_RUN_DIR', 'ROS_DOMAIN_ID', 'ROS_LOG_DIR', 'ROS_LOCALHOST_ONLY']})
@@ -81,7 +101,7 @@ def main():
                 if path.is_absolute() and path.is_file(): libraries[str(path)] = digest(path)
         rd.write_subordinate_manifest(run, 'input_identity', dict(source_run=str(source), raw_sha256=sha,
             config_sha256=digest(config_path), binary_sha256=digest(binary), shared_libraries=libraries,
-            scan_model='rolling', state_reference='frame_start', rate=1., seconds=args.seconds))
+            scene=args.scene, scan_model=scan_model, state_reference='frame_start' if scan_model == 'rolling' else 'snapshot_instant', rate=1., seconds=args.seconds))
         installation = None
         if config['uwb'].get('local_installation', False):
             if args.installation is None: raise ValueError('local mode requires explicit installation metadata')
@@ -135,7 +155,7 @@ def main():
         node = rclpy.create_node('road_sensor_replay')
         reader = rosbag2_py.SequentialReader()
         reader.open(rosbag2_py.StorageOptions(uri=str(bag), storage_id='mcap'), rosbag2_py.ConverterOptions('cdr', 'cdr'))
-        kinds = {'/sensors/lidar': 'cloud', '/sensors/imu': 'imu', '/liuo/uwb/observations': 'uwb', '/clock': 'clock'}
+        kinds = {lidar_topic: 'cloud', '/sensors/imu': 'imu', '/liuo/uwb/observations': 'uwb', '/clock': 'clock'}
         publishers, types = {}, {}
         for topic in reader.get_all_topics_and_types():
             if topic.name not in kinds:
@@ -213,11 +233,11 @@ def main():
         if not trajectory or abs(float(trajectory[-1]['stamp']) - cloud_stamps[-1]) > 1e-6:
             raise RuntimeError('estimator did not consume final scan')
         if (run / 'runtime/odometry_failure.json').exists(): raise RuntimeError('estimator failure artifact')
-        report = dict(scope='native rolling GPU input/output contract, not localization or map acceptance',
+        report = dict(scope=f'native {scan_model} GPU input/output contract, not localization or map acceptance',
                       result='PASS', raw_counts=counts, raw_sha256=expected_hashes, output_count=len(trajectory),
                       first_output=float(trajectory[0]['stamp']), last_output=float(trajectory[-1]['stamp']), source_run=str(source),
                       publish_wall_s=publish_wall_s, real_time_factor=args.seconds / publish_wall_s)
-        rd._atomic_write_json(run / 'export/analysis/rolling_smoke.json', report)
+        rd._atomic_write_json(run / f'export/analysis/{scan_model}_smoke.json', report)
         print(json.dumps(report, indent=2), flush=True)
         lifecycle = 'completed'
     except BaseException as error:

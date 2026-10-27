@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Independently compare delivered road AA, received records and absorbed leaves."""
+"""Independently compare delivered synthetic S/L AA, received records and absorbed leaves."""
 import argparse
 import csv
 import hashlib
@@ -116,6 +116,8 @@ def check(run):
     assert digest == identity['raw_sha256']
     namespace = 'sha256:' + digest
     assert config['uwb']['static_edges']['source_identity'] == namespace
+    source_model = config['uwb']['static_edges']['source_model']
+    assert source_model in ('road_sim_global_exchange_v1', 'rail_sim_independent_exchange_v1')
     registry = {int(n['logical_id']): (int(n['type']), int(n['internal_id'])) for n in config['uwb']['input']['nodes']}
     reader = rosbag2_py.SequentialReader()
     reader.open(rosbag2_py.StorageOptions(uri=str(source / 'export/capture/raw'), storage_id='mcap'), rosbag2_py.ConverterOptions('cdr', 'cdr'))
@@ -139,7 +141,12 @@ def check(run):
             assert registry[observation.node_a][0] == registry[observation.node_b][0] == 1
             pair = sorted([registry[observation.node_a][1], registry[observation.node_b][1]])
             key = f'{namespace}:road-exchange:{observation.source_frame_seq}:{pair[0]}:{pair[1]}'
+            physical_source = pair[0]
+            if source_model == 'rail_sim_independent_exchange_v1':
+                key = f'{namespace}:{observation.source_session_id}:{observation.source_frame_seq}:{pair[0]}:{pair[1]}'
+                physical_source = registry[observation.node_a][1]
             value = dict(pair=pair, range=observation.distance_m,
+                         physical_source=physical_source,
                          acquired=observation.source_frame_stamp.sec * 10**9 + observation.source_frame_stamp.nanosec)
             if key in expected:
                 assert expected[key] == value
@@ -157,7 +164,7 @@ def check(run):
         assert message.covered_blocks == [leaf.physical_id]
         expected_leaf = expected[leaf.physical_id]
         assert [message.first, message.second] == expected_leaf['pair']
-        assert leaf.physical_source == message.first and leaf.range_m == expected_leaf['range']
+        assert leaf.physical_source == expected_leaf['physical_source'] and leaf.range_m == expected_leaf['range']
         assert leaf.acquisition_stamp_valid and leaf.time_basis == 'shared_simulation_clock'
         assert leaf.acquisition_stamp.sec * 10**9 + leaf.acquisition_stamp.nanosec == expected_leaf['acquired']
         assert leaf.variance_m2 == .01

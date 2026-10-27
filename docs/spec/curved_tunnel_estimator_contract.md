@@ -134,3 +134,7 @@ free 模式每秒及 A 集合改变时，从实际图导出 `export/map/calibrat
 场景参数仅在生成器和离线检查端使用，不作为估计器初值或高度观测。分别保存新owner/raw/真值/源版本与摘要，保留旧360秒包为历史回归。正式生成维持1×和原计时，不与GPU正式估计回放重叠。接收/录包完整性按现有capture-only合同检查；另独立核对全程起止、运动覆盖、三类传感器摘要和seed/随机流及报告者可达性。噪声独立检查在各自真值/姿态/偏置扣除后，跨轮白噪声相关绝对值门限0.05；不能因不同起点/朝向造成的信号差异直接宣布噪声独立。此声明不表示普通S未知Anchor初始化或地图复用已经通过。
 
 离线 `check_straight_inputs.py` 不导入模拟器：以保存的p/v做Hermite插值求加速度，独立Python计数器重建声明的bias随机游走，再从实际接收IMU扣除。对重建白噪声与声明计数器样本核对，插值加速度误差门限0.002m/s²、角速度误差1e−10rad/s；这项是合成源语义检查，不是独立物理模型证明。随后对实际残差计算两轮相关。UWB按端点/物理样本序号匹配共同样本，分别检查TA与AA（各>1000样本），不以交付session不同证明独立。原始包和接收CSV摘要全部重算；该程序不能替代单独报告者LOS检查。
+
+新A-only入口的S接入使用 `tools/road_estimator.sh --scene straight`，默认road行为保持；显式核对snapshot、`/sensors/lidar/points`、源capture-only成功和原始摘要、全部sensors/非单位外参相等，时长上限540秒。禁止将snapshot清零点时冒充rolling。S配置 `straight_local_static.json` / `straight_anchor_map_reuse.json` 沿用相同有界图设置，配 `straight_local_offsets.json` 的7个synthetic精确有符号偏距±2.8m；它们来自该合成场景的安装定义，只有ID/侧别/横向偏距，不含x、z、顺序或轴线控制点，不属于旧有噪声安装测量的等价实验。既有L墙面/地面观测和不确定度门限不改变，S能否初始化仍待实际证据。
+
+配置可显式声明 `BIND_FROZEN_INPUT_SHA256`，owner只在原始MCAP摘要核验后将其替换为确切sha256命名空间，保存到本run配置快照；旧固定摘要配置不自动替换。静态记录继续按S的原始物理来源session/sequence映射，绝不借驱动交付身份重生样本。生产审计按声明的S/L source_model选择物理身份合同，仍只读取已交付原始包。

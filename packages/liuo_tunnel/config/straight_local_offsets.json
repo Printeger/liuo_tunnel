@@ -1,0 +1,41 @@
+{
+  "source": "exact synthetic relation; not field calibrated; no covariance or algorithm prior",
+  "definition": "horizontal signed normal offset from design axis to antenna phase center, metres; valid ordinary wall band",
+  "anchors": [
+    {
+      "id": 0,
+      "side": "left",
+      "lateral_offset_m": 2.8
+    },
+    {
+      "id": 1,
+      "side": "right",
+      "lateral_offset_m": -2.8
+    },
+    {
+      "id": 2,
+      "side": "right",
+      "lateral_offset_m": -2.8
+    },
+    {
+      "id": 3,
+      "side": "left",
+      "lateral_offset_m": 2.8
+    },
+    {
+      "id": 4,
+      "side": "left",
+      "lateral_offset_m": 2.8
+    },
+    {
+      "id": 5,
+      "side": "right",
+      "lateral_offset_m": -2.8
+    },
+    {
+      "id": 6,
+      "side": "right",
+      "lateral_offset_m": -2.8
+    }
+  ]
+}
