@@ -99,6 +99,24 @@ inline LocalInstallationObservation local_installation_observation(
 }
 class LocalInstallationFactor : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Point3> {
 public:
+  struct LongitudinalDomain {
+    double position, lower, upper;
+    gtsam::Matrix pose_jacobian, anchor_jacobian;
+  };
+  LongitudinalDomain linearized_domain(const gtsam::Values& values) const {
+    const auto& floor = observed_.floors[offset_ >= 0 ? 1 : 0];
+    if (!floor.longitudinal_axis.isApprox(observed_.tangent, 1e-12)) throw std::invalid_argument("LOCAL_FLOOR_DOMAIN_AXIS_MISMATCH");
+    gtsam::Matrix36 Px;
+    gtsam::Matrix33 Pa;
+    const auto local = values.at<gtsam::Pose3>(key1()).transformTo(values.at<gtsam::Point3>(key2()), Px, Pa);
+    if (!supports_longitudinal(local)) throw std::domain_error("LOCAL_DOMAIN_LINEARIZATION_OUTSIDE_SUPPORT");
+    return {
+      observed_.tangent.dot(local),
+      std::max(observed_.minimum_longitudinal, floor.minimum_longitudinal),
+      std::min(observed_.maximum_longitudinal, floor.maximum_longitudinal),
+      observed_.tangent.transpose() * Px,
+      observed_.tangent.transpose() * Pa};
+  }
   LocalInstallationFactor(gtsam::Key pose, gtsam::Key anchor, const LocalInstallationObservation& observed, double signed_offset)
   : NoiseModelFactor2(gtsam::noiseModel::Isotropic::Sigma(1, observed.sigma), pose, anchor),
     observed_(observed),

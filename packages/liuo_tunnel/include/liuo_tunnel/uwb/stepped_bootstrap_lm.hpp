@@ -4,6 +4,7 @@
 #include <fstream>
 #include <gtsam/nonlinear/internal/NonlinearOptimizerState.h>
 #include <gtsam_points/optimizers/linearization_hook.hpp>
+#include <liuo_tunnel/optimizers/finite_domain_solver.hpp>
 namespace liuo_tunnel {
 // Same convergence policy as gtsam_points 1.2.1 optimize(), exposed one outer
 // iteration at a time. Derived from the MIT/BSD implementation credited in
@@ -11,7 +12,8 @@ namespace liuo_tunnel {
 class SteppedBootstrapLM : public gtsam_points::LevenbergMarquardtOptimizerExt {
 public:
   SteppedBootstrapLM(const gtsam::NonlinearFactorGraph& graph, const gtsam::Values& initial, const gtsam_points::LevenbergMarquardtExtParams& params, bool single_trial = false)
-  : LevenbergMarquardtOptimizerExt(graph, initial, params), single_trial_(single_trial) {
+  : LevenbergMarquardtOptimizerExt(graph, initial, finite_domain_parameters(graph, params)),
+    single_trial_(single_trial) {
     optimization_start_time_ = std::chrono::high_resolution_clock::now();
     initTime();
   }
@@ -46,18 +48,27 @@ public:
       before = outer_before_;
       linearized_ = trial_linear_;
       trial_linear_.reset();
-    } else linearized_ = iterate();
+    } else
+      linearized_ = iterate();
     const double after = error(), change = std::abs(before - after);
     last_change_ = change;
-    termination_flags_ = (iterations() > params_.maxIterations ? 1u : 0u) | (!std::isfinite(after) ? 2u : 0u) |
-                         (change < params_.absoluteErrorTol ? 4u : 0u) | (change / std::abs(before) < params_.relativeErrorTol ? 8u : 0u) |
-                         (after < params_.errorTol ? 16u : 0u);
+    termination_flags_ = (iterations() > params_.maxIterations ? 1u : 0u) | (!std::isfinite(after) ? 2u : 0u) | (change < params_.absoluteErrorTol ? 4u : 0u) |
+                         (change / std::abs(before) < params_.relativeErrorTol ? 8u : 0u) | (after < params_.errorTol ? 16u : 0u);
     if (params_.termination_criteria && params_.termination_criteria(values())) termination_flags_ |= 32u;
     complete_ = termination_flags_ != 0;
     return complete_;
   }
 
 private:
+  gtsam::VectorValues solve(const gtsam::GaussianFactorGraph& graph, const gtsam::NonlinearOptimizerParams& parameters) const override {
+    // gtsam_points 1.2.1 tryLambda calls this virtual interface; merely setting
+    // its extension params.solver does not route the installed implementation.
+    if (auto* solver = dynamic_cast<FiniteDomainSolver*>(params_.solver.get())) {
+      solver->linearization(values());
+      return solver->solve(graph, *params_.ordering);
+    }
+    return gtsam::NonlinearOptimizer::solve(graph, parameters);
+  }
   // Upstream writeLogFile is inline in its .cpp and is not exported by the
   // installed shared library. Preserve its optional CSV behavior locally.
   void write_trial_log(double current_error) const {

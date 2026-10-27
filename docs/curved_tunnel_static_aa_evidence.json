@@ -3303,6 +3303,28 @@
         "log": "/home/dev/ws_iap/liuo_observation/log/floor_domain_marginal.log"
       },
       "production_validation": "S110 214917 completed with A0/A1 and 110 fused AA; full S and affected rolling pending"
+    },
+    "finite_domain_candidate_step": {
+      "scope": "temporary linear inequality step; original nonlinear cost/domain and candidate thresholds unchanged",
+      "red_log": "/home/dev/ws_iap/liuo_observation/log/finite_descent_before.log",
+      "candidate_tests": {
+        "count": 29,
+        "result": "PASS",
+        "log": "/home/dev/ws_iap/liuo_observation/log/constrained_step_cross_tests.log"
+      },
+      "local_tests": {
+        "count": 18,
+        "result": "PASS",
+        "log": "/home/dev/ws_iap/liuo_observation/log/constrained_step_final_local.log"
+      },
+      "marginal_tests": {
+        "count": 4,
+        "result": "PASS",
+        "log": "/home/dev/ws_iap/liuo_observation/log/constrained_step_final_marginal.log"
+      },
+      "production_validation": "PENDING",
+      "node_build_log": "/home/dev/ws_iap/liuo_observation/log/constrained_step_node_build.log",
+      "solver_scope": "primal feasible active set, temporary exact equalities, negative multiplier release, full cross-variable Gaussian system, at most 256 iterations"
     }
   },
   "inputs": {

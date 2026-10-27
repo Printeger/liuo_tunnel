@@ -506,3 +506,9 @@ S离线地图评价现已接通，固定使用CAL坐标规范，无地图拟合�
 固定首输出规范位置RMSE18.752718m（XYZ14.187035/5.189131/11.111499m），最大98.547116m，姿态0.563777deg、速度0.491200m/s，RPE1秒4.726494m/10秒11.792942m。四站地图RMSE22.197478m；这是非平凡地图与实际AA融合，但尚不能验收有效定位/复用。状态4862 DEGRADED、517 LOST；最大101车辆状态、787因子、RSS357.969MiB、整卡1193.375MiB、队列402/0/4、优化102.188ms。诊断、地图、资源及PNG均在run/export/analysis。入口候选的时序敏感性保留，不将先前S110结果替代本运行。
 
 新增最小数值反例使用实际LocalInstallationFactor和SteppedBootstrapLM：测试专用紧Pose先验、Anchor目标(30,2.8,1)、沿向域±10，初值(9,0,1)。解析受限最优横向为2.8；现有LM终止于0.2588288268，误差2.541171m，1e−3断言失败。日志/home/dev/ws_iap/liuo_observation/log/finite_descent_before.log。它证明无限域外cost可阻断整体步长，使仍有可行横向下降的状态停止；不能把此类cost停止直接当物理分支。反例尚待修复，不放宽域或接受门限，测试先验不进入生产。
+
+
+有限域求解修复已通过原反例：临时活动集约束步使横向恢复到2.8±1e−3，原观测域不扩张。解析测试覆盖首阻挡面、随后约束释放、平行界、多变量可行性及原图代价不变；局部支持域的X/A Jacobian通过有限差分。无有限域候选仍沿用原LM求解路径。首次接入仅设置params.solver时原失败保持，查明安装gtsam_points通过基类solve虚函数调用，改接该虚函数后反例通过；失败日志constrained_step_tests.log与修复日志constrained_step_dispatch.log均保留。完整初版回归28候选/18局部/4边缘测试通过，生产节点构建与受影响回放仍在推进，不能据此宣布生产初始化稳定。
+
+
+约束步最终构建/安装完成。新增跨变量解析测试验证约束x≤1时，与x耦合的y由无约束1更新为联合最优1.5；最终29候选/18局部/4边缘测试通过，共51项。日志constrained_step_cross_tests.log、constrained_step_final_local.log、constrained_step_final_marginal.log均位于/home/dev/ws_iap/liuo_observation/log；生产效果待新运行，原有完整S失败保持有效历史记录。

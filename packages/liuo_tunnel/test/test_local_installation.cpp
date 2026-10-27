@@ -117,6 +117,13 @@ TEST(LocalInstallation, FactorUsesJointPoseAndAnchorAndRightRetractJacobian) {
   LocalInstallationFactor factor(0, 1, measurement, 5.52);
   const gtsam::Pose3 pose(gtsam::Rot3::RzRyRx(.3, -.2, .5), {21, -4, 8});
   const auto anchor = pose.transformFrom(body.transformTo(gtsam::Point3(8, 5.52, 3.5)));
+  gtsam::Values reference;
+  reference.insert(0, pose);
+  reference.insert(1, anchor);
+  const auto domain = factor.linearized_domain(reference);
+  EXPECT_NEAR(domain.position, 8, 1e-8);
+  EXPECT_LE(domain.lower, domain.position);
+  EXPECT_GE(domain.upper, domain.position);
   gtsam::Matrix Hx, Ha;
   EXPECT_NEAR(factor.evaluateError(pose, anchor, &Hx, &Ha)[0], 0, 1e-8);
   for (int i = 0; i < 6; ++i) {
@@ -124,11 +131,19 @@ TEST(LocalInstallation, FactorUsesJointPoseAndAnchorAndRightRetractJacobian) {
     delta[i] = 1e-5;
     const double derivative = (factor.evaluateError(pose.retract(delta), anchor)[0] - factor.evaluateError(pose.retract(-delta), anchor)[0]) / 2e-5;
     EXPECT_NEAR(Hx(0, i), derivative, 1e-7);
+    auto plus = reference, minus = reference;
+    plus.update(0, pose.retract(delta));
+    minus.update(0, pose.retract(-delta));
+    EXPECT_NEAR(domain.pose_jacobian(0, i), (factor.linearized_domain(plus).position - factor.linearized_domain(minus).position) / 2e-5, 1e-7);
   }
   for (int i = 0; i < 3; ++i) {
     gtsam::Point3 delta = gtsam::Point3::Zero();
     delta[i] = 1e-5;
     EXPECT_NEAR(Ha(0, i), (factor.evaluateError(pose, anchor + delta)[0] - factor.evaluateError(pose, anchor - delta)[0]) / 2e-5, 1e-7);
+    auto plus = reference, minus = reference;
+    plus.update(1, gtsam::Point3(anchor + delta));
+    minus.update(1, gtsam::Point3(anchor - delta));
+    EXPECT_NEAR(domain.anchor_jacobian(0, i), (factor.linearized_domain(plus).position - factor.linearized_domain(minus).position) / 2e-5, 1e-7);
   }
   EXPECT_THROW(factor.evaluateError(pose, pose.transformFrom(body.transformTo(gtsam::Point3(30, 5.52, 3.5)))), std::domain_error);
 }

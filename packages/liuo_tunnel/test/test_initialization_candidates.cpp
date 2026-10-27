@@ -1,8 +1,96 @@
 #include <gtest/gtest.h>
 #include <liuo_tunnel/uwb/initialization_candidates.hpp>
 #include <liuo_tunnel/uwb/stepped_bootstrap_lm.hpp>
+#include <liuo_tunnel/uwb/local_installation.hpp>
 #include <gtsam/slam/PriorFactor.h>
 using namespace liuo_tunnel;
+
+TEST(FiniteDomainStep, ReleasesBlockingConstraintAndPreservesOriginalQuadratic) {
+  gtsam::GaussianFactorGraph graph;
+  graph.emplace_shared<gtsam::JacobianFactor>(0, gtsam::Matrix2::Identity(), gtsam::Vector2(2, 4), gtsam::noiseModel::Isotropic::Sigma(2, 1));
+  StepInequality x, sum;
+  x.row.insert(0, gtsam::Vector2(1, 0));
+  x.bound = .5;
+  sum.row.insert(0, gtsam::Vector2(1, 1));
+  sum.bound = 1.8;
+  const auto size = graph.size();
+  const auto result = constrained_gaussian_step(graph, gtsam::Ordering{0}, {x, sum});
+  // x blocks the initial step, but must be released after the sum constraint
+  // activates. The analytic optimum has only x+y=1.8 active.
+  EXPECT_NEAR(result.at(0)[0], -.1, 1e-8);
+  EXPECT_NEAR(result.at(0)[1], 1.9, 1e-8);
+  EXPECT_EQ(graph.size(), size);
+  EXPECT_NEAR(graph.error(result), .5 * (2.1 * 2.1 + 2.1 * 2.1), 1e-8);
+  const auto interior = constrained_gaussian_step(graph, gtsam::Ordering{0}, {});
+  EXPECT_LT((interior.at(0) - gtsam::Vector2(2, 4)).norm(), 1e-10);
+}
+
+TEST(FiniteDomainStep, ParallelBoundsAndMultipleVariablesRemainFeasible) {
+  gtsam::GaussianFactorGraph graph;
+  graph.emplace_shared<gtsam::JacobianFactor>(0, gtsam::Matrix11::Identity(), gtsam::Vector1(3), gtsam::noiseModel::Isotropic::Sigma(1, 1));
+  graph.emplace_shared<gtsam::JacobianFactor>(1, gtsam::Matrix11::Identity(), gtsam::Vector1(-4), gtsam::noiseModel::Isotropic::Sigma(1, 1));
+  StepInequality wide, tight, lower;
+  wide.row.insert(0, gtsam::Vector1(1));
+  wide.bound = 2;
+  tight.row.insert(0, gtsam::Vector1(1));
+  tight.bound = 1;
+  lower.row.insert(1, gtsam::Vector1(-1));
+  lower.bound = .5;
+  const auto result = constrained_gaussian_step(graph, gtsam::Ordering{0, 1}, {wide, tight, lower});
+  EXPECT_NEAR(result.at(0)[0], 1, 1e-9);
+  EXPECT_NEAR(result.at(1)[0], -.5, 1e-9);
+  for (const auto& constraint : {wide, tight, lower}) EXPECT_LE(constraint.dot(result), constraint.bound + 1e-10);
+  lower.bound = -1;
+  EXPECT_THROW(constrained_gaussian_step(graph, gtsam::Ordering{0, 1}, {lower}), std::invalid_argument);
+}
+
+TEST(FiniteDomainStep, ConstraintStepRetainsCrossVariableInformation) {
+  gtsam::GaussianFactorGraph graph;
+  const gtsam::Matrix first = (gtsam::Matrix(2, 1) << 1, 0).finished();
+  const gtsam::Matrix second = (gtsam::Matrix(2, 1) << 1, 1).finished();
+  graph.emplace_shared<gtsam::JacobianFactor>(0, first, 1, second, gtsam::Vector2(3, 1), gtsam::noiseModel::Isotropic::Sigma(2, 1));
+  StepInequality constraint;
+  constraint.row.insert(0, gtsam::Vector1(1));
+  constraint.bound = 1;
+  const auto result = constrained_gaussian_step(graph, gtsam::Ordering{0, 1}, {constraint});
+  EXPECT_NEAR(result.at(0)[0], 1, 1e-9);
+  EXPECT_NEAR(result.at(1)[0], 1.5, 1e-9);
+  EXPECT_NEAR(graph.error(result), .25, 1e-9);
+}
+
+TEST(BootstrapTermination, FiniteSupportMustNotStopDescentAlongAnUnconstrainedDirection) {
+  LocalInstallationObservation patch{};
+  patch.normal = gtsam::Vector3::UnitY();
+  patch.tangent = gtsam::Vector3::UnitX();
+  patch.up = gtsam::Vector3::UnitZ();
+  patch.width = 6;
+  patch.sigma = 1;
+  for (auto& floor : patch.floors) {
+    floor.longitudinal_axis = patch.tangent;
+    floor.minimum_longitudinal = -10;
+    floor.maximum_longitudinal = 10;
+  }
+  // Test-only priors produce an analytic constrained optimum: local x=10,
+  // y=2.8. The x domain must not prevent progress in the feasible y direction.
+  gtsam::NonlinearFactorGraph graph;
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(0, gtsam::Pose3(), gtsam::noiseModel::Isotropic::Sigma(6, 1e-6));
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(1, gtsam::Point3(30, 2.8, 1), gtsam::noiseModel::Isotropic::Sigma(3, 1));
+  graph.emplace_shared<LocalInstallationFactor>(0, 1, patch, 2.8);
+  gtsam::Values initial;
+  initial.insert(0, gtsam::Pose3());
+  initial.insert(1, gtsam::Point3(9, 0, 1));
+  gtsam_points::LevenbergMarquardtExtParams params;
+  params.maxIterations = 30;
+  params.relativeErrorTol = 0;
+  SteppedBootstrapLM optimizer(graph, initial, params, true);
+  for (int i = 0; i < 1000 && !optimizer.finished(); ++i) optimizer.advance();
+  ASSERT_TRUE(optimizer.finished());
+  const auto& result = optimizer.values();
+  const auto local = result.at<gtsam::Pose3>(0).transformTo(result.at<gtsam::Point3>(1));
+  EXPECT_TRUE(std::isfinite(graph.error(result)));
+  EXPECT_LE(local.x(), 10);
+  EXPECT_NEAR(local.y(), 2.8, 1e-3);
+}
 
 TEST(BootstrapTermination, BudgetIsNotReportedAsConvergence) {
   gtsam::NonlinearFactorGraph graph;
