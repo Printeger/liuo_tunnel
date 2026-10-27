@@ -1678,7 +1678,7 @@ private:
     }
     if (collect_local_patch) {
       std::ofstream audit(RunLogManager::instance().profiling_path("local_wall_patches.csv"),std::ios::app);
-      if (audit.tellp()==0) audit << "stamp,pose,event,points,width,center_offset,sigma,minimum_height,maximum_height,surface_model_error\n";
+      if (audit.tellp()==0) audit << "stamp,pose,event,points,width,center_offset,sigma,minimum_height,maximum_height,surface_model_error,minimum_longitudinal,maximum_longitudinal\n";
       audit << std::setprecision(16) << t << ',' << count << ',';
       try {
         std::optional<gtsam::Vector3> previous_left;
@@ -1718,9 +1718,10 @@ private:
         }
         if (local_patches.size()>size_t(std::ceil(cfg.at("odometry").at("lag_s").get<double>()))+2) throw std::runtime_error("LOCAL_PATCH_CAPACITY");
         audit << "OBSERVED," << wall_points.size() << ',' << observed.width << ',' << observed.center_offset << ',' << observed.sigma << ','
-              << observed.minimum_height << ',' << observed.maximum_height << ',' << observed.surface_model_error << '\n';
+              << observed.minimum_height << ',' << observed.maximum_height << ',' << observed.surface_model_error << ','
+              << observed.minimum_longitudinal << ',' << observed.maximum_longitudinal << '\n';
       } catch (const std::invalid_argument& error) {
-        audit << error.what() << ',' << wall_points.size() << ",,,,,,\n";
+        audit << error.what() << ',' << wall_points.size() << ",,,,,,,,\n";
         // Bounded diagnostic samples, at most one failed patch per ten seconds.
         if (count % 100 == 0) {
           std::ofstream samples(RunLogManager::instance().profiling_path("local_patch_failed_points.csv"),std::ios::app);

@@ -16,6 +16,58 @@ std::vector<gtsam::Point3> walls(const gtsam::Pose3& body, double radius = 0) {
   return points;
 }
 }  // namespace
+TEST(LocalInstallation, PortalPatchClipsSupportToObservedWallWithoutExtrapolation) {
+  const gtsam::Pose3 body(gtsam::Rot3(), {0, -1.875, 1.66});
+  auto points = walls(body);
+  points.erase(std::remove_if(points.begin(), points.end(), [&](const auto& p) { return body.transformFrom(p).x() < -1; }), points.end());
+  const auto observed = local_installation_observation(points, body.rotation(), {1, 0, 0}, .02);
+  EXPECT_NEAR(observed.minimum_longitudinal, -1, 1e-8);
+  EXPECT_DOUBLE_EQ(observed.maximum_longitudinal, 10);
+  EXPECT_TRUE(observed.supports(body.transformTo(gtsam::Point3(0, 5.52, 3.5))));
+  EXPECT_TRUE(observed.supports(body.transformTo(gtsam::Point3(8, 5.52, 3.5))));
+  EXPECT_FALSE(observed.supports(body.transformTo(gtsam::Point3(-1.1, 5.52, 3.5))));
+  LocalInstallationFactor factor(0, 1, observed, 5.52);
+  gtsam::Values outside;
+  outside.insert(0, body);
+  outside.insert(1, gtsam::Point3(-1.1, 5.52, 3.5));
+  EXPECT_TRUE(std::isinf(factor.error(outside)));
+  EXPECT_THROW(factor.linearize(outside), std::domain_error);
+}
+
+TEST(LocalInstallation, OneSidedGapCannotBeBridgedByFartherWallPoints) {
+  const gtsam::Pose3 body(gtsam::Rot3(), {0, -1.875, 1.66});
+  auto points = walls(body);
+  points.erase(
+    std::remove_if(
+      points.begin(),
+      points.end(),
+      [&](const auto& p) {
+        const auto q = body.transformFrom(p);
+        return q.y() > 0 && q.x() >= 5 && q.x() < 10;
+      }),
+    points.end());
+  const auto observed = local_installation_observation(points, body.rotation(), {1, 0, 0}, .02);
+  EXPECT_NEAR(observed.maximum_longitudinal, 4.5, 1e-8);
+  EXPECT_TRUE(observed.supports(body.transformTo(gtsam::Point3(4, 5.52, 3.5))));
+  EXPECT_FALSE(observed.supports(body.transformTo(gtsam::Point3(6, 5.52, 3.5))));
+  EXPECT_FALSE(observed.supports(body.transformTo(gtsam::Point3(10, 5.52, 3.5))));
+}
+
+TEST(LocalInstallation, MissingCentralComponentRemainsRejected) {
+  const gtsam::Pose3 body(gtsam::Rot3(), {0, -1.875, 1.66});
+  auto points = walls(body);
+  points.erase(
+    std::remove_if(
+      points.begin(),
+      points.end(),
+      [&](const auto& p) {
+        const double x = body.transformFrom(p).x();
+        return x >= -5 && x < 0;
+      }),
+    points.end());
+  EXPECT_THROW(local_installation_observation(points, body.rotation(), {1, 0, 0}, .02), std::invalid_argument);
+}
+
 TEST(LocalInstallation, InstallationSideDoesNotReverseWithEstimatedVelocity) {
   const gtsam::Pose3 body(gtsam::Rot3(), {0, -1.875, 1.66});
   const auto points = walls(body);

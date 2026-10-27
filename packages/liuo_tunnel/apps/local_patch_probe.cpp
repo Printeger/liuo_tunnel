@@ -36,7 +36,11 @@ int main(int argc, char** argv) {
     nlohmann::json report = {{"scope", "offline production-geometry diagnostic, not independent acceptance"}, {"fixture", argv[1]}, {"points", points.size()}};
     try {
       const auto local = liuo_tunnel::local_installation_observation(points, gravity, velocity, sigma);
-      report["observation"] = {{"result", "OBSERVED"}, {"sigma", local.sigma}};
+      report["observation"] = {
+        {"result", "OBSERVED"},
+        {"sigma", local.sigma},
+        {"minimum_longitudinal", local.minimum_longitudinal},
+        {"maximum_longitudinal", local.maximum_longitudinal}};
     } catch (const std::exception& error) {
       report["observation"] = {{"result", "REJECTED"}, {"reason", error.what()}};
     }

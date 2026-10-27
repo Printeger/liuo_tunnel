@@ -15,9 +15,14 @@ struct LocalInstallationObservation {
   double surface_model_error, sigma;
   std::array<LocalFloorPatch, 2> floors;
   static constexpr double span = 10.;
+  double minimum_longitudinal = -span, maximum_longitudinal = span;
+  bool supports_longitudinal(const gtsam::Point3& p) const {
+    const double position = tangent.dot(p);
+    return p.allFinite() && position >= minimum_longitudinal && position <= maximum_longitudinal;
+  }
   bool supports(const gtsam::Point3& p) const {
     const auto& floor = floors[normal.dot(p) >= center_offset ? 1 : 0];
-    return p.allFinite() && std::abs(tangent.dot(p)) <= span && up.dot(p) <= maximum_height + .25 && floor.covers(p) && floor.signed_height(p) >= -floor.margin(p);
+    return supports_longitudinal(p) && up.dot(p) <= maximum_height + .25 && floor.covers(p) && floor.signed_height(p) >= -floor.margin(p);
   }
 };
 inline LocalInstallationObservation local_installation_observation(
@@ -47,6 +52,11 @@ inline LocalInstallationObservation local_installation_observation(
   result.maximum_height = -std::numeric_limits<double>::infinity();
   result.surface_model_error = 0;
   std::array<std::array<size_t, 6>, 2> bins{};
+  std::array<std::array<double, 6>, 2> bin_min, bin_max;
+  for (size_t side = 0; side < 2; ++side) {
+    bin_min[side].fill(INFINITY);
+    bin_max[side].fill(-INFINITY);
+  }
   for (const auto& p : points) {
     const double along = result.tangent.dot(p);
     if (along < -15 || along >= 15) continue;
@@ -54,15 +64,28 @@ inline LocalInstallationObservation local_installation_observation(
       const double target = result.center_offset + (side ? 1 : -1) * result.width / 2;
       const double residual = std::abs(result.normal.dot(p) - target);
       if (residual > .12) continue;
-      ++bins[side][std::min<size_t>(5, size_t((along + 15) / 5))];
+      const auto bin = std::min<size_t>(5, size_t((along + 15) / 5));
+      ++bins[side][bin];
+      bin_min[side][bin] = std::min(bin_min[side][bin], along);
+      bin_max[side][bin] = std::max(bin_max[side][bin], along);
       result.surface_model_error = std::max(result.surface_model_error, residual);
       result.minimum_height = std::min(result.minimum_height, result.up.dot(p));
       result.maximum_height = std::max(result.maximum_height, result.up.dot(p));
     }
   }
-  for (const auto& side : bins)
-    for (auto count : side)
-      if (count < 10) throw std::invalid_argument("LOCAL_WALL_PATCH_NOT_CONTIGUOUS");
+  // Keep the same per-bin support criterion. At a portal, retain only the
+  // contiguous two-sided component surrounding the sensor; do not fabricate
+  // the missing wall behind it or join components across an observed gap.
+  const auto supported = [&](size_t bin) { return bins[0][bin] >= 10 && bins[1][bin] >= 10; };
+  if (!supported(2) || !supported(3)) throw std::invalid_argument("LOCAL_WALL_PATCH_NOT_CONTIGUOUS");
+  size_t first = 2, last = 3;
+  while (first > 0 && supported(first - 1)) --first;
+  while (last < 5 && supported(last + 1)) ++last;
+  for (size_t side = 0; side < 2; ++side) {
+    result.minimum_longitudinal = std::max(result.minimum_longitudinal, bin_min[side][first]);
+    result.maximum_longitudinal = std::min(result.maximum_longitudinal, bin_max[side][last]);
+  }
+  if (!(result.minimum_longitudinal < 0 && result.maximum_longitudinal > 0)) throw std::invalid_argument("LOCAL_WALL_PATCH_NOT_SURROUNDING_SENSOR");
   if (result.maximum_height - result.minimum_height < 2 || observed.leveled.residual_rms > .04) throw std::invalid_argument("LOCAL_WALL_PATCH_GEOMETRY_UNSUPPORTED");
   // Worst-case angle/offset uncertainty over this finite patch, plus measured
   // surface-model discrepancy. No synthetic field calibration covariance.
@@ -87,7 +110,7 @@ public:
     // A finite-domain observation has infinite trial cost outside its support.
     // Dogleg/LM may then reject the trial; no plane residual is extrapolated.
     // Invalid linearization states still fail explicitly in evaluateError.
-    if (local.allFinite() && std::abs(observed_.tangent.dot(local)) > LocalInstallationObservation::span) return std::numeric_limits<double>::infinity();
+    if (local.allFinite() && !observed_.supports_longitudinal(local)) return std::numeric_limits<double>::infinity();
     return gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Point3>::error(values);
   }
   gtsam::Vector evaluateError(const gtsam::Pose3& pose, const gtsam::Point3& anchor, gtsam::OptionalMatrixType Hx = nullptr, gtsam::OptionalMatrixType Ha = nullptr)
@@ -95,7 +118,7 @@ public:
     gtsam::Matrix36 Px;
     gtsam::Matrix33 Pa;
     const auto local = pose.transformTo(anchor, Px, Pa);
-    if (!local.allFinite() || std::abs(observed_.tangent.dot(local)) > LocalInstallationObservation::span)
+    if (!observed_.supports_longitudinal(local))
       throw std::domain_error(
         "LOCAL_INSTALLATION_OUTSIDE_OBSERVED_PATCH;linearization=" + std::to_string(bool(Hx) || bool(Ha)) + ";along=" + std::to_string(observed_.tangent.dot(local)));
     if (Hx) *Hx = observed_.normal.transpose() * Px;
