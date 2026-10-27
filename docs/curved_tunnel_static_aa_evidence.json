@@ -400,7 +400,29 @@
         },
         "velocity_rmse_mps": 1.5880519380388096
       },
-      "stage_acceptance": "NOT_PASSED"
+      "stage_acceptance": "NOT_PASSED",
+      "resources": {
+        "scope": "recorded extrema and output coverage only; no localization or load-test acceptance",
+        "states_samples": {
+          "INITIALIZING": 1340,
+          "LOST": 1200,
+          "DEGRADED": 1365
+        },
+        "output_samples": 3905,
+        "first_output_stamp": 3.1,
+        "last_output_stamp": 393.5,
+        "max_retained_vehicle_states": 101.0,
+        "max_factors": 862.0,
+        "max_rss_mib": 429.9453125,
+        "max_device_mib": 1191.0,
+        "device_memory_scope": "entire CUDA device, not exclusive process allocation",
+        "max_imu_queue": 421.0,
+        "max_cloud_queue": 0.0,
+        "max_uwb_queue": 8.0,
+        "maximum_optimization_ms": 71.2194,
+        "max_retained_cloud_frames": 101.0,
+        "max_keyframes": 1.0
+      }
     },
     "L_REUSE_EXACT_POSTERIOR_180": {
       "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T185849Z_530",

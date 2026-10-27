@@ -262,3 +262,6 @@ run `20261027T183140Z_829`，启动提交60f9f5a，实际二进制与短复用�
 run `20261027T185849Z_530`，启动提交1daa642，独立L输入182209，完整CAL图183140，其他参数同上，`--seconds 180`。GPU1×原始输入核对通过（1800cloud/36001IMU/10216UWB/46217clock），1779输出、墙时180.001224秒。140.4秒接入一次旧图，180.0秒后验实际导出：旧94叶精确保留，新161叶精确等于该次图更新前已交付且端点就绪集合，188叶pending，5个A，协方差最小特征值1.16605e−5。独立接收端frame_id确认odom→map，子frame为imu。继承地图SHA、全部祖先原始输入SHA和旧叶payload均核对通过；结果为PASS_INPUT_GRAPH_AND_EXACT_POSTERIOR_LEDGER，非定位验收。
 
 命令 `data-run -- tools/check_road_static.sh /home/dev/ws_iap/.runtime/0/liuo/20261027T185849Z_530`；评价继续使用 `tools/analyze_road_diagnostic.py --map-reference-run <183140>`。1373条接入前输出单列，406条地图输出140.4–180.9秒，RMSE31.8545m、最大41.4026m、姿态1.229deg、速度0.45610m/s；1s/10s相对平移0.05462/0.39856m。定位问题仍在，不能用该机制检查代替完整S/L主线。
+
+
+完整REUSE184325的资源附加核查：`data-run -- env PYTHONDONTWRITEBYTECODE=1 python3 tools/summarize_estimator_resources.py <run>`，报告 `full_route_resources.json`。3905输出中INITIALIZING1340、LOST1200、DEGRADED1365；车辆最多101组、因子862、RSS429.95MiB、整CUDA设备1191MiB、IMU/云/UWB队列421/0/8、优化最大71.2194ms、保留点云101帧/keyframe1。资源未无限增长不代表定位有效，也不替代规定的60秒故障/慢订阅实验。
