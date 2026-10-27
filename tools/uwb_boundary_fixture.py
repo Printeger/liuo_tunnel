@@ -1,16 +1,20 @@
 """Bounded queue/clock-reset experiment on frozen public ROS sensor streams.
 
 At 25 s send an expired TA, at 30 s send 4097 future reports, then rewind
-all sensor stamps by 35 s and create a new dataset at 35 s. Physical payloads
+the frozen source to its actual startup prefix and create a new dataset at 35 s.
+Each reset graph uses the recorded startup excitation; samples are not claimed
+to be new independent physical measurements across replay sessions. Physical payloads
 are retained. The replay's monotonic delivery schedule is unchanged.
 """
 from copy import deepcopy
 import csv
 from rclpy.serialization import deserialize_message, serialize_message
+import rosbag2_py
 
 
 class BoundaryFixture:
-    def __init__(self,run,topic,types,prototype):
+    def __init__(self,run,topic,types,prototype,source):
+        self.source=source
         self.run=run;self.topic=topic;self.types=types
         self.expired=False;self.far_future=False;self.future=0;self.late=False;self.old=None
         self.log=(run/'export/simulation/boundary_sent.csv').open('w')
@@ -28,21 +32,29 @@ class BoundaryFixture:
         for o in b.observations:
             self.csv.writerow([label,b.driver_session_id,b.batch_seq,o.source_session_id,o.source_frame_seq,o.node_a,o.node_b,expected])
 
-    def records(self,records):
+    def seek_stream(self,records):
         origin=None
         for topic,data,ns in records:
+            if origin is None:origin=ns
+            if ns-origin>=35000000000:break
+            yield topic,data,ns
+        reader=rosbag2_py.SequentialReader()
+        reader.open(rosbag2_py.StorageOptions(uri=str(self.source/'export/capture/raw'),storage_id='mcap'),rosbag2_py.ConverterOptions('cdr','cdr'))
+        while reader.has_next():
+            topic,data,ns=reader.read_next()
+            if ns-origin>=35000000000:break
+            yield topic,data,ns+35000000000
+
+    def records(self,records):
+        origin=None
+        for topic,data,ns in self.seek_stream(records):
             if origin is None:origin=ns
             elapsed=(ns-origin)*1e-9
             if elapsed<25:
                 yield topic,data,ns;continue
             m=deserialize_message(data,self.types[topic])
-            if elapsed>=35:
-                if topic=='/clock':m.clock.sec-=35
-                else:m.header.stamp.sec-=35
-                if topic==self.topic:
-                    m.driver_session_id+=1000000000
-                    for o in m.observations:
-                        o.source_frame_stamp.sec-=35;o.received_stamp.sec-=35
+            if elapsed>=35 and topic==self.topic:
+                m.driver_session_id+=1000000000
                 data=serialize_message(m)
             if topic==self.topic and m.trigger_type==0:
                 if not self.expired:

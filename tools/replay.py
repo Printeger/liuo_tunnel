@@ -141,7 +141,7 @@ def main():
     if args.uwb_boundary_fixture:
         from uwb_boundary_fixture import BoundaryFixture
         prototype = next(deserialize_message(data, types[topic]) for topic, data, _ in prefix if topic == source_topic)
-        stream = BoundaryFixture(run, source_topic, types, prototype).records(stream)
+        stream = BoundaryFixture(run, source_topic, types, prototype, source).records(stream)
     load_delivery = (run / "export/simulation/load_delivery.csv").open("w") if args.uwb_load_fixture else None
     load_delivery_csv = csv.writer(load_delivery) if load_delivery else None
     if load_delivery_csv:

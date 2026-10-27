@@ -477,7 +477,7 @@ def main():
                 if args.duration < 60:
                     raise RuntimeError("boundary fixture requires >=60s frozen input")
                 commands["simulation"] += ["--uwb-boundary-fixture"]
-                boundary_plan = dict(expired_elapsed_s=25, future_elapsed_s=30, future_count=4097, future_batch_interval_s=.5, queue_limit=4096, future_stamp=40, far_future_stamp=1000, future_horizon="one configured lag", reset_elapsed_s=35, reset_offset_s=35, late_retired_driver_elapsed_s=36, expected_future_queued=4096, expected_future_queue_limit=1, expected_reset_drained=4096, post_reset="new dataset resumes actual TA/AA graph consumption", source="software timestamp/reset/capacity transformation; not physical regression")
+                boundary_plan = dict(expired_elapsed_s=25, future_elapsed_s=30, future_count=4097, future_batch_interval_s=.5, queue_limit=4096, future_stamp=40, far_future_stamp=1000, future_horizon="one configured lag", reset_elapsed_s=35, reset_offset_s=35, reset_method="seek to original 35s startup prefix; new graph and driver dataset", late_retired_driver_elapsed_s=36, expected_future_queued=4096, expected_future_queue_limit=1, expected_reset_drained=4096, post_reset="new dataset resumes actual TA/AA graph consumption", source="software timestamp/reset/capacity transformation; not physical regression")
                 rd._atomic_write_json(run / "metadata/config/uwb_boundary_expected.json", boundary_plan)
                 rd.register_config_snapshot(run, run / "metadata/config/uwb_boundary_expected.json")
                 identity["boundary_fixture_sha256"] = digest(ROOT / "tools/uwb_boundary_fixture.py")

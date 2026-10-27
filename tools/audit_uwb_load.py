@@ -17,8 +17,12 @@ def audit(run):
     def check(ok,why):
         if not ok:failures.append(why)
     published=[r for r in sent if r['sent']=='1']
-    expected=Counter((r['batch_seq'],r['node_a'],r['node_b']) for r in published)
-    received=Counter((r['batch_seq'],r['node_a'],r['node_b']) for r in decisions)
+    sender_key=lambda r:tuple(r[k] for k in ['batch_seq','driver_session','reporter','source_session','source_sequence','node_a','node_b'])
+    expected=Counter(sender_key(r) for r in published)
+    received=Counter(sender_key(r) for r in decisions)
+    unique_sent={sender_key(r)[1:] for r in published}
+    unique_received={sender_key(r)[1:] for r in decisions}
+    check(len(unique_sent)==len(published), 'sender repeated a report identity')
     check(expected==received,'production item delivery differs from declared publication')
     check(all(r['reason']=='QUEUED' for r in decisions),'unexpected input rejection in modeled load')
     by_batch={r['batch_seq']:float(r['elapsed_s']) for r in sent}
@@ -50,9 +54,12 @@ def audit(run):
     production_memory = [r for r in owner if r["process"] == "odometry"]
     publishing = {r["batch_seq"]: int(r["publish_wall_ns"]) for r in rows("export/simulation/load_delivery.csv")}
     check(len(production_memory) >= 60, "incomplete owner memory sampling")
+    callback_totals = {}
+    for r in decisions:
+        callback_totals[r["batch_seq"]] = max(callback_totals.get(r["batch_seq"], 0), float(r["processing_us"]))
     wall_latency_ms = [(int(r["callback_wall_ns"]) - publishing[r["batch_seq"]]) / 1e6 for r in decisions]
     result=dict(result='FAIL' if failures else 'PASS',failures=failures,scope='60 seconds software synthetic reporting load, not hardware TWR rate or hours-long stability',
-                batches_sent=len(sent_batches),items_sent=len(published),unique_reports_sent=len(expected),
+                batches_sent=len(sent_batches),items_sent=len(published),unique_reports_sent=len(unique_sent),unique_reports_received=len(unique_received),
                 batches_received=len(set(r['batch_seq'] for r in decisions)),items_received=len(decisions),
                 input_reasons=dict(Counter(r['reason'] for r in decisions)),consumer_reasons=dict(Counter(r['reason'] for r in consumed)),
                 fused=graph['unique_fused_reports'],per_edge=per_edge,missing_shard_items=sum(r['sent']=='0' for r in sent),
@@ -60,7 +67,8 @@ def audit(run):
                 owner_rss_kib={name:stats([int(r["rss_kib"]) for r in owner if r["process"]==name]) for name in sorted({r["process"] for r in owner})},
                 owner_production_rss_change_kib=int(production_memory[-1]["rss_kib"])-int(production_memory[0]["rss_kib"]),
                 owner_sample_count=len(production_memory),
-                callback_processing_us=stats([float(r['processing_us']) for r in decisions]),
+                callback_processing_us=stats(list(callback_totals.values())),
+                per_item_cumulative_processing_us=stats([float(r['processing_us']) for r in decisions]),
                 received_to_callback_sim_s=stats([float(r['callback_stamp'])-float(r['received_stamp']) for r in decisions]),
                 queue_peak=max(int(r['queue_size']) for r in decisions),identity_peak=max(int(r['identity_size']) for r in decisions),retired_peak=max(int(r['retired_size']) for r in decisions),
                 rss_kib=stats([int(r['rss_kib']) for r in resources]),rss_change_kib=int(resources[-1]['rss_kib'])-int(resources[0]['rss_kib']),
