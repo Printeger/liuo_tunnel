@@ -11,7 +11,7 @@ inline nlohmann::json load_config(const std::string& path) {
   if (!j.at("uwb").contains("use_aa")) j["uwb"]["use_aa"] = false;
   if (!j.at("uwb").at("use_aa").is_boolean()) throw std::runtime_error("uwb.use_aa must be boolean");
   if (j.at("scan_model") != "snapshot" && j.at("scan_model") != "rolling") throw std::runtime_error("scan_model must be snapshot or rolling");
-  if (j.at("uwb").at("mode") != "record_only" && j.at("uwb").at("mode") != "fuse" && j.at("uwb").at("mode") != "self_calibrate" && j.at("uwb").at("mode") != "reuse_map") throw std::runtime_error("uwb.mode must be record_only, fuse, self_calibrate or reuse_map");
+  if (j.at("uwb").at("mode") != "record_only" && j.at("uwb").at("mode") != "fuse" && j.at("uwb").at("mode") != "self_calibrate" && j.at("uwb").at("mode") != "reuse_map" && j.at("uwb").at("mode") != "self_calibrate_free") throw std::runtime_error("uwb.mode must be record_only, fuse, self_calibrate, self_calibrate_free or reuse_map");
   for (const char* key :
        {"sigma_acc_sample", "sigma_gyro_sample", "sigma_ba_density", "sigma_bg_density", "sigma_lidar_range", "initial_acc_bias_sigma", "initial_gyro_bias_sigma"}) {
     double v = j.at("sensors").at(key);

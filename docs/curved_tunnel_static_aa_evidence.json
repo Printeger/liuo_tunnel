@@ -1,7 +1,7 @@
 {
   "schema": "curved_tunnel_static_aa_development_evidence_v1",
   "completion": "INCOMPLETE",
-  "scope": "S legacy 360 s calibration route development regression only; not full S or L",
+  "scope": "Development evidence: legacy S small loop and L rolling/third-party diagnostics; full matrix incomplete",
   "runs": {
     "S_LEGACY_CAL_STATIC": {
       "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T152225Z_083",
@@ -37,6 +37,46 @@
       "explicit_edges": 2,
       "position_rmse_m": 0.8578263654081887,
       "first_output_stamp": 20.4,
+      "stage_acceptance": "NOT_ASSESSED"
+    },
+    "L_ROLLING_30_PROJECTED": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T160450Z_802",
+      "source_commit": "2c0957d",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968",
+      "result": "INPUT_CONTRACT_PASS",
+      "note": "position RMSE 6.08745 m over 27.8 s; not effective localization",
+      "stage_acceptance": "NOT_ASSESSED"
+    },
+    "L_ROLLING_180_PROJECTED": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T160542Z_501",
+      "source_commit": "2c0957d",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968",
+      "result": "FAILED",
+      "note": "early drift then solver failure at stamp 171.5",
+      "stage_acceptance": "NOT_ASSESSED"
+    },
+    "L_ROLLING_180_DOGLEG": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T160857Z_694",
+      "source_commit": "1c4d1d9",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968",
+      "result": "FAILED",
+      "note": "early drift then cloud queue failure at stamp 122.545; overlapping build, not timing acceptance",
+      "stage_acceptance": "NOT_ASSESSED"
+    },
+    "L_ROLLING_180_BOUNDED": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T161319Z_773",
+      "source_commit": "52a6f67",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968",
+      "result": "INPUT_CONTRACT_PASS",
+      "note": "1779 outputs; position RMSE 1169.14346 m; localization ineffective",
+      "stage_acceptance": "NOT_ASSESSED"
+    },
+    "L_FASTLIO_20_NATIVE": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T161207Z_043",
+      "source_commit": "619f462",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968",
+      "result": "INPUT_CONTRACT_PASS",
+      "note": "196 outputs; native raw/adapted/observer hashes equal; not full-route comparison",
       "stage_acceptance": "NOT_ASSESSED"
     }
   },

@@ -51,8 +51,8 @@ def main():
         shutil.copyfile(args.config, config_path)
         rd.register_config_snapshot(run, config_path)
         config = json.loads(config_path.read_text())
-        if config['odometry']['backend'] != 'gpu' or config['uwb']['mode'] != 'record_only':
-            raise ValueError('first road smoke requires GPU LIO-only; unknown-A mode is not yet connected here')
+        if config['odometry']['backend'] != 'gpu' or config['uwb']['mode'] not in {'record_only', 'self_calibrate_free'}:
+            raise ValueError('road diagnostic requires GPU record_only or self_calibrate_free')
         if config['scan_model'] != 'rolling':
             raise ValueError('native road bag must retain rolling scan model')
         bag = source / 'export/capture/raw'
@@ -167,7 +167,7 @@ def main():
         if not trajectory or abs(float(trajectory[-1]['stamp']) - cloud_stamps[-1]) > 1e-6:
             raise RuntimeError('estimator did not consume final scan')
         if (run / 'runtime/odometry_failure.json').exists(): raise RuntimeError('estimator failure artifact')
-        report = dict(scope='native rolling GPU LIO smoke, not curved self-calibration or localization acceptance',
+        report = dict(scope='native rolling GPU input/output contract, not localization or map acceptance',
                       result='PASS', raw_counts=counts, raw_sha256=expected_hashes, output_count=len(trajectory),
                       first_output=float(trajectory[0]['stamp']), last_output=float(trajectory[-1]['stamp']), source_run=str(source),
                       publish_wall_s=publish_wall_s, real_time_factor=args.seconds / publish_wall_s)

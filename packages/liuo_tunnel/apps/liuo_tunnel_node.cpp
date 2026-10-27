@@ -83,9 +83,10 @@ public:
       throw std::runtime_error(std::string("EXTRINSIC_INVALID: ") + e.what());
     }
     self_calibrate = cfg.at("uwb").at("mode") == "self_calibrate";
+    free_calibrate = cfg.at("uwb").at("mode") == "self_calibrate_free";
     reuse_map = cfg.at("uwb").at("mode") == "reuse_map";
-    fuse = self_calibrate || reuse_map || cfg.at("uwb").at("mode") == "fuse";
-    bounded_bootstrap_work = self_calibrate || reuse_map || cfg.at("uwb").value("bounded_bootstrap_work", false);
+    fuse = free_calibrate || self_calibrate || reuse_map || cfg.at("uwb").at("mode") == "fuse";
+    bounded_bootstrap_work = free_calibrate || self_calibrate || reuse_map || cfg.at("uwb").value("bounded_bootstrap_work", false);
     if (fuse) {
       try {
         tag = vector3(cfg.at("sensors").at("T_BU_translation"));
@@ -94,7 +95,15 @@ public:
       }
       try {
         const auto map_file = declare_parameter<std::string>("map_file", "");
-        if (self_calibrate) {
+        if (free_calibrate) {
+          if (!map_file.empty() || !declare_parameter<std::string>("installation_file", "").empty() ||
+              cfg.at("uwb").value("installation_factors", false) || cfg.at("uwb").value("continuous_installation_walls", false))
+            throw std::invalid_argument("FREE_CALIBRATION_FORBIDS_MAP_OR_INSTALLATION_INPUT");
+          for (const auto& item : cfg.at("uwb").at("input").at("nodes"))
+            if (item.at("type").get<int>() == 1) free_anchor_ids.insert(item.at("internal_id").get<uint32_t>());
+          if (free_anchor_ids.empty() || free_anchor_ids.size() > 18) throw std::invalid_argument("FREE_ANCHOR_REGISTRY_CAPACITY");
+          map.mode = "self_calibrate_free"; map.id = "ONLINE_FREE_ANCHORS"; map.frame = "odom";
+        } else if (self_calibrate) {
           if (!map_file.empty()) throw std::invalid_argument("SELF_CALIBRATION_FORBIDS_MAP_INPUT");
           installation_input = InstallationInput::load(declare_parameter<std::string>("installation_file", ""));
           map.ids = installation_input->ids; // Identity validation only; no coordinates loaded.
@@ -181,7 +190,7 @@ public:
       [this](liuo_uwb_msgs::msg::UwbObservationBatch::ConstSharedPtr m) { on_uwb(*m); });
     if (cfg.at("uwb").contains("static_edges")) {
       const auto& input = cfg.at("uwb").at("static_edges");
-      if (!fuse || (!self_calibrate && !reuse_map && !map.surveyed())) throw std::invalid_argument("STATIC_EDGES_REQUIRE_VARIABLE_ANCHORS");
+      if (!fuse || (!free_calibrate && !self_calibrate && !reuse_map && !map.surveyed())) throw std::invalid_argument("STATIC_EDGES_REQUIRE_VARIABLE_ANCHORS");
       static_input = std::make_unique<StaticRecordInput>(input);
       nlohmann::json absorbed = nullptr;
       if (reuse_map) {
@@ -265,7 +274,8 @@ private:
     initial_walls.reset();
     dedicated_geometry_cloud.reset();
     body_walls.reset();
-    bootstrapped = !fuse;
+    if (free_calibrate) { map.ids.clear(); map.means.clear(); }
+    bootstrapped = !fuse || free_calibrate;
     clouds.clear();
     frames.clear();
     count = 0;
@@ -442,7 +452,9 @@ private:
     }
     try {
       auto validate_id = [&](uint32_t id) {
-        if (self_calibrate) {
+        if (free_calibrate) {
+          if (!free_anchor_ids.count(id)) throw std::invalid_argument("UNKNOWN_ANCHOR");
+        } else if (self_calibrate) {
           if (std::find(installation_input->ids.begin(), installation_input->ids.end(), id) == installation_input->ids.end())
             throw std::invalid_argument("UNKNOWN_ANCHOR");
         } else map.index(id);
@@ -753,7 +765,7 @@ private:
     map_export_session = session;
     map_export_anchor_count = map.ids.size();
   }
-  bool variable_anchors() const { return reuse_map || map.surveyed() || (self_calibrate && calibration_prepared); }
+  bool variable_anchors() const { return free_calibrate || reuse_map || map.surveyed() || (self_calibrate && calibration_prepared); }
 
   bool prepare_calibration(double t) {
     if (!body_walls) return false;
@@ -888,15 +900,23 @@ private:
         const auto point=b.right ? interpolated_tag(left,current.at<gtsam::Pose3>(*b.right),b.beta,tag) : left.transformFrom(tag);
         samples[p.observation.b].push_back({point,p.observation.range});
       }
-      const auto line=current.at<gtsam::Vector2>(gtsam::Symbol('l',0));
+      gtsam::Vector2 line = gtsam::Vector2::Zero();
+      if (!free_calibrate) line = current.at<gtsam::Vector2>(gtsam::Symbol('l',0));
       const Eigen::Vector2d normal(std::cos(line[0]/1000.),std::sin(line[0]/1000.));
       for (const auto& entry : samples) {
         const auto id=entry.first;
         if (extension_last_attempt.count(id) && t-extension_last_attempt.at(id)<2.) continue;
-        const auto row=std::distance(installation_input->ids.begin(),std::find(installation_input->ids.begin(),installation_input->ids.end(),id));
-        auto seeds=unknown_anchor_seeds(entry.second,normal,line[1],installation_input->offsets[row]);
-        if (seeds.points.empty()) continue;
-        if (seeds.points.size()==1) {
+        UnknownAnchorSeeds seeds;
+        if (free_calibrate) seeds = free_anchor_seeds(entry.second);
+        else {
+          const auto row=std::distance(installation_input->ids.begin(),std::find(installation_input->ids.begin(),installation_input->ids.end(),id));
+          seeds=unknown_anchor_seeds(entry.second,normal,line[1],installation_input->offsets[row]);
+        }
+        if (seeds.points.empty()) {
+          if (free_calibrate) { extension_last_attempt[id]=t; log(id,seeds.reason.c_str(),seeds.baseline); }
+          continue;
+        }
+        if (!free_calibrate && seeds.points.size()==1) {
           auto mirror=seeds.points.front(); double height=0;
           for (const auto& p : entry.second) height+=p.tag.z();
           mirror.z()=2*height/entry.second.size()-mirror.z(); seeds.points.push_back(mirror);
@@ -905,10 +925,10 @@ private:
         auto& batch=*extension_batch;
         batch.id=id; batch.stamp=t; batch.oldest=t; batch.initial=current; batch.seeds=seeds.points;
         const auto& old=smoother->getFactors();
-        const size_t replaced=installation_subset_index(old,map.ids);
+        const size_t replaced=free_calibrate ? old.size() : installation_subset_index(old,map.ids);
         for (size_t i=0;i<old.size();++i) if (old[i] && i!=replaced) batch.graph.push_back(old[i]->clone());
         auto ids=map.ids; ids.push_back(id);
-        batch.graph.add(joint_installation_factor(*installation_input,ids));
+        if (!free_calibrate) batch.graph.add(joint_installation_factor(*installation_input,ids));
         std::map<std::pair<uint32_t,uint32_t>,GaussianRangeSummary> candidate_aa;
         for (const auto& p : extension_ranges) {
           const auto& o=p.observation; const auto& b=p.bracket;
@@ -970,10 +990,11 @@ private:
     if (!stable) { log(id,"AWAITING_NEW_DATA"); extension_batch.reset(); return; }
     // Commit only current-window RAW measurements. Candidate robot states and
     // candidate covariance never become independent observations or priors.
-    const size_t old_installation=installation_subset_index(smoother->getFactors(),map.ids);
+    gtsam::FactorIndices removed_installation;
+    if (!free_calibrate) removed_installation.push_back(installation_subset_index(smoother->getFactors(),map.ids));
     auto ids=map.ids; ids.push_back(id);
     gtsam::NonlinearFactorGraph additions;
-    additions.add(joint_installation_factor(*installation_input,ids));
+    if (!free_calibrate) additions.add(joint_installation_factor(*installation_input,ids));
     gtsam::Values new_values; new_values.insert(A(id),point);
     std::map<std::pair<uint32_t,uint32_t>,GaussianRangeSummary> new_pairs;
     size_t accepted_ta=0,accepted_aa=0;
@@ -996,7 +1017,7 @@ private:
       const auto& stats=entry.second;
       additions.emplace_shared<AnchorAnchorRangeFactor>(A(entry.first.first),A(entry.first.second),stats.mean,stats.sigma(),stats.scatter);
     }
-    smoother->update(additions,new_values,{{A(id),t}},{old_installation});
+    smoother->update(additions,new_values,{{A(id),t}},removed_installation);
     for (const auto& entry : pair_indices) {
       auto& summary=aa_summaries[entry.first]; summary.statistics=new_pairs.at(entry.first);
       summary.factor_index=smoother->getISAM2Result().newFactorsIndices.at(entry.second);
@@ -1046,7 +1067,7 @@ private:
         log_range(o, bracket.reason);
         continue;
       }
-      if (self_calibrate && (std::find(map.ids.begin(),map.ids.end(),o.b) == map.ids.end() ||
+      if ((self_calibrate || free_calibrate) && (std::find(map.ids.begin(),map.ids.end(),o.b) == map.ids.end() ||
           (o.a_type == 1 && std::find(map.ids.begin(),map.ids.end(),o.a) == map.ids.end()))) {
         if (extension_ranges.size() >= 6000) throw std::runtime_error("ANCHOR_PENDING_RANGE_CAPACITY");
         extension_ranges.push_back({o,bracket});
@@ -1108,7 +1129,9 @@ private:
     try {
       auto leaves = static_input->validate(record);
       for (const auto& leaf : leaves) {
-        if (self_calibrate) {
+        if (free_calibrate) {
+          for (auto id : {leaf.first, leaf.second}) if (!free_anchor_ids.count(id)) throw std::invalid_argument("STATIC_RECORD_UNKNOWN_ANCHOR");
+        } else if (self_calibrate) {
           for (auto id : {leaf.first, leaf.second})
             if (std::find(installation_input->ids.begin(), installation_input->ids.end(), id) == installation_input->ids.end())
               throw std::invalid_argument("STATIC_RECORD_UNKNOWN_ANCHOR");
@@ -1335,10 +1358,10 @@ private:
           logger->warn("initial wall extraction unavailable: {}", error.what());
         }
       }
-      auto guess = fuse && !self_calibrate ? vector3(cfg.at("uwb").at("initial_position_guess")) : gtsam::Vector3::Zero();
+      auto guess = fuse && !self_calibrate && !free_calibrate ? vector3(cfg.at("uwb").at("initial_position_guess")) : gtsam::Vector3::Zero();
       state = gtsam::NavState(gtsam::Pose3(gtsam::Rot3(q), guess), gtsam::Vector3::Zero());
       bias = gtsam::imuBias::ConstantBias(gtsam::Vector3::Zero(), sum_w / initial_samples);
-      if (fuse && !self_calibrate) {
+      if (fuse && !self_calibrate && !free_calibrate) {
         factors.emplace_shared<GravityAlignmentFactor>(X(0), avg, .001);
         if (variable_anchors()) {
           gtsam::KeyVector keys;
@@ -1656,7 +1679,7 @@ private:
       smoother->update(factors, initial, times, aa_removed);
       bind_aa_factor_indices();
     }
-    if (self_calibrate) advance_anchor_extension(t, factors);
+    if (self_calibrate || free_calibrate) advance_anchor_extension(t, factors);
     update_static_edges(t);
     // Bounded diagnostic: re-optimize the SAME early graph without new data.
     // Never enabled implicitly or extended after a failed experiment.
@@ -1810,7 +1833,7 @@ private:
         uwb_geometry_trace);
       mode = diagnostic.state;
       state_reason = diagnostic.reason;
-      if ((self_calibrate || reuse_map) && mode == "TRACKING") {
+      if ((free_calibrate || self_calibrate || reuse_map) && mode == "TRACKING") {
         mode = "DEGRADED";
         state_reason = "CALIBRATED_MAP_VALIDITY_UNVERIFIED";
       }
@@ -1940,6 +1963,8 @@ private:
   std::unique_ptr<gtsam_points::StreamTempBufferRoundRobin> streams;
   std::string backend, gpu_name;
   bool use_aa = false;
+  std::set<uint32_t> free_anchor_ids;
+  bool free_calibrate = false;
   bool fuse = false, bootstrapped = true, self_calibrate = false, calibration_prepared = false, reuse_map = false, bounded_bootstrap_work = false;
   std::optional<CalibratedMap> calibrated_map;
   size_t map_export_session = 0, map_export_anchor_count = 0;
