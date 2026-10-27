@@ -28,6 +28,7 @@ public:
       if (node.at("type") == 1) logical_anchors.emplace(node.at("internal_id").get<int>(), node.at("logical_id").get<uint8_t>());
       else logical_tag = node.at("logical_id").get<uint8_t>();
     }
+    enforce_reporter_delivery = cfg.at("uwb").value("enforce_reporter_delivery", false);
     required_sensor_consumers = declare_parameter<int>("required_sensor_consumers", 2);
     if (required_sensor_consumers < 1 || required_sensor_consumers > 2) throw std::runtime_error("required sensor consumers must be 1 or 2");
     seed = declare_parameter<int>("seed", 0);
@@ -69,6 +70,8 @@ public:
     truth << std::setprecision(16) << "session,stamp,x,y,z,vx,vy,vz,available_ta_count,available_ta_ids,qx,qy,qz,qw\n";
     uwblog.open(logs.export_path("simulation/uwb.csv"));
     uwblog << std::setprecision(16) << "session,sequence,stamp,a_type,a,b,true_range,range,variance,physical_range,sample_index,stream_id,float32_error\n";
+    physical_uwblog.open(logs.export_path("simulation/physical_uwb.csv"));
+    physical_uwblog << std::setprecision(16) << "session,physical_sequence,stamp,a_type,a,b,true_range,range,sample_index,reporter_to_tag_m,delivered,delivery_reason\n";
     scheduling.open(logs.export_path("simulation/scheduling.csv"));
     scheduling << "session,stamp,ta_published,aa_published,unreachable,occluded,slots,overdue_links,max_lateness_s\n";
     timing.open(logs.profiling_path("simulation.csv"));
@@ -145,6 +148,11 @@ private:
       getrusage(RUSAGE_SELF, &usage);
       nlohmann::json result =
         {{"simulation_s", elapsed}, {"wall_s", wall_seconds}, {"real_time_factor", elapsed / wall_seconds}, {"peak_rss_kib", usage.ru_maxrss}, {"scan_model", "snapshot"}};
+      result["reporter_delivery_model"] = enforce_reporter_delivery ? "separate_range_and_full_world_LOS_gate_instant_software_delivery" : "legacy_ungated_reporter_delivery";
+      result["physical_aa_samples"] = aa_measured;
+      result["aa_delivery_blocked"] = aa_delivery_blocked;
+      result["aa_delivered"] = aa_published;
+      result["physical_exchange_budget_hz"] = 250;
       result["published_counts"] = {{"imu", total_ticks}, {"clock", total_ticks}, {"cloud", published_clouds}, {"uwb", ta_published + aa_published}};
       std::ofstream(RunLogManager::instance().export_path("simulation/runtime.json")) << result.dump(2) << std::endl;
       if (writer) writer->close();
@@ -356,6 +364,17 @@ private:
     o.pair_measurement_freshness_verified = true;
     const double physical_range = range(a, b, seed, 1000 + l.type * 10000 + l.a * 100 + l.b, l.samples++);
     o.distance_m = static_cast<float>(physical_range);
+    // Measurement acquisition is complete regardless of reporter reachability.
+    // Do not skip the physical exchange or reuse its independent sample later.
+    l.next = t + (l.type ? 1 : .05);
+    if (l.type) ++aa_measured;
+    const bool delivery_range = !l.type || reachable(a, tag_w);
+    const bool delivery_los = !l.type || line_of_sight(a, tag_w);
+    const bool delivered = !enforce_reporter_delivery || (delivery_range && delivery_los);
+    physical_uwblog << session << ',' << u.batch_seq << ',' << 1+t << ',' << l.type << ',' << l.a << ',' << l.b << ','
+                    << (a-b).norm() << ',' << physical_range << ',' << (l.samples-1) << ',' << (l.type ? (a-tag_w).norm() : 0.) << ',' << delivered << ','
+                    << (delivered ? (enforce_reporter_delivery ? "DELIVERED" : "LEGACY_DELIVERY") : (!delivery_range ? "REPORTER_RANGE" : "REPORTER_LOS")) << '\n';
+    if (!delivered) { ++aa_delivery_blocked; return; }
     u.observations.push_back(o);
     capture(u, uwb_pub->get_topic_name());
     uwb_pub->publish(u);
@@ -369,7 +388,7 @@ private:
   std::map<int, uint8_t> logical_anchors;
   uint8_t logical_tag = 0;
   std::unique_ptr<rosbag2_cpp::Writer> writer;
-  bool ready = false;
+  bool ready = false, enforce_reporter_delivery = false;
   std::chrono::steady_clock::time_point startup = std::chrono::steady_clock::now(), simulation_started;
   nlohmann::json cfg;
   int seed = 0, loaded = -100;
@@ -383,8 +402,9 @@ private:
   Eigen::Isometry3d T_BL;
   FirstHitLidarRenderer renderer;
   std::vector<Link> links;
-  std::ofstream truth, uwblog, timing, scheduling, wall_clock;
+  std::ofstream truth, uwblog, physical_uwblog, timing, scheduling, wall_clock;
   uint64_t published_clouds = 0;
+  uint64_t aa_measured = 0, aa_delivery_blocked = 0;
   uint64_t ta_published = 0, aa_published = 0, unreachable = 0, occluded = 0;
   std::shared_ptr<spdlog::logger> logger;
   rclcpp::Publisher<rosgraph_msgs::msg::Clock>::SharedPtr clock_pub;
