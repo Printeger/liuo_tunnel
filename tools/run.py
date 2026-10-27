@@ -53,6 +53,7 @@ def main():
     p.add_argument("--uwb-boundary-fixture", action="store_true", help="public queue capacity, expiry and clock-reset recovery test")
     p.add_argument("--uwb-load-fixture", action="store_true", help="60s synthetic 50Hz/5Hz protocol load with independent slow subscriber")
     p.add_argument("--uwb-contract-fixture", action="store_true", help="predeclared software callback fixture on frozen IMU/LiDAR/clock")
+    p.add_argument("--legacy-reference-run", type=Path, help="reference-only retained old binary; never unified-interface acceptance")
     p.add_argument("--capture-derived", action="store_true", help="write transformed replay into a new run-owned dataset; never overwrite source bag")
     p.add_argument("--capture-only", action="store_true", help="live raw capture and observer only; no estimator or localization acceptance")
     p.add_argument("--use-aa", action=argparse.BooleanOptionalAction, default=None, help="explicit AA ablation; default preserves config")
@@ -136,6 +137,8 @@ def main():
         p.error("load fixture requires replay without other input transformations")
     if args.uwb_contract_fixture and (not args.replay or args.delivery_profile):
         p.error("contract fixture requires replay without delivery profile")
+    if args.legacy_reference_run and (not args.replay or args.uwb_contract_fixture or args.uwb_load_fixture or args.uwb_boundary_fixture or args.delivery_profile or args.capture_derived):
+        p.error("legacy reference requires unmodified physical frozen input")
     if args.capture_derived and not args.replay:
         p.error("capture-derived requires an explicit replay source")
     if args.delivery_profile and not args.replay:
@@ -337,9 +340,26 @@ def main():
                 ("simulation", "liuo_tunnel_sim", "liuo_rail_sim"),
             ]
         }
+        legacy_reference = None
+        if args.legacy_reference_run:
+            reference_run = args.legacy_reference_run.resolve(strict=True)
+            reference_identity = json.loads((reference_run / "metadata/manifests/input_identity.json").read_text())
+            reference_manifest = json.loads((reference_run / "metadata/run_manifest.json").read_text())
+            legacy_binary = Path(reference_identity["binaries"]["odometry"]["path"])
+            if digest(legacy_binary) != reference_identity["binaries"]["odometry"]["sha256"]:
+                raise RuntimeError("retained legacy binary identity changed")
+            binaries["odometry"] = legacy_binary
+            legacy_lib = legacy_binary.parents[1]
+            core_path = legacy_lib / "libliuo_tunnel_core.so"
+            core_identity = reference_identity["shared_libraries"][str(core_path)]
+            if digest(core_path) != core_identity["sha256"]:
+                raise RuntimeError("retained legacy core library identity changed")
+            env["LD_LIBRARY_PATH"] = str(legacy_lib) + ":" + env.get("LD_LIBRARY_PATH", "")
+            legacy_reference = dict(scope="OLD_INTERFACE_REFERENCE_ONLY; not new production integration", evidence_run=str(reference_run), source=reference_manifest["source"], binary_sha256=digest(legacy_binary), conversion="one original synthetic event to historical typed endpoints; pre-float32 CSV distance; same source stamp and variance; no truth pose prior", precision="physical CSV retained at 16 significant digits; not bitwise double reconstruction")
         if args.capture_only:
             binaries.pop("odometry")
         identity = {
+            "legacy_reference": legacy_reference,
             "uwb_schema": "liuo_uwb_msgs/msg/UwbObservationBatch",
             "uwb_hash_schema": "liuo_uwb_observation_batch_v1",
             "uwb_interface": {p.name: digest(p) for p in (ROOT.parent / "nlink_parser_uwb/packages/liuo_uwb_msgs/msg").glob("*.msg")},
@@ -363,7 +383,7 @@ def main():
             "commands": {},
         }
         for name, binary in binaries.items():
-            linked = subprocess.check_output(["ldd", str(binary)], text=True)
+            linked = subprocess.check_output(["ldd", str(binary)], text=True, env=env)
             if "/src/iap/" in linked or "/src/demo/" in linked:
                 raise RuntimeError("forbidden runtime dependency: " + linked)
             identity["binaries"][name] = {
@@ -484,6 +504,8 @@ def main():
             if args.capture_derived:
                 commands["simulation"] += ["--capture-derived"]
                 identity["derived_capture"] = dict(source_run=frozen["source_run"], source_sha256=frozen["capture_sha256"], semantics="new dataset of actually delivered messages and monotonic delivery times")
+            if args.legacy_reference_run:
+                commands["simulation"] += ["--legacy-reference"]
             identity["frozen_input"] = frozen
         if args.delivery_profile:
             from delivery_schedule import DeliverySchedule

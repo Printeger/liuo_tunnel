@@ -21,6 +21,7 @@ import rosbag2_py
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--legacy-reference", action="store_true")
     parser.add_argument("--capture-derived", action="store_true")
     parser.add_argument("--uwb-boundary-fixture", action="store_true")
     parser.add_argument("--uwb-load-fixture", action="store_true")
@@ -77,6 +78,10 @@ def main():
     registry = {n["logical_id"]: (n["type"], n["internal_id"]) for n in input_config["nodes"]}
     def anchor_ids(o):
         return [registry[n][1] for n in (o.node_a, o.node_b) if n in registry and registry[n][0] == 1]
+    legacy = None
+    if args.legacy_reference:
+        from legacy_uwb_reference import LegacyReference
+        legacy = LegacyReference(node, source, run, registry)
     scheduler = DeliverySchedule(profile, uwb_topic=source_topic)
     if set(publishers) != set(allowed):
         raise RuntimeError("frozen input lacks required topics")
@@ -95,9 +100,9 @@ def main():
     )
     ready_deadline = time.monotonic() + 20
     while any(
-        publishers[t].get_subscription_count() < 2
+        publishers[t].get_subscription_count() < (1 if legacy and t == source_topic else 2)
         for t in ["/sensors/imu", "/sensors/lidar/points", source_topic]
-    ):
+    ) or (legacy is not None and legacy.publisher.get_subscription_count() < 1):
         if time.monotonic() > ready_deadline:
             raise RuntimeError("replay consumers not ready")
         rclpy.spin_once(node, timeout_sec=0.01)
@@ -202,6 +207,8 @@ def main():
                 message.observations = kept
             if writer:
                 writer.write(target_topic if topic == source_topic else topic, serialize_message(message), delivery_ns)
+            if legacy and kind == "uwb":
+                legacy.publish(message)
             publish_wall_ns = time.monotonic_ns()
             publishers[topic].publish(message)
             if load_delivery_csv and kind == "uwb":
@@ -222,6 +229,8 @@ def main():
         end = start_ns + round(duration * 1e9)
         while time.monotonic_ns() < end:
             rclpy.spin_once(node, timeout_sec=0.001)
+    if legacy:
+        legacy.close()
     if writer:
         writer.close()
     if load_delivery:
