@@ -390,3 +390,10 @@ S200427离线bias/速度记录显示首个Anchor前预测纵向速度已反向�
 固定首输出yaw/translation规范位置RMSE3277.206273m（XYZ3277.182477/8.059927/9.539821m），最大4913.915287m，姿态0.489650deg；1s/10s相对平移10.794105/108.820231m。没有速度字段，未编造速度指标。真实第三方定位失败和完整输入有效性分别记录，不据此声称LIUO有效。命令及图/JSON保留于该run的export/analysis。
 
 新增straight_matched_lio_only.json和road_matched_lio_only.json，分别严格继承对应anchor_map_reuse配置的传感器和odometry；仅将UWB设record_only/use_aa=false并移除local_installation/static_edges，不加载地图或安装资料。旧road_rolling_lio.json前端设置不同，不用于当前成对OFF。尚待实际完整运行与共同输入核对。
+
+
+### 完整L独立输入的FAST-LIO2对照
+
+`20261027T203815Z_656`绑定edf5d73，命令 `data-run -- tools/baselines/run.sh fastlio --source /home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414 --scan-model rolling --duration 392.6`。3926云/78521IMU/100381clock，3922输出1.399990234–393.499882812秒，发布墙钟392.601153秒，进程正常结束。原生ring无需恢复，真实time保留。独立shared_input_audit.json通过：冻结原包、原始语义、适配订阅计数及语义一致；暂未传配对LIUO运行，paired_liuo_verified=false。
+
+固定首输出规范位置RMSE2267.705139m（XYZ2170.939970/654.048676/41.552035m），最大4828.193220m，姿态10.448297deg，RPE1s14.597724m/10s146.446609m；沿线/横向/高度2202.677802/537.559787/41.552035m。保留严重失败，不以正常退出宣称算法有效。两场景完整第三方对照均已采集；共同输入与后续完整LIUO运行的配对检查仍待补齐，主方法有效性仍未通过。

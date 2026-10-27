@@ -1307,6 +1307,102 @@
       },
       "result": "COMPLETE_INPUT_VALID_LOCALIZATION_FAILED",
       "stage_acceptance": "INCOMPLETE"
+    },
+    "L_FULL_FASTLIO_INDEPENDENT": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T203815Z_656",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414",
+      "source_commit": "edf5d73",
+      "command": "data-run -- tools/baselines/run.sh fastlio --source /home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414 --scan-model rolling --duration 392.6",
+      "input_audit": {
+        "scope": "original published sensors and independent adapted subscriber; not algorithm-internal consumption or localization acceptance",
+        "result": "PASS",
+        "baseline_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T203815Z_656",
+        "source_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414",
+        "liuo_run": null,
+        "paired_liuo_verified": false,
+        "counts": {
+          "imu": 78521,
+          "cloud": 3926,
+          "clock": 100381
+        },
+        "raw_sha256": {
+          "imu": "d89eeb02c662f9b3064d3cdef91ddc4d28ba4445b83f203944e19715f17a7665",
+          "cloud": "4c92c2f885b423bed6d57e82a7dd738174cb68de32dead9a8a31bae3c009b149"
+        },
+        "source_capture_sha256": {
+          "raw_0.mcap": "d146412b1e3e7a93939ff0809c44dd1baf31184070f7fcccf5de5ab678fffcfa"
+        },
+        "baseline_failure": null,
+        "estimated_poses": 3922
+      },
+      "diagnostic": {
+        "scope": "offline diagnostic only, not stage acceptance",
+        "truth_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414",
+        "truth_format": "road_npz",
+        "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T203815Z_656",
+        "gauge": "first_output_yaw_and_translation_only_no_route_fit",
+        "reference_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T203815Z_656",
+        "total_output_samples": 3922,
+        "pre_map_output_samples": 0,
+        "reference_stamp": 1.3999902340000001,
+        "yaw_rotation_matrix": [
+          [
+            0.9999999992727422,
+            -3.8138112593324455e-05,
+            0.0
+          ],
+          [
+            3.8138112593324455e-05,
+            0.9999999992727422,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "translation": [
+          0.007201424743741079,
+          -1.8765479205134785,
+          1.6625572896915493
+        ],
+        "samples": 3922,
+        "first_stamp": 1.3999902340000001,
+        "last_stamp": 393.499882812,
+        "covered_seconds": 392.09989257800004,
+        "position_rmse_m": 2267.705138664629,
+        "xyz_rmse_m": [
+          2170.939970110144,
+          654.0486759542581,
+          41.552034686752435
+        ],
+        "maximum_position_error_m": 4828.193220195346,
+        "attitude_rmse_deg": 10.448297367084576,
+        "rpe": {
+          "1.0": {
+            "samples": 3912,
+            "translation_rmse_m": 14.59772365310704,
+            "rotation_rmse_deg": 0.15815958278312023
+          },
+          "10.0": {
+            "samples": 3822,
+            "translation_rmse_m": 146.44660909544763,
+            "rotation_rmse_deg": 1.5759961876134416
+          }
+        },
+        "route_frame": {
+          "definition": "horizontal truth travel tangent, left horizontal normal, world vertical; no alignment or estimator input",
+          "stationary_direction": "nearest moving truth sample in time; ties choose earlier; speed threshold 1e-6 m/s",
+          "along_cross_height_rmse_m": [
+            2202.677802038747,
+            537.5597871354464,
+            41.552034686752435
+          ]
+        }
+      },
+      "result": "COMPLETE_INPUT_VALID_LOCALIZATION_FAILED",
+      "stage_acceptance": "INCOMPLETE"
     }
   },
   "limitations": [
