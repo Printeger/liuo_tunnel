@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import qos_profile_sensor_data, QoSProfile, ReliabilityPolicy
 from sensor_msgs.msg import PointCloud2
 from sensor_msgs_py import point_cloud2
 from nav_msgs.msg import Odometry
@@ -44,7 +44,7 @@ class Display(Node):
         self.create_subscription(PointCloud2, '/liuo/visual/current_cloud', self.cloud, 2)
         self.create_subscription(MarkerArray, '/liuo/visual/anchors', self.anchor, 2)
         self.create_subscription(Odometry, '/liuo/odom', self.pose, 100)
-        self.create_subscription(UwbObservationBatch, self.declare_parameter('uwb_topic', '/liuo/uwb/observations').value, self.range, qos_profile_sensor_data)
+        self.create_subscription(UwbObservationBatch, self.declare_parameter('uwb_topic', '/liuo/uwb/observations').value, self.range, QoSProfile(depth=self.declare_parameter("uwb_qos_depth", 100).value, reliability=ReliabilityPolicy.BEST_EFFORT))
         self.create_subscription(DiagnosticArray, '/liuo/diagnostics', self.status, 10)
         self.create_subscription(Clock, '/clock', self.clock, qos_profile_sensor_data)
         self.create_timer(1.0, self.publish)

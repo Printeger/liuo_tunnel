@@ -77,7 +77,9 @@ public:
     imu_pub = create_publisher<sensor_msgs::msg::Imu>("/sensors/imu", rclcpp::SensorDataQoS().keep_last(2048));
     cloud_pub = create_publisher<sensor_msgs::msg::PointCloud2>("/sensors/lidar/points", rclcpp::SensorDataQoS().keep_last(32));
     truth_pub = create_publisher<nav_msgs::msg::Odometry>("/sim/truth/odom", 100);
-    uwb_pub = create_publisher<liuo_uwb_msgs::msg::UwbObservationBatch>(declare_parameter<std::string>("uwb_topic", "/liuo/uwb/observations"), rclcpp::QoS(rclcpp::KeepLast(100)).best_effort().durability_volatile());
+    const int uwb_depth = declare_parameter<int>("uwb_qos_depth", 100);
+    if (uwb_depth <= 0 || uwb_depth > 10000) throw std::invalid_argument("INVALID_UWB_QOS_DEPTH");
+    uwb_pub = create_publisher<liuo_uwb_msgs::msg::UwbObservationBatch>(declare_parameter<std::string>("uwb_topic", "/liuo/uwb/observations"), rclcpp::QoS(rclcpp::KeepLast(uwb_depth)).best_effort().durability_volatile());
     for (int i = 0; i < anchor_count; i++) links.push_back({0, 0, i, 0, 0});
     for (int i = 0; i < anchor_count; i++)
       for (int j = i + 1; j < anchor_count; j++) links.push_back({1, i, j, 0, 0});

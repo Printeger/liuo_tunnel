@@ -50,6 +50,8 @@ def main():
         help="explicit frozen-replay UWB transport fault profile",
     )
     p.add_argument("--capture-only", action="store_true", help="live raw capture and observer only; no estimator or localization acceptance")
+    p.add_argument("--uwb-topic", default="/liuo/uwb/observations")
+    p.add_argument("--uwb-qos-depth", type=int, default=100)
     p.add_argument("--duration", type=float, default=45)
     p.add_argument(
         "--sim-start",
@@ -106,6 +108,10 @@ def main():
     )
     p.add_argument("--inject-failure", choices=["simulation", "odometry"])
     args = p.parse_args()
+    if not args.uwb_topic.startswith("/") or args.uwb_topic in ("/clock", "/sensors/imu", "/sensors/lidar/points", "/sim/truth/odom"):
+        p.error("UWB topic must be a distinct absolute ROS topic")
+    if not 1 <= args.uwb_qos_depth <= 10000:
+        p.error("UWB QoS depth must be in [1,10000]")
     if args.capture_only:
         if args.replay or args.visualize or args.rviz or args.debug_throw or args.inject_failure:
             p.error("--capture-only requires live nonvisual sensor generation")
@@ -168,6 +174,7 @@ def main():
         effective_config = json.loads(config.read_text())
         if args.capture_only and effective_config["uwb"]["mode"] != "record_only":
             raise RuntimeError("capture-only requires record_only configuration; no estimator map/installation")
+        effective_config["uwb"]["transport"] = dict(topic=args.uwb_topic, depth=args.uwb_qos_depth, reliability="best_effort", durability="volatile")
         effective_config["logging"]["raw_bag"] = args.capture
         config.write_text(json.dumps(effective_config, indent=2) + "\n")
         rd.register_config_snapshot(run, config)
@@ -318,6 +325,7 @@ def main():
             "uwb_schema": "liuo_uwb_msgs/msg/UwbObservationBatch",
             "uwb_hash_schema": "liuo_uwb_observation_batch_v1",
             "uwb_interface": {p.name: digest(p) for p in (ROOT.parent / "nlink_parser_uwb/packages/liuo_uwb_msgs/msg").glob("*.msg")},
+            "uwb_transport": effective_config["uwb"]["transport"],
             "uwb_input": effective_config["uwb"]["input"],
             "capture_only": args.capture_only,
             "source_iap_commit": "fbccae16802402d7300bb817d2627f86e6a495df",
@@ -387,6 +395,8 @@ def main():
                 "config_file:=" + str(config),
                 "-p",
                 "use_sim_time:=true",
+                "-p", "uwb_topic:=" + args.uwb_topic,
+                "-p", f"uwb_qos_depth:={args.uwb_qos_depth}",
             ]
             for name, binary in binaries.items()
         }
@@ -446,11 +456,13 @@ def main():
                 "--args",
             ] + commands["odometry"]
         commands["observer"] = [sys.executable, str(ROOT / "tools/observe.py")]
+        commands["observer"] += ["--ros-args", "-p", "uwb_topic:=" + args.uwb_topic, "-p", f"uwb_qos_depth:={args.uwb_qos_depth}"]
         process_order = ["observer"]
         if args.visualize or args.rviz:
             identity['visualization_script_sha256'] = digest(ROOT / 'tools/visualize.py')
             env['LIUO_VIS_CONFIG'] = str(config)
             commands['visualization'] = [sys.executable, str(ROOT / 'tools/visualize.py'), '--ros-args', '-p', 'use_sim_time:=true']
+            commands['visualization'] += ['-p', 'uwb_topic:=' + args.uwb_topic, '-p', f'uwb_qos_depth:={args.uwb_qos_depth}']
             process_order.append('visualization')
         if args.rviz:
             rviz_config = run / 'metadata/config/tunnel.rviz'

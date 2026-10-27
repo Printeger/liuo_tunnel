@@ -46,7 +46,7 @@ class Observer(Node):
         self.imu_log.write("stamp,ax,ay,az,wx,wy,wz\n")
         self.create_subscription(Imu, "/sensors/imu", self.imu, self.sensor_qos)
         self.create_subscription(PointCloud2, "/sensors/lidar/points", self.cloud, self.sensor_qos)
-        self.create_subscription(UwbObservationBatch, self.declare_parameter("uwb_topic", "/liuo/uwb/observations").value, self.uwb, QoSProfile(depth=100, reliability=ReliabilityPolicy.BEST_EFFORT))
+        self.create_subscription(UwbObservationBatch, self.declare_parameter("uwb_topic", "/liuo/uwb/observations").value, self.uwb, QoSProfile(depth=self.declare_parameter("uwb_qos_depth", 100).value, reliability=ReliabilityPolicy.BEST_EFFORT))
         self.create_subscription(Clock, "/clock", self.clock, self.sensor_qos)
         self.result["odometry_count"] = 0
         self.odom_log = open(Path(os.environ["LIUO_RUN_DIR"]) / "export/capture/odometry.csv", "w")

@@ -3,6 +3,16 @@ from delivery_schedule import DeliverySchedule
 
 
 class DeliveryScheduleTest(unittest.TestCase):
+    def test_nondefault_topic_faults_preserve_payload_and_ignore_default_topic(self):
+        profile = dict(schema_version="liuo_delivery_v1", begin_s=0, end_s=1,
+                       delay_cycle_ms=[10], duplicate_every=1, duplicate_delay_ms=1)
+        source = [("/test/uwb", b"batch", 0),
+                  ("/liuo/uwb/observations", b"unrelated", 0)]
+        events = list(DeliverySchedule(profile, uwb_topic="/test/uwb").events(source))
+        self.assertEqual([(e[1], e[3], e[4]) for e in events],
+                         [(b"unrelated", 0, "original"), (b"batch", 10000000, "delayed"),
+                          (b"batch", 11000000, "duplicate")])
+
     def test_nominal_preserves_all_bytes_and_order(self):
         source = [
             ("/clock", b"clock", 0),

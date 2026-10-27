@@ -7,7 +7,8 @@ import random
 
 
 class DeliverySchedule:
-    def __init__(self, profile=None, capacity=4096, anchor_ids=None):
+    def __init__(self, profile=None, capacity=4096, anchor_ids=None, uwb_topic="/liuo/uwb/observations"):
+        self.uwb_topic = uwb_topic
         self.profile = profile or {}
         allowed = {
             "schema_version",
@@ -176,7 +177,7 @@ class DeliverySchedule:
                 yield heapq.heappop(pending)[2]
             elapsed = (stamp - first) * 1e-9
             delay, action, duplicate = 0, "original", False
-            if topic == "/liuo/uwb/observations":
+            if topic == self.uwb_topic:
                 count += 1
                 if self.begin <= elapsed < self.end:
                     delay = round(self.delays[(count - 1) % len(self.delays)] * 1e6)

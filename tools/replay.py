@@ -33,11 +33,16 @@ def main():
         rosbag2_py.StorageOptions(uri=str(source / "export/capture/raw"), storage_id="mcap"),
         rosbag2_py.ConverterOptions("cdr", "cdr"),
     )
+    source_config = json.loads((source / "metadata/config/phase1.json").read_text())
+    target_config = json.loads((run / "metadata/config/phase1.json").read_text())
+    source_topic = source_config["uwb"].get("transport", {}).get("topic", "/liuo/uwb/observations")
+    transport = target_config["uwb"].get("transport", {})
+    target_topic = transport.get("topic", "/liuo/uwb/observations")
     allowed = {
         "/clock": "clock",
         "/sensors/imu": "imu",
         "/sensors/lidar/points": "cloud",
-        "/liuo/uwb/observations": "uwb",
+        source_topic: "uwb",
         "/sim/truth/odom": "truth",
     }
     rclpy.init()
@@ -53,16 +58,16 @@ def main():
         types[topic.name] = get_message(topic.type)
         reliable = topic.name in ["/clock", "/sim/truth/odom"]
         qos = QoSProfile(
-            depth=32 if allowed[topic.name] == "cloud" else (100 if allowed[topic.name] == "uwb" else 2048),
+            depth=32 if allowed[topic.name] == "cloud" else (transport.get("depth", 100) if allowed[topic.name] == "uwb" else 2048),
             reliability=ReliabilityPolicy.RELIABLE if reliable else ReliabilityPolicy.BEST_EFFORT,
         )
-        publishers[topic.name] = node.create_publisher(types[topic.name], topic.name, qos)
+        publishers[topic.name] = node.create_publisher(types[topic.name], target_topic if topic.name == source_topic else topic.name, qos)
 
     input_config = json.loads((run / "metadata/config/phase1.json").read_text())["uwb"]["input"]
     registry = {n["logical_id"]: (n["type"], n["internal_id"]) for n in input_config["nodes"]}
     def anchor_ids(o):
         return [registry[n][1] for n in (o.node_a, o.node_b) if n in registry and registry[n][0] == 1]
-    scheduler = DeliverySchedule(profile)
+    scheduler = DeliverySchedule(profile, uwb_topic=source_topic)
     if set(publishers) != set(allowed):
         raise RuntimeError("frozen input lacks required topics")
     (run / "metadata/processes/simulation.json").write_text(
@@ -81,7 +86,7 @@ def main():
     ready_deadline = time.monotonic() + 20
     while any(
         publishers[t].get_subscription_count() < 2
-        for t in ["/sensors/imu", "/sensors/lidar/points", "/liuo/uwb/observations"]
+        for t in ["/sensors/imu", "/sensors/lidar/points", source_topic]
     ):
         if time.monotonic() > ready_deadline:
             raise RuntimeError("replay consumers not ready")
