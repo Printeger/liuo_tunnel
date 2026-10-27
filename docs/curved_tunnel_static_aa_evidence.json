@@ -1,7 +1,7 @@
 {
   "schema": "curved_tunnel_static_aa_development_evidence_v1",
   "completion": "INCOMPLETE",
-  "scope": "Development evidence: legacy S small loop and L rolling/third-party diagnostics; full matrix incomplete",
+  "scope": "Development evidence: full S first input, native S/L seams and failed full L calibration/reuse; full effective matrix incomplete",
   "runs": {
     "S_LEGACY_CAL_STATIC": {
       "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T152225Z_083",
@@ -532,9 +532,9 @@
     }
   },
   "limitations": [
-    "Old S frozen inputs lack reporter reachability. New opt-in gate passed an 8 s independent audit; full 540 s inputs not generated.",
-    "Four anchors remain uninitialized; vertical accuracy remains weak.",
-    "Full dual-scene matrix, rolling and general curved initialization are not yet verified; independent reuse is verified only on the legacy S calibration route."
+    "Legacy S inputs lack reporter reachability. New full 540 s CAL input passed the independent gate audit; independent REUSE capture is running and not yet accepted.",
+    "Legacy S calibration leaves four anchors uninitialized; full ordinary S calibration remains pending. L full CAL initialized only four anchors; vertical and branch ambiguity remain unresolved.",
+    "Native S/L input seams and L independent posterior ledger are verified, but full dual-scene localization effectiveness, comparisons and required static-pair/fault/load evidence remain incomplete."
   ],
   "implementation_checks": {
     "anchor_map_reuse_seam": {
