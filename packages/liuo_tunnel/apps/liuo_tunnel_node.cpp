@@ -1547,7 +1547,15 @@ private:
         if (local_patches.size()>size_t(std::ceil(cfg.at("odometry").at("lag_s").get<double>()))+2) throw std::runtime_error("LOCAL_PATCH_CAPACITY");
         audit << "OBSERVED," << wall_points.size() << ',' << observed.width << ',' << observed.center_offset << ',' << observed.sigma << ','
               << observed.minimum_height << ',' << observed.maximum_height << ',' << observed.surface_model_error << '\n';
-      } catch (const std::invalid_argument& error) { audit << error.what() << ',' << wall_points.size() << ",,,,,,\n"; }
+      } catch (const std::invalid_argument& error) {
+        audit << error.what() << ',' << wall_points.size() << ",,,,,,\n";
+        // Bounded diagnostic samples, at most one failed patch per ten seconds.
+        if (count % 100 == 0) {
+          std::ofstream samples(RunLogManager::instance().profiling_path("local_patch_failed_points.csv"),std::ios::app);
+          if (samples.tellp()==0) samples << "stamp,x,y,z\n";
+          for (const auto& point : wall_points) samples << std::setprecision(16) << t << ',' << point.x() << ',' << point.y() << ',' << point.z() << '\n';
+        }
+      }
     }
     if (ongoing_walls) {
       failure_context = "CONTINUOUS_WALL_OBSERVATION_FAILED";
