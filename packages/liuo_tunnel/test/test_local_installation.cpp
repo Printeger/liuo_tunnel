@@ -104,3 +104,14 @@ TEST(AnchorRelativeCandidate, DifferentVehicleTimeCannotSupplyConsistencyEvidenc
   const auto other = AnchorRelativeCandidate::from_joint(43, gtsam::Pose3(), {1, 2, 3});
   EXPECT_FALSE(first.displacement(other));
 }
+
+TEST(AnchorRelativeCandidate, MainGraphInitialGuessUsesSameObservedVehicleReference) {
+  const gtsam::Pose3 candidate_pose(gtsam::Rot3::RzRyRx(.02, -.1, .5), {490, 2, 1});
+  const auto candidate_anchor = candidate_pose.transformFrom(gtsam::Point3(2, -3, 1.9));
+  const auto local = AnchorRelativeCandidate::from_joint(490, candidate_pose, candidate_anchor);
+  const gtsam::Pose3 main_pose(gtsam::Rot3::RzRyRx(.03, -.08, .6), {515, 3, 1.2});
+  EXPECT_GT((main_pose.transformTo(candidate_anchor) - local.point).norm(), 20);
+  const auto transferred = local.in_reference(490, main_pose);
+  EXPECT_NEAR((main_pose.transformTo(transferred) - local.point).norm(), 0, 1e-12);
+  EXPECT_THROW(local.in_reference(491, main_pose), std::invalid_argument);
+}

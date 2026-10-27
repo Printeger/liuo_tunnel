@@ -13,6 +13,12 @@ struct AnchorRelativeCandidate {
     if (!local.allFinite()) throw std::invalid_argument("NONFINITE_RELATIVE_ANCHOR");
     return {key, local};
   }
+  gtsam::Point3 in_reference(gtsam::Key key, const gtsam::Pose3& pose) const {
+    if (key != reference) throw std::invalid_argument("ANCHOR_REFERENCE_KEY_MISMATCH");
+    const auto result = pose.transformFrom(point);
+    if (!result.allFinite()) throw std::invalid_argument("NONFINITE_RELATIVE_ANCHOR");
+    return result;
+  }
   std::optional<double> displacement(const AnchorRelativeCandidate& other) const {
     if (reference != other.reference) return std::nullopt;
     if (!point.allFinite() || !other.point.allFinite()) throw std::invalid_argument("NONFINITE_RELATIVE_ANCHOR");

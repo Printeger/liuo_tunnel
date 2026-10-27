@@ -1032,6 +1032,7 @@ private:
         log(batch.id,"CANDIDATE_RELATIVE_XY",relative.x(),relative.y());
         log(batch.id,"CANDIDATE_RELATIVE_Z",relative.z());
       }
+      if (batch.local) batch.local_points.push_back(AnchorRelativeCandidate::from_joint(batch.local->pose,batch.optimizer->values().at<gtsam::Pose3>(batch.local->pose),solution));
       batch.solutions.push_back(solution); batch.costs.push_back(cost); batch.optimizer.reset();
       log(batch.id,"CANDIDATE_SOLVED",solution.z(),cost);
       log(batch.id,"CANDIDATE_POSITION_XY",solution.x(),solution.y());
@@ -1069,7 +1070,9 @@ private:
     gtsam::NonlinearFactorGraph additions;
     if (!free_calibrate) additions.add(joint_installation_factor(*installation_input,ids));
     if (batch.local) additions.emplace_shared<LocalInstallationFactor>(batch.local->pose,A(id),batch.local->observation,batch.local->offset);
-    gtsam::Values new_values; new_values.insert(A(id),point);
+    const auto initial_point=batch.local ? batch.local_points.at(best).in_reference(batch.local->pose,current.at<gtsam::Pose3>(batch.local->pose)) : point;
+    log(id,"CANDIDATE_INITIAL_GAUGE_TRANSFER",(initial_point-point).norm());
+    gtsam::Values new_values; new_values.insert(A(id),initial_point);
     std::map<std::pair<uint32_t,uint32_t>,GaussianRangeSummary> new_pairs;
     size_t accepted_ta=0,accepted_aa=0;
     for (auto it=extension_ranges.begin();it!=extension_ranges.end();) {
@@ -1098,7 +1101,7 @@ private:
     }
     aa_measurements+=accepted_aa; new_aa+=accepted_aa; new_ta+=accepted_ta;
     frame_factors.add(additions);
-    map.ids=std::move(ids); map.means.push_back(point);
+    map.ids=std::move(ids); map.means.push_back(initial_point);
     log(id,"JOINTLY_INITIALIZED",accepted_ta,accepted_aa);
     extension_previous.erase(id); extension_relative_previous.erase(id); extension_batch.reset();
   }
@@ -2086,6 +2089,7 @@ private:
     std::vector<double> costs;
     std::optional<gtsam::Key> relative_reference;
     std::vector<gtsam::Point3> relative_points;
+    std::vector<AnchorRelativeCandidate> local_points;
     std::unique_ptr<SteppedBootstrapLM> optimizer;
     std::exception_ptr failure;
   };
