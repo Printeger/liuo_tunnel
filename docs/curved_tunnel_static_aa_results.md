@@ -229,3 +229,14 @@ run `20261027T182811Z_609`，代码60f9f5a，GPU1×，输入为独立seed2026102
 `tools/check_road_static.sh <run>`新增复用接缝审计：349原始独立AA=349回调，161新叶入图（3–16:94；7–16:67）、188pending、2显式边，旧图94叶与新身份不重叠；图中prior接入前0、之后1。此审计只证明交付与图计数，叶归属由已知端点和计数推断，当前复用入口没有直接导出最终精确后验叶账本，不声称已经完成该验收。结果 `road_reuse_seam_audit.json`。
 
 固定旧CAL规范评价 `data-run -- python3 tools/analyze_road_diagnostic.py --run <reuse> --truth-run <newL> --map-reference-run <oldCAL>`：1375条接入前局部输出单列；140.6–180.9秒404条旧map输出RMSE32.1867m、XYZ10.9792/30.1533/2.49387m、最大41.7695m、姿态1.23838deg、速度0.45937m/s；1s/10s相对平移RMSE0.05600/0.38369m。未按第二轮起点或整条轨迹对齐。图/误差见 `road_fixed_map_diagnostic.{json,png}`。这证明生产接缝实际运行，不证明定位有效、任意启动或完整L复用完成；完整392.6秒CAL与之后全路REUSE继续。
+
+
+### 首次完整L-CAL：输入/账本通过，后半程定位严重退化
+
+run `20261027T183140Z_829`，启动提交60f9f5a，实际二进制与短复用相同。命令 `data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968 --config packages/liuo_tunnel/config/road_local_static_diagnostic.json --installation /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968/metadata/config/installation_metadata.json --seconds 392.6`。全程3926cloud/78521IMU/21860UWB/100381clock严格核对，3905输出3.1–393.5秒，墙时392.601097秒；输入PASS不代表定位有效。
+
+实际地图仍为4A[3,16,14,5]，初始化56.2/79.6/140.2/178.7秒，393.0秒完整后验已导出；730已交付独立AA=730回调，其中94叶/1边实际融合、636pending，精确地图账本审计PASS，协方差最小特征值1.64118e−5。该地图未覆盖所有站点，不把全路输入覆盖当成全路有效地图。
+
+固定初始规范误差：全程位置RMSE1260.697m，XYZ1254.610/123.339/9.8968m，最大4213.836m，姿态8.63258deg、速度18.8649m/s，1s/10s相对平移23.5020/191.861m。DEGRADED2328条、LOST1577条，240.3秒后持续POSTERIOR_UNBOUNDED。车辆最大101组、因子754，RSS432MiB、整设备显存1192.31MiB，IMU/云/UWB最大队列421/0/9，最大优化51.507ms；未以扩大窗口或资源掩盖失败。报告 `road_fixed_start_diagnostic.json`、`road_static_audit.json`、`full_route_resources.json`。
+
+初步根因证据在 `full_route_initialization_failure.json`：180–220秒40个局部几何片段中34个OBSERVED，故不能把最早失败简单归为无几何。A18@196.1仍有1.398m合法分支，A2@213.3/215.3有3.449/3.423m分支，随后A13@230–234有1.7–1.99m分支；220秒后floor观测失败明显增多。A2共同车辆参考中的两组z约−1.6405与+1.78237m，是真实相对高度分支，不是不同世界坐标造成的假分支；当前单片段可行区域/保守地面误差未排除下分支。之后UWB新站点不能进入图，LIO逐渐失控。下一步需核查多视角有限局部几何/有界分支信息保留如何增加合法辨识信息，不能缩小既有误差门限、强制固定高度或任意挑低代价解。全L功能验收未通过。

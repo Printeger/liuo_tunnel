@@ -275,6 +275,32 @@
       "exact_reuse_posterior_ledger_exported": false,
       "full_route": false,
       "stage_acceptance": "INCOMPLETE"
+    },
+    "L_FULL_CAL_FIRST": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T183140Z_829",
+      "source_commit": "60f9f5a",
+      "duration_s": 392.6,
+      "input_result": "PASS",
+      "algorithm_result": "SEVERE_LATE_ROUTE_DEGRADATION",
+      "map_anchor_ids": [
+        3,
+        16,
+        14,
+        5
+      ],
+      "raw_delivered_AA": 730,
+      "fused_AA": 94,
+      "pending_AA": 636,
+      "fixed_start_position_rmse_m": 1260.6972639100018,
+      "maximum_position_error_m": 4213.836422037899,
+      "states_samples": {
+        "DEGRADED": 2328,
+        "LOST": 1577
+      },
+      "max_vehicle_states": 101,
+      "max_factors": 754,
+      "map": "export/map/calibrated_map.json",
+      "stage_acceptance": "INCOMPLETE"
     }
   },
   "limitations": [
