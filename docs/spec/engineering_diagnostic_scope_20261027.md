@@ -49,6 +49,8 @@ A7差异审查决定：117c96e之后joint_marginalization从LinearContainerFacto
 
 A结论限定：“静态 AA 信息生命周期、地图闭环、rolling 接入与声明资源边界得到验证。” 当前A尚未最终通过。
 
+A7受影响闭环回归已完成：CAL230820→REUSE231612，实际节点bf79d67。REUSE逐字节加载CAL地图，1077个旧叶仅在一个联合prior，本轮1080个独立新叶进入3个显式摘要因子；无重新安装因子、无raw AA重复接纳。其余1080个实际交付叶因端点未在地图中初始化而明确UNKNOWN_ANCHOR，不冒称全部融合。审计输出`231612/export/analysis/legacy_static_loop_audit.json`，命令见结果报告。旧块重传仍待A6，不能由独立输入不重叠代替重传压力测试。
+
 ## 阶段 B 固定诊断计划（执行前冻结）
 
 每场景只用下列一个失败片段。原包不变，不挑更容易成功的片段。时间均为ROS measurement stamp；前缀从原包首时刻开始，不用真值补造车辆初始状态。
@@ -81,6 +83,8 @@ A结论限定：“静态 AA 信息生命周期、地图闭环、rolling 接入�
 D2实现冻结补充：独立`conditional_road_estimator.sh`入口复用原GPU/IMU/固定Anchor因子及输入保护，进程重命名为liuo_conditional_oracle；普通road_estimator仍不接受fuse。从冻结联合配置仅派生mode=fuse、use_aa=false、local_installation=false、删除static_edges，并显式保持原free模式已启用的bounded_bootstrap_work；传感器、噪声、车辆估计参数不变，不加载安装观测。真值Anchor文件必须标D2_ORACLE_ANCHORS_NOT_DEPLOYABLE并绑定原包SHA；拒绝车辆轨迹/位姿字段、安装先验或协方差。估计进程不读车辆真值，原始包truth topic在storage层过滤，禁止导出地图。评价使用`--oracle-world`，直接比较原世界坐标、不再作首输出或路线对齐；关注片段使用预声明inclusive ROS边界。此处是oracle条件变化，不能冒称实际联合后验。
 
 准备的D2文件在`/home/dev/ws_iap/conditional_diagnostics_20261027/`：S_oracle_anchors.json的SHA256为`54489a48f9eb1324f9dbba74be07cb7d6b63d9ef0c581436e92bf52153466acb`，L_oracle_anchors.json为`aa90105ba85818889c86770c9ba9b212c70a2e61d5b3aff2031bbf684cc964bc`。只读源Anchor资料，不读取真实车辆轨迹；文件不覆盖、不送入生产缓存。
+
+D2首次入口232238在3.005秒因缺少`initial_position_guess`退出，保留失败，不是有效D2诊断。最小反例是原free配置不含固定地图入口必读字段。修正仅显式加入[0,0,0]数值初值，与原free模式内部零向量相同；该字段只初始化NavState，不添加位姿因子。回归检查派生值及原配置不变。下一次实验保持输入、噪声和所有估计器设置，仅补此必需字段；预期通过该初始化读取，若再失败按新异常定位，不能解释成信息不足。
 
 ### D3：实际联合问题
 
