@@ -1,6 +1,8 @@
 # LIUO 新版开发需求：曲线隧道、静态 AA 地图与双场景验证
 
-日期：2026-10-27。状态：待实施。本文及配套 prompt 的生成不启动开发 Goal。
+日期：2026-10-27。状态：当前 Goal 按用户正式修订继续实施。
+
+**当前生效范围：仅 A 工程能力验收与 B 固定失败片段诊断。** 以[2026-10-27范围修订、C01–C16映射及A/B清单](spec/engineering_diagnostic_scope_20261027.md)为本Goal完成依据，覆盖下文及旧prompt中冲突的全程有效性门槛。新S/L全程有效自标定/独立复用、精度改善/排名、全部Anchor初始化、扩展求解器及重复全路线对照明确后移，未标完成。已有失败保持失败。下文保留原需求作为工程定义及历史依据，不能再把未修订的全矩阵当本Goal门槛。
 
 设计依据：[曲线隧道与静态 AA 设计](curved_tunnel_static_aa_design.md)。启动入口：[Goal prompt](curved_tunnel_static_aa_goal_prompt.md)。
 

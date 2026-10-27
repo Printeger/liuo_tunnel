@@ -1,7 +1,7 @@
 {
   "schema": "curved_tunnel_static_aa_development_evidence_v1",
   "completion": "INCOMPLETE",
-  "scope": "Development evidence: complete independent S/L inputs, failed full calibration/reuse, marginal-chart fix; effective full matrix incomplete",
+  "scope": "User-revised goal: A engineering lifecycle/rolling/legacy information loop and B fixed S/L conditional diagnostics; full new-scene localization effectiveness deferred, historical failures unchanged",
   "runs": {
     "S_LEGACY_CAL_STATIC": {
       "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T152225Z_083",
@@ -4612,5 +4612,19 @@
       },
       "algorithm_acceptance": "NOT_ASSESSED"
     }
+  },
+  "active_scope_revision": {
+    "date": "2026-10-27",
+    "authority": "explicit user instruction in active thread",
+    "contract": "docs/spec/engineering_diagnostic_scope_20261027.md",
+    "stage_A": "INCOMPLETE_AUDIT_AND_PRODUCTION_LOAD_GAPS",
+    "stage_B": "PLAN_FROZEN_IMPLEMENTATION_PENDING",
+    "deferred_not_complete": [
+      "new S/L full-route effective calibration and independent map reuse",
+      "full-route accuracy improvement/ranking/all anchors",
+      "new solver/global curve/prior systems for performance",
+      "repeat complete FAST/LIO-only/ablation matrix"
+    ],
+    "pending_static_pair_S150": "superseded; reuse existing L information-equivalence evidence unless specific engineering gap found"
   }
 }
