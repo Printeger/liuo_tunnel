@@ -78,10 +78,30 @@
       "result": "INPUT_CONTRACT_PASS",
       "note": "196 outputs; native raw/adapted/observer hashes equal; not full-route comparison",
       "stage_acceptance": "NOT_ASSESSED"
+    },
+    "L_FREE_CANDIDATES_120": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T162236Z_439",
+      "source_commit": "560fb26",
+      "result": "INPUT_CONTRACT_PASS_C03_NOT_MET",
+      "initialized_anchor_count": 0,
+      "joint_candidate_branches_solved": 4,
+      "unresolved_branch_sets": 2,
+      "max_logged_pending": 801
+    },
+    "S_REPORTER_DELIVERY_8": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T162701Z_360",
+      "source_commit": "3d65368",
+      "result": "SHORT_DELIVERY_CHECK_PASS",
+      "physical_aa": 48,
+      "aa_delivered": 24,
+      "aa_blocked": 24,
+      "max_physical_exchanges_per_second": 66,
+      "report": "export/analysis/straight_reporter_delivery.json",
+      "full_scene_acceptance": "NOT_ASSESSED"
     }
   },
   "limitations": [
-    "Old S rail simulator gates AA measurement LOS but lacks separate reporter-to-vehicle reachability; this regression cannot validate C10 delivery physics. New full S generation must add that gate without rewriting frozen inputs.",
+    "Old S frozen inputs lack reporter reachability. New opt-in gate passed an 8 s independent audit; full 540 s inputs not generated.",
     "Four anchors remain uninitialized; vertical accuracy remains weak.",
     "Full dual-scene matrix, rolling and general curved initialization are not yet verified; independent reuse is verified only on the legacy S calibration route."
   ]

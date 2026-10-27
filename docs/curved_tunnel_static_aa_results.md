@@ -129,3 +129,15 @@ FAST-LIO2 原生 20 s 接入 run `20261027T161207Z_043`，提交 `619f462`：200
 新 `straight_reachable_capture.json` 只开启该生成端门限，首项 8 s 检查要求有可达与不可交付的独立 AA、物理样本数=交付+阻断、逐秒总测距≤250、传感器包中无被阻断样本。旧 snapshot 二进制回归单独保留原配置。正式 540 s 新输入尚未生成。
 
 新二进制首个 snapshot 8 s 回归 `20261027T162550Z_889` 在模拟器启动即退出 127：安装环境缺少 `libliuo_tunnel_renderer.so` 的库路径导出，未开始生成。库已在数据盘安装，并非物理/算法失败。补齐模拟器包的 ament 库导出后重新检查安装环境；不使用系统盘 fallback。
+
+通用候选生产 run `20261027T162236Z_439`（560fb26）完成 120 s 输入合同，1179 输出、最终 101 个车辆状态，无地图/安装因子。**实际 A=0，不能通过 C03。** 候选事件为 99 次球面不一致、24 次未观测圆周、48 次基线不足；两次真正联合候选各优化两个分支，最终分离 107.01/276.76 m，明确拒绝提交，未选取一个分支冒充唯一解。记录中的最大 pending=801。该失败触发 C04 局部几何需求评估；不能用当前切线约束远站，也不能以增加全局轴绕过。
+
+旧 snapshot 8 s 回归 `20261027T162639Z_700`（3d65368）单 run PASS，1600 IMU / 80 cloud / 510 UWB / 1600 clock；59 个状态、初始输出 3.1 s，实际 GPU，处理 p95 7.82 ms。仅回归入口，不是完整 S 验收。
+
+独立新 S 交付检查 `20261027T162701Z_360`（3d65368）是 capture-only：510 次物理测距、其中 48 次 AA，24 次交付、24 次报告者不可达；包内实际 486 条 UWB。独立解析矩形 LOS 与真值 Hermite 插值核查报告距离，误差最大 1.21e-8 m（预声明 0.002 m），逐秒物理交换最大 66≤250，包内身份集合严格等于预期交付且无阻断样本。与上一个相同 seed/时长、未开启交付门限的回归逐样本比较，物理时间/端点/噪声样本/值完全相同，证实仅改变交付，没有少做物理测距。报告为 `export/analysis/straight_reporter_delivery.json`。
+
+```bash
+data-run -- tools/run.sh --formal --capture-only --duration 8 --config packages/liuo_tunnel/config/straight_reachable_capture.json --wall-timeout 90
+# 在 tools/environment.sh 同等 ROS/消息环境下执行：
+data-run -- python3 tools/check_straight_reporter_delivery.py /home/dev/ws_iap/.runtime/0/liuo/20261027T162701Z_360 --reference /home/dev/ws_iap/.runtime/0/liuo/20261027T162639Z_700
+```
