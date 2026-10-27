@@ -167,6 +167,30 @@
       "map_exported": false,
       "reuse_verified": false,
       "stage_acceptance": "INCOMPLETE"
+    },
+    "L_LOCAL_SUPPORT_INTERVAL_120": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T172902Z_384",
+      "source_commit": "677bcbf",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968",
+      "input_contract_result": "PASS",
+      "initialized_anchor_ids": [
+        3,
+        7
+      ],
+      "initialization_stamps": [
+        56.2,
+        100.6
+      ],
+      "initial_ta_transfers": [
+        200,
+        201
+      ],
+      "actual_aa_fused": 0,
+      "output_count": 1179,
+      "position_rmse_fixed_start_m": 7.871667688938356,
+      "map_exported": false,
+      "reuse_verified": false,
+      "stage_acceptance": "INCOMPLETE"
     }
   },
   "limitations": [

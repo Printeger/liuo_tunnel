@@ -87,6 +87,10 @@ def main():
             shutil.copyfile(args.installation, installation)
             rd.write_subordinate_manifest(run, 'local_installation_input', dict(source=str(args.installation), sha256=digest(installation)))
         elif args.installation is not None: raise ValueError('installation input forbidden in nonlocal mode')
+        rd.write_subordinate_manifest(run, 'map_source_identity', dict(
+            schema_version='liuo_map_source_identity_v1', source=meta['source'],
+            config_sha256=digest(config_path), binary_sha256={'odometry': digest(binary)},
+            frozen_raw_sha256={'mcap': sha}, installation_sha256=digest(installation) if installation else None))
         commands = [[str(binary), '--ros-args', '-p', 'config_file:=' + str(config_path), '-p', 'use_sim_time:=true'],
                     [sys.executable, str(ROOT / 'tools/observe.py'), '--ros-args', '-p', 'use_sim_time:=true']]
         if installation: commands[0] += ['-p', 'installation_file:=' + str(installation)]

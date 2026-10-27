@@ -122,6 +122,7 @@ public:
           map.frame = "odom";
         } else if (reuse_map) {
           calibrated_map = CalibratedMap::load(map_file, cfg.at("sensors"));
+          if (!calibrated_map->has_reference) throw std::invalid_argument("ANCHOR_ONLY_MAP_REQUIRES_NEW_REUSE_INITIALIZER");
           map.ids = calibrated_map->ids;
           map.means = calibrated_map->means;
           map.mode = "calibrated_map";
@@ -717,7 +718,7 @@ private:
   }
 
   void export_calibrated_map(double stamp) {
-    if (!self_calibrate || !bootstrapped) return;
+    if ((!self_calibrate && !free_calibrate) || !bootstrapped || map.ids.empty()) return;
     const auto values = smoother->calculateEstimate();
     gtsam::KeyVector keys;
     nlohmann::json anchors = nlohmann::json::array(), missing = nlohmann::json::array();
@@ -726,8 +727,11 @@ private:
       const auto a = values.at<gtsam::Point3>(A(id));
       anchors.push_back({{"id", id}, {"mean_m", {a.x(), a.y(), a.z()}}});
     }
-    keys.push_back(gtsam::Symbol('l', 0));
-    const auto line = values.at<gtsam::Vector2>(keys.back());
+    gtsam::Vector2 line = gtsam::Vector2::Zero();
+    if (!free_calibrate) {
+      keys.push_back(gtsam::Symbol('l', 0));
+      line = values.at<gtsam::Vector2>(keys.back());
+    }
     const auto covariance = selected_covariance(smoother->getISAM2(), keys);
     std::vector<std::vector<double>> matrix(covariance.rows(), std::vector<double>(covariance.cols()));
     for (int i = 0; i < covariance.rows(); ++i)
@@ -738,7 +742,8 @@ private:
       const auto p = values.at<gtsam::Pose3>(key).translation();
       lower = lower.cwiseMin(p); upper = upper.cwiseMax(p);
     }
-    for (auto id : installation_input->ids)
+    const std::vector<uint32_t> registry = free_calibrate ? std::vector<uint32_t>(free_anchor_ids.begin(),free_anchor_ids.end()) : installation_input->ids;
+    for (auto id : registry)
       if (std::find(map.ids.begin(), map.ids.end(), id) == map.ids.end())
         missing.push_back({{"id", id}, {"reason", "NOT_JOINTLY_INITIALIZED"}});
     auto& logs = RunLogManager::instance();
@@ -759,7 +764,7 @@ private:
       {"sensor_identity", cfg.at("sensors")}, {"source_run", logs.run_dir().string()},
       {"source_identity", identity}, {"measurement_stamp", stamp}, {"session", session},
       {"approximation", "Joint A/L Gaussian marginal of current fixed-lag Bayes tree, centered at current estimate; local linearization and single-basin approximation; statistical consistency not certified"},
-      {"installation_provenance", {{"input", installation_input->source}, {"already_absorbed", true}}},
+      {"installation_provenance", {{"input", free_calibrate ? (local_installation ? "synthetic exact local offsets and measured finite patches" : "none") : installation_input->source}, {"already_absorbed", true}}},
       {"not_initialized", missing}, {"anchors", anchors}, {"reference_mean", {line[0],line[1]}},
       {"joint_covariance", matrix},
       {"uwb_information", {{"use_aa", use_aa}, {"accepted_aa_measurements", aa_measurements}, {"ta_enabled", true}}},
@@ -771,6 +776,14 @@ private:
       document["schema_version"] = "liuo_joint_map_static_v2";
       document["static_edge_ledger"] = static_edges->checkpoint();
       document["static_edge_source"] = cfg.at("uwb").at("static_edges");
+    }
+    if (free_calibrate) {
+      document["schema_version"] = "liuo_anchor_map_v3";
+      document["state_layout"] = "A_only";
+      document["static_information_policy"] = static_edges ? "EXACT_LEDGER" : "AA_DISABLED";
+      document.erase("reference_units"); document.erase("reference_origin_m"); document.erase("reference_mean");
+      document["approximation"] = "Joint A-only Gaussian marginal of the actual fixed-lag Bayes tree; all cross terms retained; local linearization and selected-basin approximation; no global axis; statistical consistency and reuse observability not certified";
+      document["reuse_status"] = "INITIALIZER_NOT_IMPLEMENTED";
     }
     CalibratedMap::parse(document, cfg.at("sensors")).save_atomic(logs.export_path("map/calibrated_map.json"));
     map_export_session = session;
@@ -1871,7 +1884,7 @@ private:
     }
     state = gtsam::NavState(smoother->calculateEstimate<gtsam::Pose3>(X(count)), smoother->calculateEstimate<gtsam::Vector3>(V(count)));
     bias = smoother->calculateEstimate<gtsam::imuBias::ConstantBias>(B(count));
-    if (self_calibrate && (count % 10 == 0 || map_export_session != session || map_export_anchor_count != map.ids.size())) export_calibrated_map(t);
+    if ((self_calibrate || free_calibrate) && (count % 10 == 0 || map_export_session != session || map_export_anchor_count != map.ids.size())) export_calibrated_map(t);
     if (!state.pose().matrix().allFinite() || !state.velocity().allFinite()) throw std::runtime_error("nonfinite optimized state");
     failure_context = "COVARIANCE_FAILED";
     const auto covariance_start = std::chrono::steady_clock::now();
