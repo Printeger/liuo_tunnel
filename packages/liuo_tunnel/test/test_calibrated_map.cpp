@@ -146,3 +146,111 @@ TEST(CalibratedMap, AnchorOnlyLedgerPreservesAbsorbedPhysicalIdentity) {
   j["static_edge_ledger"]["leaves"][0]["first"] = 500;
   EXPECT_THROW(CalibratedMap::parse(j, {{"test", 1}}), std::invalid_argument);
 }
+
+#include <liuo_tunnel/uwb/map_frame_prior.hpp>
+TEST(MapFramePrior, FullCorrelatedCostAndJointDerivativesHaveNoPoseObservation) {
+  const auto map = CalibratedMap::parse(anchor_only_sample(), {{"test", 1}});
+  const gtsam::Key frame_key = gtsam::Symbol('g', 0);
+  MapFramePrior prior(frame_key, map);
+  const gtsam::Vector4 frame(430, 12, -9, 3);
+  gtsam::Values values;
+  values.insert(frame_key, frame);
+  for (size_t i = 0; i < map.ids.size(); ++i) values.insert(map.keys()[i], gtsam::Point3(gravity_frame_pose(frame).transformTo(map.means[i]) + gtsam::Point3(.1, -.2, .3)));
+  std::vector<gtsam::Matrix> J;
+  const auto residual = prior.unwhitenedError(values, &J);
+  EXPECT_NEAR(prior.error(values), .5 * residual.dot(map.covariance.ldlt().solve(residual)), 1e-10);
+  for (size_t key = 0; key < prior.keys().size(); ++key) {
+    const int dimension = key == 0 ? 4 : 3;
+    for (int axis = 0; axis < dimension; ++axis) {
+      auto plus = values, minus = values;
+      const double step = 1e-4;
+      if (key == 0) {
+        gtsam::Vector4 delta = gtsam::Vector4::Zero();
+        delta[axis] = step;
+        plus.update(frame_key, gtsam::Vector4(frame + delta));
+        minus.update(frame_key, gtsam::Vector4(frame - delta));
+      } else {
+        gtsam::Point3 delta = gtsam::Point3::Zero();
+        delta[axis] = step;
+        const auto point = values.at<gtsam::Point3>(prior.keys()[key]);
+        plus.update(prior.keys()[key], gtsam::Point3(point + delta));
+        minus.update(prior.keys()[key], gtsam::Point3(point - delta));
+      }
+      const auto numeric = ((prior.unwhitenedError(plus) - prior.unwhitenedError(minus)) / (2 * step)).eval();
+      EXPECT_LT((numeric - J[key].col(axis)).norm(), 1e-8);
+    }
+  }
+  const auto covariance = map.covariance;
+  gtsam::Matrix all(residual.size(), 10);
+  all << J[0], J[1], J[2];
+  const auto expected = (all.transpose() * covariance.ldlt().solve(all)).eval();
+  EXPECT_LT((gtsam::HessianFactor(*prior.linearize(values)).information() - expected).norm(), 1e-8);
+}
+TEST(MapFramePrior, SeedRecoversNewOriginAndHeadingAndRejectsVerticalOnlyBaseline) {
+  const gtsam::Vector4 frame(-1200, 200, -40, 7);
+  const std::vector<gtsam::Point3> local{{1, 2, 3}, {90, -4, 6}, {250, 25, -2}};
+  std::vector<gtsam::Point3> map;
+  for (const auto& point : local) map.push_back(gravity_frame_pose(frame).transformFrom(point));
+  EXPECT_LT((gravity_frame_seed(local, map) - frame).norm(), 1e-10);
+  EXPECT_THROW(gravity_frame_seed({{0, 0, 0}, {0, 0, 1}}, {{5, 2, 0}, {5, 2, 1}}), std::invalid_argument);
+  const auto legacy = CalibratedMap::parse(sample(), {{"test", 1}});
+  EXPECT_THROW(MapFramePrior(gtsam::Symbol('g', 0), legacy), std::invalid_argument);
+}
+TEST(MapFramePrior, OutputRightPoseJacobianPreservesFrameStateCrossCovariance) {
+  const gtsam::Vector4 frame(500, 12, -7, 3);
+  const gtsam::Pose3 local(gtsam::Rot3::RzRyRx(.2, -.1, .4), {80, -5, 2});
+  Eigen::Matrix<double, 6, 4> F;
+  gtsam::Matrix66 X;
+  const auto output = map_frame_pose(frame, local, &F, &X);
+  for (int i = 0; i < 10; ++i) {
+    gtsam::Vector4 df = gtsam::Vector4::Zero();
+    gtsam::Vector6 dx = gtsam::Vector6::Zero();
+    if (i < 4)
+      df[i] = 1e-4;
+    else
+      dx[i - 4] = 1e-4;
+    const auto plus = map_frame_pose(gtsam::Vector4(frame + df), local.retract(dx));
+    const auto minus = map_frame_pose(gtsam::Vector4(frame - df), local.retract(-dx));
+    const auto numeric = ((output.localCoordinates(plus) - output.localCoordinates(minus)) / 2e-4).eval();
+    if (i < 4)
+      EXPECT_LT((numeric - F.col(i)).norm(), 1e-8);
+    else
+      EXPECT_LT((numeric - X.col(i - 4)).norm(), 1e-8);
+  }
+  Eigen::Matrix<double, 6, 10> H;
+  H << F, X;
+  gtsam::Matrix covariance = gtsam::Matrix::Identity(10, 10);
+  covariance(1, 7) = covariance(7, 1) = .4;
+  const auto complete = (H * covariance * H.transpose()).eval();
+  covariance(1, 7) = covariance(7, 1) = 0;
+  EXPECT_GT((complete - H * covariance * H.transpose()).norm(), .1);
+}
+
+#include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
+#include <gtsam/nonlinear/Marginals.h>
+#include <gtsam/slam/PriorFactor.h>
+TEST(MapFramePrior, JointGaussianFixtureRecoversIndependentStartWithoutFramePrior) {
+  const auto map = CalibratedMap::parse(anchor_only_sample(), {{"test", 1}});
+  const gtsam::Vector4 expected(700, 200, -40, 8);
+  const auto transform = gravity_frame_pose(expected);
+  const gtsam::Key frame_key = gtsam::Symbol('g', 0);
+  gtsam::NonlinearFactorGraph graph;
+  graph.emplace_shared<MapFramePrior>(frame_key, map);
+  gtsam::Values values;
+  values.insert(frame_key, gtsam::Vector4(500, 210, -35, 6));
+  // Analytic Gaussian local-anchor likelihood fixture, not production LIO or
+  // a claim that cached vehicle states are independent measurements.
+  for (size_t i = 0; i < map.ids.size(); ++i) {
+    const auto local = transform.transformTo(map.means[i]);
+    values.insert(map.keys()[i], local);
+    graph.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(map.keys()[i], local, gtsam::noiseModel::Isotropic::Sigma(3, .1));
+  }
+  const auto solution = gtsam::LevenbergMarquardtOptimizer(graph, values).optimize();
+  EXPECT_LT((solution.at<gtsam::Vector4>(frame_key) - expected).norm(), 1e-5);
+  EXPECT_LT(graph.error(solution), 1e-10);
+  const auto covariance = gtsam::Marginals(graph, solution).marginalCovariance(frame_key);
+  EXPECT_TRUE(covariance.allFinite());
+  EXPECT_GT(covariance.diagonal().minCoeff(), 0);
+  const auto start = map_frame_pose(solution.at<gtsam::Vector4>(frame_key), gtsam::Pose3());
+  EXPECT_LT((start.translation() - gtsam::Point3(200, -40, 8)).norm(), 1e-5);
+}

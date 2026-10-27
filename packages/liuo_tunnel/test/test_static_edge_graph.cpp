@@ -89,3 +89,77 @@ TEST(StaticEdgeGraph, CandidateReadDoesNotAbsorbLeavesOrDuplicateMainGraphInform
   unknown_again.insert(A(4), gtsam::Point3(0, 0, 0));
   EXPECT_TRUE(edges.candidate_summaries(9, unknown_again).empty());
 }
+
+TEST(StaticEdgeGraph, DeferredMapPriorPreservesNewExplicitInformationAndDeduplicatesOldPending) {
+  const StaticRangeBlock old{"network", "deployment", 4, 9, "old", "independent-gaussian-v1", 10, .01};
+  const StaticRangeBlock fresh{"network", "deployment", 4, 9, "fresh", "independent-gaussian-v1", 10.2, .01};
+  StaticAnchorEdges map_ledger("network", "deployment", 16);
+  map_ledger.commit(map_ledger.prepare({old}));
+  const auto checkpoint = map_ledger.absorbed_checkpoint();
+  auto edges = std::make_unique<StaticEdgeGraph>("network", "deployment", 16);
+  edges->offer({fresh});
+  gtsam::Values known;
+  known.insert(A(4), gtsam::Point3(0, 0, 0));
+  known.insert(A(9), gtsam::Point3(10, 0, 0));
+  gtsam::NonlinearFactorGraph graph;
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(A(4), known.at<gtsam::Point3>(A(4)), gtsam::noiseModel::Isotropic::Sigma(3, 1));
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(A(9), known.at<gtsam::Point3>(A(9)), gtsam::noiseModel::Isotropic::Sigma(3, 1));
+  const auto remove = edges->stage(graph, known);
+  gtsam::ISAM2 solver;
+  const auto result = solver.update(graph, known, remove);
+  edges->commit(result.newFactorsIndices);
+  edges->offer({old});  // not yet fused: safe to deduplicate when the prior arrives
+  auto prepared = edges->with_map_prior(checkpoint);
+  EXPECT_EQ(edges->checkpoint()["leaves"].size(), 1u);
+  EXPECT_EQ(edges->pending(), 1u);  // preparation did not change the old owner
+  EXPECT_EQ(prepared->checkpoint()["leaves"].size(), 2u);
+  EXPECT_EQ(prepared->fused(), 1u);
+  EXPECT_EQ(prepared->factor_count(), 1u);
+  EXPECT_EQ(prepared->pending(), 0u);
+  edges = std::move(prepared);  // production owner does this only after prior update
+  for (int i = 0; i < 1000; ++i) edges->offer({old, fresh});
+  gtsam::NonlinearFactorGraph additions;
+  EXPECT_TRUE(edges->stage(additions, known).empty());
+  EXPECT_TRUE(additions.empty());
+  edges->commit({});
+  auto new_sample = fresh;
+  new_sample.physical_id = "next";
+  new_sample.range = 10.4;
+  edges->offer({new_sample});
+  const auto replaced = edges->stage(additions, known);
+  EXPECT_EQ(replaced.size(), 1u);
+  ASSERT_EQ(additions.size(), 1u);
+  // The explicit likelihood contains fresh + next; old is ONLY in the prior.
+  EXPECT_NEAR(additions[0]->error(known), .5 * ((10.2 - 10) * (10.2 - 10) + (10.4 - 10) * (10.4 - 10)) / .01, 1e-9);
+  edges->abort();
+}
+TEST(StaticEdgeGraph, DeferredMapPriorCannotEraseInformationAlreadyFusedInCurrentGraph) {
+  const StaticRangeBlock block{"network", "deployment", 4, 9, "same", "independent-gaussian-v1", 10, .01};
+  StaticAnchorEdges map_ledger("network", "deployment", 16);
+  map_ledger.commit(map_ledger.prepare({block}));
+  StaticEdgeGraph edges("network", "deployment", 16);
+  edges.offer({block});
+  gtsam::Values known;
+  known.insert(A(4), gtsam::Point3(0, 0, 0));
+  known.insert(A(9), gtsam::Point3(10, 0, 0));
+  gtsam::NonlinearFactorGraph graph;
+  edges.stage(graph, known);
+  edges.commit({17});
+  EXPECT_THROW(edges.with_map_prior(map_ledger.absorbed_checkpoint()), std::invalid_argument);
+  EXPECT_EQ(edges.fused(), 1u);
+  EXPECT_EQ(edges.factor_count(), 1u);
+}
+
+TEST(StaticEdgeGraph, DeferredMapPriorRejectsConflictingPendingPhysicalContent) {
+  const StaticRangeBlock original{"network", "deployment", 4, 9, "old", "independent-gaussian-v1", 10, .01};
+  StaticAnchorEdges map_ledger("network", "deployment", 16);
+  map_ledger.commit(map_ledger.prepare({original}));
+  StaticEdgeGraph current("network", "deployment", 16);
+  EXPECT_THROW(current.with_map_prior(nullptr), std::invalid_argument);
+  auto conflict = original;
+  conflict.range = 11;
+  current.offer({conflict});
+  EXPECT_THROW(current.with_map_prior(map_ledger.absorbed_checkpoint()), std::invalid_argument);
+  EXPECT_EQ(current.pending(), 1u);
+  EXPECT_EQ(current.fused(), 0u);
+}

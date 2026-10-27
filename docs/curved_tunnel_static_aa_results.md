@@ -197,3 +197,5 @@ A-only 真实导出 run `20261027T173616Z_391`（781b4f1）完成180 s输入合�
 data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968 --config packages/liuo_tunnel/config/road_local_static_diagnostic.json --installation /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968/metadata/config/installation_metadata.json --seconds 180
 data-run -- tools/check_road_static.sh /home/dev/ws_iap/.runtime/0/liuo/20261027T174621Z_416
 ```
+
+地图复用基础模块推进：新增未知重力坐标关系G及单一完整相关MapFramePrior，没有车辆起点/朝向观测或旧bias。地图测试10项通过（含联合代价/Hessian、导数、不同起点的高斯优化测试模型和输出交叉协方差）；静态图测试5项通过（含延迟prior准备、旧/新信息分离、1000次重发、已融合重叠和内容冲突拒绝）。这些尚未被生产复用入口调用；旧入口仍拒绝A-only地图。下一项必须接通有界初始化、地图/本轮账本原子协调和带G交叉项的输出，再生成独立噪声数据验证，不能拿这些单元测试代替C09/C14。

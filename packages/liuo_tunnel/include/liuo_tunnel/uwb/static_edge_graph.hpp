@@ -83,6 +83,33 @@ public:
     ready_.clear();
   }
 
+  // Prepare a replacement owner BEFORE inserting the corresponding map prior.
+  // Swap it in only after that graph update succeeds. Existing explicit factor
+  // indices stay valid; this operation does not itself modify any graph.
+  std::unique_ptr<StaticEdgeGraph> with_map_prior(const nlohmann::json& checkpoint) const {
+    if (checkpoint.is_null()) throw std::invalid_argument("STATIC_MAP_PRIOR_CHECKPOINT_REQUIRED");
+    if (transaction_ || !absorbed_.is_null()) throw std::logic_error("STATIC_MAP_PRIOR_ALREADY_PRESENT_OR_UPDATE_ACTIVE");
+    auto next = std::make_unique<StaticEdgeGraph>(network_, deployment_, capacity_, checkpoint);
+    std::vector<StaticRangeBlock> fused, all;
+    for (const auto& [id, block] : history_) {
+      if (next->ledger_->contains(id)) {
+        next->ledger_->prepare({block});  // Same ID must still have identical content.
+        if (ledger_->contains(id)) throw std::invalid_argument("STATIC_MAP_PRIOR_INFORMATION_OVERLAP");
+        continue;  // A pending old leaf becomes represented by the map prior.
+      }
+      next->history_.emplace(id, block);
+      all.push_back(block);
+      if (ledger_->contains(id))
+        fused.push_back(block);
+      else
+        next->pending_.emplace(id, block);
+    }
+    next->ledger_->prepare(all);  // Validate total retained capacity and conflicts.
+    next->ledger_->commit(next->ledger_->prepare(fused));
+    next->indices_ = indices_;
+    return next;
+  }
+
   // The vehicle graph was discarded: retain physical records, but only the
   // original loaded map's leaves remain absorbed. Re-add other leaves once A
   // is initialized again; never claim they are already in the replacement graph.
