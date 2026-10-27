@@ -111,6 +111,17 @@
       "unresolved_position_branches": 2,
       "awaiting_new_data": 3,
       "stage_acceptance": "INCOMPLETE"
+    },
+    "L_LOCAL_FLOOR_STABILITY_60_DIAGNOSTIC": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T170733Z_055",
+      "source_commit": "f5c49af",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968",
+      "input_contract_result": "PASS",
+      "initialized_anchor_count": 0,
+      "output_count": 579,
+      "id3_cross_window_displacement_m": 0.8061124776450038,
+      "unchanged_stability_limit_m": 0.5,
+      "stage_acceptance": "INCOMPLETE"
     }
   },
   "limitations": [
