@@ -122,6 +122,51 @@
       "id3_cross_window_displacement_m": 0.8061124776450038,
       "unchanged_stability_limit_m": 0.5,
       "stage_acceptance": "INCOMPLETE"
+    },
+    "L_COMMON_REFERENCE_60_DIAGNOSTIC": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T171117Z_273",
+      "source_commit": "51842ac",
+      "input_contract_result": "PASS",
+      "initialized_anchor_count": 0,
+      "world_displacement_m": [
+        2.206437287375076,
+        2.2682414433422
+      ],
+      "same_vehicle_reference_displacement_m": [
+        0.005264939473763926,
+        0.08623728891313334
+      ],
+      "stage_acceptance": "INCOMPLETE"
+    },
+    "L_LOCAL_TRANSFER_FAILURE": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T171501Z_157",
+      "source_commit": "f986854",
+      "result": "FAILED",
+      "failure": "LOCAL_INSTALLATION_OUTSIDE_OBSERVED_PATCH during first main-graph transfer",
+      "failure_stamp": 56.2,
+      "planned_seconds": 120
+    },
+    "L_LOCAL_ANCHOR_120_DIAGNOSTIC": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T171841Z_743",
+      "source_commit": "c70ca2c",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968",
+      "input_contract_result": "PASS",
+      "initialized_anchor_ids": [
+        3
+      ],
+      "first_anchor_stamp": 56.1,
+      "initial_raw_ta_transfer_count": 200,
+      "actual_aa_fused": 0,
+      "final_anchor_count": 1,
+      "max_vehicle_states": 101,
+      "output_count": 1179,
+      "first_output": 3.1,
+      "last_output": 120.9,
+      "publish_wall_s": 120.00159898399943,
+      "fixed_start_diagnostic_position_rmse_m": 7.833628231082527,
+      "map_exported": false,
+      "reuse_verified": false,
+      "stage_acceptance": "INCOMPLETE"
     }
   },
   "limitations": [

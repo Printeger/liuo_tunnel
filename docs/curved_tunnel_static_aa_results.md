@@ -161,3 +161,14 @@ data-run -- python3 tools/check_straight_reporter_delivery.py /home/dev/ws_iap/.
 公共参考修订的下一生产诊断预声明为同一冻结 L 前 120 s，覆盖首次左弯；保持原 GPU、1×和资源限制。检查实际 A 入图、原始 TA 移交、边缘化后持久状态及失败日志；存在 A 也不自动通过定位、地图复用或 C14。世界与相对一致性两种差值均保留，不能借坐标修订隐藏绝对地图误差。
 
 公共参考版本 f986854 的 120 s 计划 run `20261027T171501Z_157` 在 t≈56.2 s 失败，未完成输入合同。id 3 相对变化 0.005289 m 已通过一致性，但直接把候选图世界 A 初值配上主图 X，导致 `LOCAL_INSTALLATION_OUTSIDE_OBSERVED_PATCH`。这是首次实际移交触发的坐标不一致，不能归为测量支持失败或初始化完成。修订为经相同局部观测 key 转换 A 初值，保留所有原始图信息及支持门限。七项测试已在前一版本通过；新增移交坐标解析回归。
+
+坐标移交修复后的 run `20261027T171841Z_743`（c70ca2c）完成 120 s：1200 cloud / 24001 IMU / 6786 UWB / 30787 clock 的发布与独立 observer count/hash 全匹配，1179 输出覆盖 3.1–120.9 s，1×发布 120.00160 s。id 3 在 56.1 s **实际联合入图**，一次移交 200 条当前窗口原始 TA、0 AA；A=1 保持至末端，车辆 X/V/B 各最多 101。初值坐标转换距离 15.354 m 明确记录，不将这次转换或候选位姿作为观测。新增坐标解析回归与既有局部几何共 8 项测试通过；开发时测试 Eigen 表达式触发 Point3/Matrix 重载歧义，显式 Point3 后修复，未改数学判据。
+
+离线 `tools/analyze_road_diagnostic.py` 固定首输出 yaw/平移、无全路线拟合：位置 RMSE 7.8336 m（XYZ 4.0791/6.6576/0.6352 m），最大 16.9861 m，姿态 RMSE 0.5331°，速度 RMSE 0.3199 m/s；1 s RPE 平移 RMSE 1.4508 m。文件位于 `export/analysis/road_fixed_start_diagnostic.{json,png}`。这只是局部核心首次取得非零 A 的开发证据，不是定位有效、地图可复用、静态 AA 或 C14 完成。
+
+118 次局部观测有 57 次有效、38 次地面支持/平面性拒绝、9 次地面未观测、9 次速度待定、5 次墙面不连续。后半段持续地面支持拒绝，阻止后续 Anchor 关联；另有 5 次未解决位置分支和 1 次候选越界求解失败均保留。下一步须拆解实际地面支持失败的具体量，不能整体放宽判据。A-only 相关地图导出与独立复用、L 静态交付及完整 S/L 矩阵仍未完成。
+
+```bash
+data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968 --config packages/liuo_tunnel/config/road_local_anchor_diagnostic.json --installation /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968/metadata/config/installation_metadata.json --seconds 120
+data-run -- python3 tools/analyze_road_diagnostic.py --run /home/dev/ws_iap/.runtime/0/liuo/20261027T171841Z_743 --truth-run /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968
+```
