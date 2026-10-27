@@ -47,6 +47,30 @@ class AnchorProblem:
         residual, jacobian = self.residual_jacobian(flat)
         return .5*residual@residual, jacobian.T@residual
 
+    def feasible_probe(self, flat):
+        """Finite independent directional falsification, never a uniqueness proof."""
+        point = np.asarray(flat, dtype=float).reshape(-1)
+        base, gradient = self.objective(point)
+        directions = list(np.eye(len(point)))+list(-np.eye(len(point)))
+        if np.linalg.norm(gradient) > 0:
+            directions.append(-gradient/np.linalg.norm(gradient))
+        records = []
+        for step in (1e-3, 1e-4):
+            changes = []
+            for direction in directions:
+                trial = point+step*direction
+                margins = self.domain(trial)
+                if len(margins) and min(margins) < -1e-7:
+                    continue
+                residual, _ = self.residual_jacobian(trial)
+                before, _ = self.residual_jacobian(point)
+                # Difference of squares avoids subtracting large total costs.
+                change = np.sum((residual-before).astype(np.longdouble)*(residual+before).astype(np.longdouble))/2
+                changes.append(float(change))
+            records.append(dict(step_m=step, feasible_probes=len(changes), minimum_cost_change=min([0.]+changes)))
+        return dict(cost=float(base), gradient_norm=float(np.linalg.norm(gradient)), probes=records,
+                    limitation='No finite direction finding descent does not prove stationarity, especially at active boundaries.')
+
     def domain(self, flat):
         """Production finite patch + final floor/height association, margins >=0.
 

@@ -21,6 +21,7 @@ class ConditionalAnchorModelTest(unittest.TestCase):
         # AA joint block has off-diagonal information, not two independent priors.
         information = jacobian.T@jacobian
         self.assertGreater(np.linalg.norm(information[:3, 3:]), 1.)
+        self.assertLess(min(p['minimum_cost_change'] for p in problem.feasible_probe(state)['probes']), -1e-6)
 
     def test_straight_ranges_have_exact_rotational_ambiguity(self):
         ta = [dict(anchor=1, tag=[x, 0., 0.], range=np.hypot(x-4, 3), variance=.01) for x in range(9)]

@@ -18,6 +18,8 @@ def main():
     parser.add_argument('--joint-run', type=Path, required=True)
     parser.add_argument('--truth-format', choices=['road_npz', 'straight_csv'], required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--audit-existing', type=Path, help='probe saved candidates only, no optimization or overwrite')
+    parser.add_argument('--normalize-objective', action='store_true', help='equivalent uniform numerical scaling; original physical cost is still reported')
     args = parser.parse_args()
     assert args.output.resolve().is_relative_to('/home/dev/ws_iap') and not args.output.exists()
     saved = json.loads(args.observations.read_text())
@@ -68,6 +70,16 @@ def main():
         seed_sets[anchor] = np.array([pp[0]+rr[0]@np.asarray(seed) for seed in row['seeds_local']])
         selected[anchor] = dict(candidate_stamp=row['stamp'], patch_stamp=local['stamp'], pose=local['pose'])
     problem = AnchorProblem(ids, ta, aa, patches)
+    if args.audit_existing:
+        existing = json.loads((args.audit_existing/'report.json').read_text())
+        assert existing['plan']['measurement_set_sha256'] == saved['measurement_set_sha256']
+        assert existing['plan']['geometry_sha256'] == hashlib.sha256(geometry_path.read_bytes()).hexdigest()
+        assert existing['plan']['ids'] == ids
+        probes = [dict(start=row['start'], **problem.feasible_probe(row['anchors'])) for row in existing['candidates']]
+        args.output.mkdir(parents=True)
+        (args.output/'feasible_probes.json').write_text(json.dumps(probes, indent=2)+'\n')
+        print(json.dumps(dict(candidates=len(probes), with_descent=sum(any(p['minimum_cost_change'] < -1e-6 for p in row['probes']) for row in probes))))
+        return
     for anchor in ids:
         if anchor not in seed_sets:
             seeds = problem.range_seeds(anchor)
@@ -87,6 +99,7 @@ def main():
     starts = [np.concatenate([seed_sets[a][k % len(seed_sets[a])] for a in ids]) for k in range(8)]
     starts += [np.concatenate([seed_sets[a][rng.integers(len(seed_sets[a]))] for a in ids]) for _ in range(24)]
     args.output.mkdir(parents=True)
+    scale = float(len(ta)+len(aa)+len(patches)) if args.normalize_objective else 1.
     plan = dict(role='D1_FIXED_TRUE_TRAJECTORY_CONDITIONAL_NOT_JOINT_POSTERIOR',
                 anchor_truth_access='NONE; evaluation must be separate', raw_sha256=saved['raw_sha256'],
                 measurement_set_sha256=saved['measurement_set_sha256'],
@@ -96,16 +109,19 @@ def main():
                 joint_run=str(args.joint_run), ids=ids, ta=len(ta), aa=len(aa), selected_patches=selected,
                 rng_seed=20261027, starts=[x.reshape(-1,3).tolist() for x in starts],
                 solver='SLSQP analytic range/plane cost gradient; explicit finite support constraints',
-                maxiter=300, ftol=1e-9, final_domain_tolerance_m=1e-7,
+                maxiter=300, ftol=1e-9/scale, original_cost_ftol=1e-9, objective_divisor=scale, final_domain_tolerance_m=1e-7,
                 comparable_cost_delta=2., significant_anchor_separation_m=.5,
                 local_information='Gauss-Newton J.T J; full spectrum, not global uniqueness proof')
     (args.output/'plan_and_seeds.json').write_text(json.dumps(plan, indent=2)+'\n')
     results = []
     constraints = [dict(type='ineq', fun=problem.domain)] if patches else []
+    def objective(flat):
+        cost, gradient = problem.objective(flat)
+        return cost/scale, gradient/scale
     for number, start in enumerate(starts):
         started = time.monotonic()
-        fit = minimize(problem.objective, start, jac=True, method='SLSQP', constraints=constraints,
-                       options=dict(maxiter=300, ftol=1e-9))
+        fit = minimize(objective, start, jac=True, method='SLSQP', constraints=constraints,
+                       options=dict(maxiter=300, ftol=1e-9/scale))
         residual, jacobian = problem.residual_jacobian(fit.x)
         information = jacobian.T@jacobian
         eigenvalues, eigenvectors = np.linalg.eigh(information)
