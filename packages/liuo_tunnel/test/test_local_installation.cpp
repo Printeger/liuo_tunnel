@@ -16,6 +16,31 @@ std::vector<gtsam::Point3> walls(const gtsam::Pose3& body, double radius = 0) {
   return points;
 }
 }  // namespace
+TEST(LocalInstallation, InstallationSideDoesNotReverseWithEstimatedVelocity) {
+  const gtsam::Pose3 body(gtsam::Rot3(), {0, -1.875, 1.66});
+  const auto points = walls(body);
+  const auto initial = local_installation_observation(points, body.rotation(), {5, 0, 0}, .02);
+  const auto old_reversal = local_installation_observation(points, body.rotation(), {-5, 0, 0}, .02);
+  EXPECT_LT(initial.normal.dot(old_reversal.normal), -.999);
+  for (const double speed : {-5., 0., 5.}) {
+    const auto continued = local_installation_observation(points, body.rotation(), {speed, 0, 0}, .02, initial.normal);
+    EXPECT_GT(continued.normal.dot(initial.normal), .999);
+    EXPECT_NEAR(continued.center_offset, initial.center_offset, 1e-8);
+    LocalInstallationFactor factor(0, 1, continued, 5.52);
+    EXPECT_NEAR(factor.evaluateError(body, {0, 5.52, 3.5})[0], 0, 1e-8);
+  }
+}
+
+TEST(LocalInstallation, TransportedSideUsesRelativePoseWithoutGlobalAxis) {
+  const gtsam::Pose3 old(gtsam::Rot3::RzRyRx(.01, -.02, .3), {4, -1.875, 1.66});
+  const gtsam::Pose3 now(gtsam::Rot3::RzRyRx(.02, -.01, .5), {8, -1.875, 1.66});
+  const auto first = local_installation_observation(walls(old), old.rotation(), old.rotation().unrotate(gtsam::Vector3(5, 0, 0)), .02);
+  const auto left = now.rotation().unrotate(old.rotation().rotate(first.normal));
+  const auto observed = local_installation_observation(walls(now), now.rotation(), now.rotation().unrotate(gtsam::Vector3(-5, 0, 0)), .02, left);
+  EXPECT_GT(now.rotation().rotate(observed.normal).dot(gtsam::Vector3::UnitY()), .999);
+  EXPECT_THROW(local_installation_observation(walls(now), now.rotation(), {5, 0, 0}, .02, now.rotation().unrotate(gtsam::Vector3(1, 0, 0))), std::invalid_argument);
+}
+
 TEST(LocalInstallation, ObservedBodyWallsAreGaugeIndependentAndFiniteInSpan) {
   const gtsam::Pose3 body(gtsam::Rot3::RzRyRx(.02, -.005, .4), {0, -1.875, 1.66});
   auto measurement = local_installation_observation(walls(body), body.rotation(), body.rotation().unrotate(gtsam::Point3(10, 0, 0)), .02);

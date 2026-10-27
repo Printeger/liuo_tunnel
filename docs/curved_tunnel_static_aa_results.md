@@ -362,3 +362,10 @@ run `20261027T201351Z_374`，启动aeb042e，算法1ff22c1，与完整S实际节
 新增离线路线误差分解仅使用真值水平运动切向/左法向/世界竖直，不更改任何估计、规范或对齐；静止时采用时间最近的非零真值速度方向。独立坐标旋转/范数和既有两种格式15m复用偏差测试通过，日志`/home/dev/ws_iap/liuo_observation/log/route_frame_analysis_tests.log`。
 
 S200427附加`bias_diagnostic.json`以独立合成噪声重建仅离线检查bias。预测纵向速度90秒0.5928m/s、110秒−1.7149m/s、191.8秒−8.0612m/s，192秒首次A2后−4.9722m/s。代码每次以estimated up×velocity选左法向，故存在速度反向导致固定安装侧别重新解释的风险；尚需最小测试与生产修复，不能直接用真值速度替换。
+
+
+### 安装侧别不能随估计速度反向交换
+
+S200427离线bias/速度记录显示首个Anchor前预测纵向速度已反向。旧观测函数每次取up×velocity选择正法向，固定synthetic偏距因而可能被解释到另一墙面。最小几何测试用完全相同的点云、姿态和偏距，仅将速度+5变为−5，旧选择确实翻转法向；修复采用最近成功局部观测的法向，经两个仍在联合窗口内X的相对旋转仅传递符号约定。当前速度零或反向不改变固定侧别。未改变墙面拟合、floor误差、±10m支持、候选分支门限或任何权重。
+
+首次仍需有效运动建立侧别；参考过期/关联不明确时pending，不能把缓存位姿当已知量或读取道路真值补足。只保存一个key并在reset清除。新增local_orientation.csv记录参考key、速度及当前法向与motion-left的关系，供生产审计。节点构建/安装通过，14项局部几何/相对候选测试通过，日志local_orientation_build.log、local_orientation_tests.log、local_orientation_install.log均位于/home/dev/ws_iap/liuo_observation/log。生产验证仍待进行，不把历史失败追认为通过。

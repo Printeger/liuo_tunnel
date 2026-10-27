@@ -1156,6 +1156,15 @@
       ],
       "limitation": "Branch-local marginal approximation; no nonlinear historical measurements recovered. Full S/L effectiveness and resource checks remain pending.",
       "production_build": "PASS"
+    },
+    "local_orientation_continuity": {
+      "state": "UNIT_CHECKED_PRODUCTION_PENDING",
+      "tests": 14,
+      "log": "/home/dev/ws_iap/liuo_observation/log/local_orientation_tests.log",
+      "reproduction": "Identical walls and pose with reversed estimated velocity reverse the old normal and installation-side interpretation.",
+      "fix": "Transport only orientation convention through retained joint poses; do not use old cached poses as exact observations.",
+      "expired_reference": "Explicit pending until session reset; no velocity-based reassignment.",
+      "limitation": "Initial motion must match deployment side convention; not a universal reverse-entry orientation estimator."
     }
   },
   "inputs": {

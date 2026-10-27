@@ -2,6 +2,7 @@
 #include <liuo_tunnel/uwb/body_wall_observation.hpp>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <array>
+#include <optional>
 #include <liuo_tunnel/uwb/local_floor.hpp>
 
 namespace liuo_tunnel {
@@ -19,9 +20,13 @@ struct LocalInstallationObservation {
     return p.allFinite() && std::abs(tangent.dot(p)) <= span && up.dot(p) <= maximum_height + .25 && floor.covers(p) && floor.signed_height(p) >= -floor.margin(p);
   }
 };
-inline LocalInstallationObservation
-local_installation_observation(const std::vector<gtsam::Point3>& raw_body_points, const gtsam::Rot3& gravity, const gtsam::Vector3& velocity_body, double range_sigma) {
-  if (!velocity_body.allFinite() || velocity_body.norm() < .5) throw std::invalid_argument("LOCAL_WALL_DIRECTION_PENDING");
+inline LocalInstallationObservation local_installation_observation(
+  const std::vector<gtsam::Point3>& raw_body_points,
+  const gtsam::Rot3& gravity,
+  const gtsam::Vector3& velocity_body,
+  double range_sigma,
+  const std::optional<gtsam::Vector3>& previous_left_body = std::nullopt) {
+  if (!previous_left_body && (!velocity_body.allFinite() || velocity_body.norm() < .5)) throw std::invalid_argument("LOCAL_WALL_DIRECTION_PENDING");
   std::vector<gtsam::Point3> points;
   for (const auto& p : raw_body_points)
     if (p.allFinite() && p.norm() <= 25.) points.push_back(p);
@@ -29,8 +34,11 @@ local_installation_observation(const std::vector<gtsam::Point3>& raw_body_points
   LocalInstallationObservation result;
   result.up = gravity.unrotate(gtsam::Vector3::UnitZ());
   result.normal = observed.normal;
-  const auto left = result.up.cross(velocity_body).eval();
-  if (left.norm() < .5 || std::abs(result.normal.dot(left.normalized())) < .95) throw std::invalid_argument("LOCAL_WALL_MOTION_ASSOCIATION_AMBIGUOUS");
+  // Installation side is an orientation convention, not the current sign of
+  // estimated velocity. Transport the last observed normal through retained
+  // joint poses; use motion only to establish the initial convention.
+  const gtsam::Vector3 left = previous_left_body ? *previous_left_body : result.up.cross(velocity_body).eval();
+  if (!left.allFinite() || left.norm() < .5 || std::abs(result.normal.dot(left.normalized())) < .95) throw std::invalid_argument("LOCAL_WALL_MOTION_ASSOCIATION_AMBIGUOUS");
   if (result.normal.dot(left) < 0) result.normal *= -1;
   result.tangent = result.normal.cross(result.up).normalized();
   result.center_offset = result.normal.dot(observed.center);

@@ -289,6 +289,7 @@ private:
     pending_calibration_ranges.clear();
     for (const auto& pending : extension_ranges) log_range(pending.observation,"CLOCK_RESET",pending.bracket);
     local_patches.clear();
+    local_orientation_reference.reset();
     extension_ranges.clear(); extension_batch.reset(); extension_previous.clear(); extension_relative_previous.clear(); extension_last_attempt.clear();
     calibration_prepared = false;
     calibration_previous.reset();
@@ -1679,9 +1680,29 @@ private:
       if (audit.tellp()==0) audit << "stamp,pose,event,points,width,center_offset,sigma,minimum_height,maximum_height,surface_model_error\n";
       audit << std::setprecision(16) << t << ',' << count << ',';
       try {
-        const auto observed=local_installation_observation(wall_points,state.pose().rotation(),state.pose().rotation().unrotate(state.velocity()),cfg.at("sensors").at("sigma_lidar_range"));
+        std::optional<gtsam::Vector3> previous_left;
+        if (local_orientation_reference) {
+          const auto previous = local_patches.find(*local_orientation_reference);
+          if (previous == local_patches.end() || !smoother->getLinearizationPoint().exists(*local_orientation_reference))
+            throw std::invalid_argument("LOCAL_WALL_ORIENTATION_REFERENCE_EXPIRED");
+          previous_left =
+            state.pose().rotation().unrotate(smoother->calculateEstimate<gtsam::Pose3>(*local_orientation_reference).rotation().rotate(previous->second.second.normal));
+        }
+        const auto observed = local_installation_observation(
+          wall_points,
+          state.pose().rotation(),
+          state.pose().rotation().unrotate(state.velocity()),
+          cfg.at("sensors").at("sigma_lidar_range"),
+          previous_left);
+        std::ofstream orientation_audit(RunLogManager::instance().profiling_path("local_orientation.csv"), std::ios::app);
+        if (orientation_audit.tellp() == 0) orientation_audit << "stamp,pose,reference_pose,speed,normal_dot_motion_left\n";
+        const gtsam::Vector3 motion_left = observed.up.cross(state.pose().rotation().unrotate(state.velocity()));
+        orientation_audit << std::setprecision(16) << t << ',' << count << ','
+                          << (local_orientation_reference ? std::to_string(gtsam::Symbol(*local_orientation_reference).index()) : "initial_motion") << ','
+                          << state.velocity().norm() << ',' << (motion_left.norm() > 1e-8 ? observed.normal.dot(motion_left.normalized()) : NAN) << '\n';
         std::ofstream floor_audit(RunLogManager::instance().profiling_path("local_floor_patches.csv"), std::ios::app);
-        if (floor_audit.tellp() == 0) floor_audit << "stamp,pose,side,nx,ny,nz,cx,cy,cz,variance,along_spread,across_spread,center_margin,minimum_longitudinal,maximum_longitudinal\n";
+        if (floor_audit.tellp() == 0)
+          floor_audit << "stamp,pose,side,nx,ny,nz,cx,cy,cz,variance,along_spread,across_spread,center_margin,minimum_longitudinal,maximum_longitudinal\n";
         for (size_t side = 0; side < 2; ++side) {
           const auto& floor = observed.floors[side];
           floor_audit << std::setprecision(16) << t << ',' << count << ',' << side;
@@ -1690,6 +1711,7 @@ private:
           floor_audit << ',' << floor.variance << ',' << floor.along_spread << ',' << floor.across_spread << ',' << floor.margin(floor.center) << ',' << floor.minimum_longitudinal << ',' << floor.maximum_longitudinal << '\n';
         }
         local_patches.insert_or_assign(X(count),std::make_pair(t,observed));
+        local_orientation_reference = X(count);
         for (auto it=local_patches.begin();it!=local_patches.end();) {
           if (it->second.first<t-cfg.at("odometry").at("lag_s").get<double>()) it=local_patches.erase(it); else ++it;
         }
@@ -2255,6 +2277,7 @@ private:
   std::unique_ptr<StaticAnchorEdges> deferred_map_ledger;
   std::optional<SyntheticLocalOffsets> local_offsets;
   std::map<gtsam::Key,std::pair<double,LocalInstallationObservation>> local_patches;
+  std::optional<gtsam::Key> local_orientation_reference;
   struct LocalAnchorAssociation { gtsam::Key pose; double stamp; LocalInstallationObservation observation; double offset; };
   bool fuse = false, bootstrapped = true, self_calibrate = false, calibration_prepared = false, reuse_map = false, bounded_bootstrap_work = false;
   std::optional<CalibratedMap> calibrated_map;
