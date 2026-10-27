@@ -324,3 +324,12 @@ run `20261027T192427Z_824`（2c29438）完整540秒结束，GPU1×墙时539.9959
 修复保留每个边缘先验的原始二次型/参考，使用完整Local流形Jacobian表达于当前求解坐标，不再固定活动A/X的theta。共同平移复现测试、非零旋转/大平移的独立有限差分梯度及交叉信息测试、原联合Schur信息/代价回归共3项通过，日志`marginal_chart_after.log`。测试显式将构建目录置于LD_LIBRARY_PATH最前，避免误测旧已安装库。生产完整S/L尚未验证该版本，阶段仍未完成。
 
 生产节点构建/安装通过；上述3项加局部几何12项、静态图5项、地图13项，共33项通过。汇总日志`/home/dev/ws_iap/liuo_observation/log/manifold_marginal_tests.log`。
+
+
+### 流形边缘先验修复后的S 110秒重放
+
+`20261027T200157Z_906`绑定1ff22c1，同一冻结S-CAL输入，GPU、1×、110秒完成：1100云/22000IMU/7080UWB/22000clock，1079个输出覆盖3.1–110.9秒，发布墙钟109.995690秒。A1在99.4秒以192个原始TA初始化，越过原约100秒失败点，未再抛出有限补丁线性化异常。
+
+这是异常修复证据，不是定位通过。固定起点yaw/translation坐标下RMSE36.203743m（XYZ36.190785/0.384804/0.888859），最大119.437560m，姿态0.293457deg，速度1.338995m/s；RPE1s13.115417m/10s36.068308m。DEGRADED556/LOST523。110.0秒地图只有A1，最小协方差特征值0.0390806；350个AA全部pending，0融合，因此不能作非平凡地图复用。原始AA身份与回调/账本审计PASS仅覆盖交付一致性。
+
+资源最大101车辆状态、586因子、RSS324.281MiB、整卡1159.25MiB，IMU/cloud/UWB队列402/0/2，最大优化67.729ms。分析文件snapshot_smoke.json、road_static_audit.json、road_fixed_start_diagnostic.json/png和full_route_resources.json均保留。下一步同设置完整540秒S路线检查后续Anchor和实际AA。

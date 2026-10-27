@@ -699,6 +699,134 @@
       "diagnostic": "export/analysis/finite_patch_chart_diagnostic.json",
       "stage_acceptance": "FAILED",
       "limitation": "Mixed fixed/relinearized chart evidence; not full accepted-state reconstruction. Exact failing factor association and optimizer regression remain to be established."
+    },
+    "S_MANIFOLD_MARGINAL_110": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T200157Z_906",
+      "source_commit": "1ff22c1",
+      "requested_seconds": 110,
+      "input_contract": {
+        "first_output": 3.1,
+        "last_output": 110.9,
+        "output_count": 1079,
+        "publish_wall_s": 109.99568989399995,
+        "raw_counts": {
+          "clock": 22000,
+          "cloud": 1100,
+          "imu": 22000,
+          "uwb": 7080
+        },
+        "raw_sha256": {
+          "clock": "25cd1be5f22181829cc51b4648587f92d8e559bd47321b67d12c23ad132609a3",
+          "cloud": "7ea13faa66c0831abdb1652586c46c051a8ca13784fa3e697e963ff3f8acb452",
+          "imu": "9666f7801ae7d058adac32470970cd9571a980805fd58d18c98fccd3553e04f6",
+          "uwb": "a3064047b789aef73ad366bfc0db9bb2d3db764b21fbbfe3166d43a9b27c8c78"
+        },
+        "real_time_factor": 1.0000391843171692,
+        "result": "PASS",
+        "scope": "native snapshot GPU input/output contract, not localization or map acceptance",
+        "source_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933"
+      },
+      "static_audit": {
+        "scope": "delivered raw AA to callback and map ledger; not localization/reuse acceptance",
+        "result": "PASS",
+        "raw_records": 350,
+        "unique_physical_leaves": 350,
+        "received_records": 350,
+        "map_absorbed_leaves": 0,
+        "final_fused_leaves": 0,
+        "final_pending_leaves": 350,
+        "explicit_edges": 0,
+        "first_fused_stamp": null,
+        "oldest_absorbed_acquisition": null,
+        "map_stamp": 110.0,
+        "anchor_ids": [
+          1
+        ],
+        "minimum_map_eigenvalue": 0.03908060442368488,
+        "raw_sha256": "8de5439e8e35ae747ee42842aa505b8ec5290548a70b4386b47c71df82ccdd7a"
+      },
+      "diagnostic": {
+        "scope": "offline diagnostic only, not stage acceptance",
+        "truth_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933",
+        "truth_format": "straight_csv",
+        "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T200157Z_906",
+        "gauge": "first_output_yaw_and_translation_only_no_route_fit",
+        "reference_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T200157Z_906",
+        "total_output_samples": 1079,
+        "pre_map_output_samples": 0,
+        "reference_stamp": 3.1,
+        "yaw_rotation_matrix": [
+          [
+            0.9999999996778394,
+            -2.5383485821064127e-05,
+            0.0
+          ],
+          [
+            2.5383485821064127e-05,
+            0.9999999996778394,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "translation": [
+          9.658074374112876e-06,
+          -4.519958276690317e-06,
+          1.2001327441522995
+        ],
+        "samples": 1079,
+        "first_stamp": 3.1,
+        "last_stamp": 110.9,
+        "covered_seconds": 107.80000000000001,
+        "position_rmse_m": 36.20374338568886,
+        "xyz_rmse_m": [
+          36.19078460933208,
+          0.38480396829178276,
+          0.8888590460416448
+        ],
+        "maximum_position_error_m": 119.43756047171037,
+        "attitude_rmse_deg": 0.29345691552058184,
+        "rpe": {
+          "1.0": {
+            "samples": 1069,
+            "translation_rmse_m": 13.115417140676572,
+            "rotation_rmse_deg": 0.026240033452326894
+          },
+          "10.0": {
+            "samples": 979,
+            "translation_rmse_m": 36.06830786961863,
+            "rotation_rmse_deg": 0.09402713704035318
+          }
+        },
+        "velocity_rmse_mps": 1.3389946142870068
+      },
+      "resources": {
+        "scope": "recorded extrema and output coverage only; no localization or load-test acceptance",
+        "states_samples": {
+          "DEGRADED": 556,
+          "LOST": 523
+        },
+        "output_samples": 1079,
+        "first_output_stamp": 3.1,
+        "last_output_stamp": 110.9,
+        "max_retained_vehicle_states": 101.0,
+        "max_factors": 586.0,
+        "max_rss_mib": 324.28125,
+        "max_device_mib": 1159.25,
+        "device_memory_scope": "entire CUDA device, not exclusive process allocation",
+        "max_imu_queue": 402.0,
+        "max_cloud_queue": 0.0,
+        "max_uwb_queue": 2.0,
+        "maximum_optimization_ms": 67.7286,
+        "max_retained_cloud_frames": 101.0,
+        "max_keyframes": 1.0
+      },
+      "initialization_stamp": 99.4,
+      "accepted_initial_TA": 192,
+      "stage_acceptance": "INCOMPLETE_SINGLE_ANCHOR_NO_AA_FUSION_POOR_LOCALIZATION"
     }
   },
   "limitations": [
@@ -733,7 +861,7 @@
       "scope": "unchanged frozen raw physical set; finite same-reporter delivery opportunities only"
     },
     "manifold_marginal_chart": {
-      "state": "MINIMAL_REPRODUCTION_FIXED_PRODUCTION_PENDING",
+      "state": "UNIT_CHECKED_S110_FINITE_PATCH_FAILURE_RESOLVED_FULL_ROUTES_PENDING",
       "failure_reproduction": "/home/dev/ws_iap/liuo_observation/log/marginal_chart_before.log",
       "regression_log": "/home/dev/ws_iap/liuo_observation/log/manifold_marginal_tests.log",
       "tests": {
