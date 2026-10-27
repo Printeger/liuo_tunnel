@@ -25,6 +25,7 @@ from rosgraph_msgs.msg import Clock
 from nav_msgs.msg import Odometry
 
 ROOT = Path(__file__).resolve().parents[2]
+BASE = Path(os.environ.get('LIUO_DATA_ROOT', '/home/dev/ws_iap/liuo_observation')) / 'baselines'
 sys.path.insert(0, str(ROOT / 'tools'))
 import run_directory as rd
 from raw_identity import hash_message
@@ -132,14 +133,17 @@ class Adapter:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('algorithm', choices=['fastlio', 'liosam'])
-    parser.add_argument('--source', type=Path, default=ROOT / 'log/20261022T161447Z_132')
+    parser.add_argument('--source', type=Path, required=True)
+    parser.add_argument('--scan-model', choices=['snapshot', 'rolling'], default='snapshot')
     parser.add_argument('--duration', type=float, default=360.)
     args = parser.parse_args()
-    if not 0 < args.duration <= 360:
-        parser.error('duration must be in (0,360]')
-    os.environ['LIUO_RUN_ROOT'] = str(ROOT / 'log')
-    os.environ['LIUO_RETENTION_ENABLED'] = '0'
-    run = rd.resolve_run_directory(entrypoint='external_lio', scenario='frozen_seed1_snapshot')
+    if not 0 < args.duration <= (392.6 if args.scan_model == 'rolling' else 540):
+        parser.error('duration exceeds declared scene bound')
+    if args.scan_model == 'rolling' and args.algorithm != 'fastlio':
+        parser.error('rolling comparison supports FAST-LIO2 only')
+    if rd._git_value('status', '--porcelain'):
+        raise RuntimeError('commit changes before baseline replay')
+    run = rd.resolve_run_directory(entrypoint='external_lio', scenario='frozen_' + args.scan_model)
     print(run, flush=True)
     os.environ.update(LIUO_RUN_DIR=str(run), ROS_LOG_DIR=str(run / 'runtime/ros'), ROS_DOMAIN_ID=str(100 + os.getpid() % 100), ROS_AUTOMATIC_DISCOVERY_RANGE='LOCALHOST', OMP_NUM_THREADS='4')
     children, handles = [], []
@@ -149,22 +153,42 @@ def main():
     counts = dict(imu=0, cloud=0, clock=0)
     hashes = {key: hashlib.sha256() for key in ('imu', 'cloud')}
     semantic_hashes = {key: hashlib.sha256() for key in ('imu', 'cloud')}
+    raw_hashes = {key: hashlib.sha256() for key in ('imu', 'cloud')}
+    observed_hashes = {key: hashlib.sha256() for key in ('imu', 'cloud')}
+    observed_counts = dict(imu=0, cloud=0)
+    publish_wall_s = None
     adapter = None
     identity = dict(algorithm=args.algorithm, source=str(args.source.resolve()), duration_s=args.duration, uwb_published=False, truth_published=False, commands=[], binaries={})
     try:
-        config = ROOT / 'tools/baselines/config' / (args.algorithm + '.yaml')
+        if shutil.disk_usage(run).free < 8 * 1024**3:
+            raise RuntimeError('disk reserve below 8 GiB')
+        config = ROOT / 'tools/baselines/config' / (args.algorithm + ('_rolling' if args.scan_model == 'rolling' else '') + '.yaml')
         snapshot = run / 'metadata/config' / config.name
         snapshot.write_bytes(config.read_bytes())
         rd.register_config_snapshot(run, snapshot)
         identity['config_sha256'] = hashlib.sha256(snapshot.read_bytes()).hexdigest()
         identity['sources'] = json.loads((ROOT / 'tools/baselines/sources.json').read_text())
+        identity['patch_sha256'] = hashlib.sha256((ROOT / 'tools/baselines/patches' / (args.algorithm + '.patch')).read_bytes()).hexdigest()
         identity['capture_sha256'] = {p.name: hashlib.file_digest(p.open('rb'), 'sha256').hexdigest() for p in (args.source / 'export/capture/raw').glob('*.mcap')}
         initial, bias, n = startup(args.source)
         identity['derived_attitude'] = dict(stationary_samples=n, gyro_bias= bias.tolist(), initial_quaternion=initial.as_quat().tolist(), independent_orientation_measurement=False, imu_rpy_weight=0)
-        adapter = Adapter(initial, bias)
+        adapter = Adapter(initial, bias, args.scan_model)
+        identity['scan_model'] = args.scan_model
+        identity['rate'] = 1.
+        scene_artifacts = args.source / 'metadata/manifests/scene_artifacts.json'
+        if scene_artifacts.exists():
+            declared = json.loads(scene_artifacts.read_text())['files']
+            for name, digest in identity['capture_sha256'].items():
+                if declared['export/capture/raw/' + name]['sha256'] != digest:
+                    raise RuntimeError('frozen scene capture hash mismatch')
         rclpy.init()
         node = Node('baseline_replay_and_recorder')
         pubs = {key: node.create_publisher(cls, topic, 2048 if key == 'imu' else 32) for key, cls, topic in [('imu', Imu, '/benchmark/imu'), ('cloud', PointCloud2, '/benchmark/points'), ('clock', Clock, '/clock')]}
+        def audit(key, msg):
+            observed_counts[key] += 1
+            hash_message(observed_hashes[key], key, msg)
+        audit_subscriptions = [node.create_subscription(cls, topic, lambda msg, key=key: audit(key, msg), 2048)
+            for key, cls, topic in [('imu', Imu, '/benchmark/imu'), ('cloud', PointCloud2, '/benchmark/points')]]
         last_output = [time.monotonic()]
         latest_sensor = [0.]
         r_bl = Rotation.from_euler('z', .05)
@@ -185,7 +209,7 @@ def main():
         sub = node.create_subscription(Odometry, output_topic, record, qos_profile_sensor_data)
         executables = [('fast_lio', 'fastlio_mapping')] if args.algorithm == 'fastlio' else [('lio_sam', 'lio_sam_' + suffix) for suffix in ('imageProjection', 'featureExtraction', 'imuPreintegration', 'mapOptimization')]
         for package, executable in executables:
-            binary = ROOT / 'log/baseline_install' / package / 'lib' / package / executable
+            binary = BASE / 'install' / package / 'lib' / package / executable
             command = [str(binary), '--ros-args', '--params-file', str(snapshot)]
             identity['commands'].append(command)
             identity['binaries'][executable] = hashlib.file_digest(binary.open('rb'), 'sha256').hexdigest()
@@ -194,14 +218,18 @@ def main():
             children.append(subprocess.Popen(command, stdout=f, stderr=subprocess.STDOUT, start_new_session=True, cwd=run))
         rd.write_subordinate_manifest(run, 'baseline_input', identity)
         deadline = time.monotonic() + 30
-        while any(pubs[k].get_subscription_count() == 0 for k in ('imu', 'cloud')):
+        while any(pubs[k].get_subscription_count() < 2 for k in ('imu', 'cloud')) or pubs['clock'].get_subscription_count() == 0:
             if time.monotonic() > deadline or any(p.poll() is not None for p in children):
                 raise RuntimeError('baseline subscribers failed to become ready')
+            rclpy.spin_once(node, timeout_sec=.01)
+        matched_until = time.monotonic() + 1
+        while time.monotonic() < matched_until:
             rclpy.spin_once(node, timeout_sec=.01)
         stream = reader(args.source)
         first_record, wall_start = None, time.monotonic()
         last_output[0] = wall_start
-        types = {'/sensors/imu': ('imu', Imu), '/sensors/lidar/points': ('cloud', PointCloud2), '/clock': ('clock', Clock)}
+        lidar_topic = '/sensors/lidar' if args.scan_model == 'rolling' else '/sensors/lidar/points'
+        types = {'/sensors/imu': ('imu', Imu), lidar_topic: ('cloud', PointCloud2), '/clock': ('clock', Clock)}
         while stream.has_next():
             topic, data, ts = stream.read_next()
             if topic not in types:
@@ -219,11 +247,13 @@ def main():
                 raise RuntimeError('baseline process exited before input completion')
             key, cls = types[topic]
             msg = deserialize_message(data, cls)
-            if key == 'imu':
+            if key in raw_hashes:
+                hash_message(raw_hashes[key], key, msg)
+            if key == 'imu' and args.algorithm == 'liosam':
                 msg = adapter.imu(msg)
             elif key == 'cloud':
                 msg = adapter.cloud(msg)
-            else:
+            elif key == 'clock':
                 latest_sensor[0] = msg.clock.sec + msg.clock.nanosec * 1e-9
             if key in hashes:
                 hashes[key].update(serialize_message(msg))
@@ -231,11 +261,20 @@ def main():
             pubs[key].publish(msg)
             counts[key] += 1
             rclpy.spin_once(node, timeout_sec=0.)
+            if time.monotonic() - target > .25:
+                raise RuntimeError('1x replay deadline exceeded 250 ms')
+            if key == 'cloud' and shutil.disk_usage(run).free < 8 * 1024**3:
+                raise RuntimeError('disk reserve below 8 GiB')
+        publish_wall_s = time.monotonic() - wall_start
         drain = time.monotonic() + 3
         while time.monotonic() < drain:
             rclpy.spin_once(node, timeout_sec=.01)
         if not poses:
             raise RuntimeError('no estimated poses')
+        if counts['cloud'] == 0 or counts['imu'] == 0:
+            raise RuntimeError('incomplete sensor topic selection')
+        if any(observed_counts[k] != counts[k] or observed_hashes[k].hexdigest() != semantic_hashes[k].hexdigest() for k in observed_counts):
+            raise RuntimeError('adapted input observer count/hash mismatch')
         lifecycle = 'completed'
     except (Exception, KeyboardInterrupt) as exc:
         failure = repr(exc)
@@ -256,7 +295,7 @@ def main():
         if args.algorithm == 'fastlio':
             # Upstream also writes auxiliary debug files under its compiled-in
             # source root. Preserve each run's copy before a subsequent replay.
-            native = ROOT / 'log/baseline_sources/fastlio/Log'
+            native = BASE / 'sources/fastlio/Log'
             destination = run / 'runtime/fastlio_native_debug'
             destination.mkdir(exist_ok=True)
             for path in native.glob('*.txt'):
@@ -272,6 +311,7 @@ def main():
         with (export / 'delivery_latency.csv').open('w') as f:
             writer = csv.writer(f); writer.writerow(['stamp', 'latest_input_stamp_minus_estimate_s']); writer.writerows(latency)
         summary = dict(failure=failure, counts=counts, adapted_sha256={k: h.hexdigest() for k, h in hashes.items()}, poses=len(poses), max_ring_residual_deg=adapter.max_ring_residual_deg if adapter else None, exit_codes=[p.returncode for p in children])
+        summary.update(raw_semantic_sha256={k:h.hexdigest() for k,h in raw_hashes.items()}, observed_counts=observed_counts, observed_semantic_sha256={k:h.hexdigest() for k,h in observed_hashes.items()}, publish_wall_s=publish_wall_s)
         summary['adapted_semantic_sha256'] = {k:h.hexdigest() for k,h in semantic_hashes.items()}
         rd.write_subordinate_manifest(run, 'baseline_result', summary)
         if failure:

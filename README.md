@@ -356,3 +356,13 @@ data-run -- bash -c '
 已完成数据及S01–S12证据见[7 km场景制作结果](docs/road_tunnel_7km_scene_results.md)。
 完整数据保留于 `/home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968`；
 `tools/road_scene_acceptance.py` 可独立复核文件摘要、贴墙几何、UWB遮挡与噪声统计。
+
+### 曲线/静态 AA 新版开发入口（尚未完成验收）
+
+当前进展和失败证据见 [新版结果](docs/curved_tunnel_static_aa_results.md)。原生 L rolling GPU 接入可用：
+
+```bash
+data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968 --config packages/liuo_tunnel/config/road_rolling_lio.json --seconds 20
+```
+
+这只是 LIO-only 接入检查；当前 L 长片段发生发散，不代表定位有效或未知站点已初始化。静态 AA 的旧 S 校准/独立复用命令和地图路径见结果文档，不能代替完整 S 普通路线。FAST-LIO2 数据盘构建及原生 rolling 入口见 [外部接入说明](tools/baselines/README.md)，完整共同输入对照尚未完成。

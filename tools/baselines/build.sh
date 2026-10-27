@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 set -eo pipefail
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-if [[ ${LIUO_BASELINE_ENV:-0} != 1 ]]; then
-  exec env -i HOME="$HOME" USER="${USER:-root}" PATH=/usr/local/bin:/usr/bin:/bin LANG=C.UTF-8 LIUO_BASELINE_ENV=1 bash "$0" "$@"
-fi
-source /opt/ros/jazzy/setup.bash
+source "$ROOT/tools/environment.sh"
 cd "$ROOT"
-python3 tools/baselines/prepare.py
+algorithm=${1:-fastlio}
+case "$algorithm" in
+  fastlio) target=fast_lio ;;
+  liosam) target=lio_sam ;;
+  *) echo "expected fastlio or liosam" >&2; exit 2 ;;
+esac
+python3 tools/baselines/prepare.py --algorithm "$algorithm"
 export CMAKE_BUILD_PARALLEL_LEVEL=2
-colcon --log-base log/baseline_colcon build --base-paths log/baseline_sources/fastlio log/baseline_sources/liosam tools/baselines/livox_ros_driver2 --build-base log/baseline_build --install-base log/baseline_install --executor sequential --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17
+colcon --log-base "$LIUO_DATA_ROOT/baselines/colcon" build --base-paths "$LIUO_DATA_ROOT/baselines/sources/$algorithm" "$ROOT/tools/baselines/livox_ros_driver2" --packages-up-to "$target" --build-base "$LIUO_DATA_ROOT/baselines/build" --install-base "$LIUO_DATA_ROOT/baselines/install" --executor sequential --cmake-args -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=17

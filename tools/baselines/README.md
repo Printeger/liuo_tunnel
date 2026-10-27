@@ -52,3 +52,16 @@ python3 tools/baselines/audit_canonical_input.py \
 - [LIO-SAM ROS2](https://github.com/TixiaoShan/LIO-SAM/tree/08af3f32f01725372d4269838dc44c19c6d9e76b)：BSD-3-Clause，保留源码 LICENSE。
 - `livox_ros_driver2/` 仅复制官方 [CustomMsg / CustomPoint 定义](https://github.com/Livox-SDK/livox_ros_driver2/tree/master/msg)及 MIT 许可证，为未使用的 Livox 输入分支提供链接类型；没有复制、启动或冒充硬件驱动。
 - `sources.json` 记录从 Git archive PAX comment 核对的提交与实际下载包哈希；`patches/` 保存全部源码修改。源码目录被 gitignore，按固定提交可重建，不提交视频和大型示例资源。
+
+## 当前数据盘入口与 rolling 接入
+
+旧历史命令/结果保留。新构建只选择指定 baseline，默认 FAST-LIO2；不启动 LIO-SAM。所有源码解包、构建、原生日志和 run 输出放在数据盘。若已有只读旧源码归档则复制归档到数据盘，并核对固定 SHA256 后解包；不移动历史输入。
+
+```bash
+data-run -- tools/baselines/build.sh fastlio
+data-run -- tools/baselines/run.sh fastlio --source /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968 --scan-model rolling --duration 20
+```
+
+rolling 使用 `fastlio_rolling.yaml`：`lidar_type=2`、`timestamp_unit=0`（秒）、`snapshot=false`、单位外参。上游固定版本 `preprocess.h` 的 SEC=0，`preprocess.cpp` 内部乘 1000 转为 curvature 毫秒，既有 IMU 去畸变读取该时间。原生 uint16 ring 和 float32 相对秒原样保留，不按点坐标重构 ring；不在适配端去畸变。FAST-LIO 的 IMU 消息不添加朝向观测。
+
+snapshot 仍使用旧外参及显式零点时间补丁；时长上限为 540 s，rolling 为 392.6 s。输入必须显式指定且工作树干净。保留全原始/适配后语义 hash；独立订阅者核对已发布适配输入的计数/hash，不声称能证明算法内部没有丢样本。无输出 45 s、1×发布迟到 250 ms、数据盘少于 8 GiB 均失败。每 run 保留二进制、配置、上游版本和 patch 摘要。接入冒烟不替代完整两场景共同输入对照。
