@@ -1,0 +1,20 @@
+{
+  "schema_version": "liuo_delivery_v1",
+  "begin_s": 20,
+  "end_s": 40,
+  "delay_cycle_ms": [25, 50, 0],
+  "duplicate_every": 17,
+  "duplicate_delay_ms": 1,
+  "outages": [[22, 22.2]],
+  "anchor_outages": [{"anchor_id": 0, "begin_s": 25, "end_s": 30}],
+  "nlos_bias": {
+    "anchor_id": 1,
+    "begin_s": 32,
+    "end_s": 35,
+    "seed": 38591,
+    "mean_m": 0.5,
+    "log_sigma": 0.25,
+    "correlation_s": 2.0,
+    "step_s": 0.1
+  }
+}

@@ -53,6 +53,7 @@ def main():
     p.add_argument("--uwb-boundary-fixture", action="store_true", help="public queue capacity, expiry and clock-reset recovery test")
     p.add_argument("--uwb-load-fixture", action="store_true", help="60s synthetic 50Hz/5Hz protocol load with independent slow subscriber")
     p.add_argument("--uwb-contract-fixture", action="store_true", help="predeclared software callback fixture on frozen IMU/LiDAR/clock")
+    p.add_argument("--capture-derived", action="store_true", help="write transformed replay into a new run-owned dataset; never overwrite source bag")
     p.add_argument("--capture-only", action="store_true", help="live raw capture and observer only; no estimator or localization acceptance")
     p.add_argument("--use-aa", action=argparse.BooleanOptionalAction, default=None, help="explicit AA ablation; default preserves config")
     p.add_argument("--uwb-topic", default="/liuo/uwb/observations")
@@ -135,6 +136,8 @@ def main():
         p.error("load fixture requires replay without other input transformations")
     if args.uwb_contract_fixture and (not args.replay or args.delivery_profile):
         p.error("contract fixture requires replay without delivery profile")
+    if args.capture_derived and not args.replay:
+        p.error("capture-derived requires an explicit replay source")
     if args.delivery_profile and not args.replay:
         p.error("delivery profile requires --replay")
     if args.replay and (args.capture or args.rate != 1.0):
@@ -478,6 +481,9 @@ def main():
                 rd._atomic_write_json(run / "metadata/config/uwb_boundary_expected.json", boundary_plan)
                 rd.register_config_snapshot(run, run / "metadata/config/uwb_boundary_expected.json")
                 identity["boundary_fixture_sha256"] = digest(ROOT / "tools/uwb_boundary_fixture.py")
+            if args.capture_derived:
+                commands["simulation"] += ["--capture-derived"]
+                identity["derived_capture"] = dict(source_run=frozen["source_run"], source_sha256=frozen["capture_sha256"], semantics="new dataset of actually delivered messages and monotonic delivery times")
             identity["frozen_input"] = frozen
         if args.delivery_profile:
             from delivery_schedule import DeliverySchedule

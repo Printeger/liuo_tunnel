@@ -25,6 +25,8 @@ def audit(run):
     batches = rows('export/odometry/uwb_batches.csv')
     decisions = rows('export/odometry/uwb_input_decisions.csv')
     graph = rows('export/odometry/graph.csv')
+    consumed = rows('export/odometry/uwb.csv')
+    registry = {n['logical_id']: (n['type'], n['internal_id']) for n in config['uwb']['input']['nodes']}
     expected = []
     check(manifest['lifecycle'] == 'completed', 'lifecycle incomplete')
     check(manifest['source']['git_worktree_clean'], 'dirty source')
@@ -46,6 +48,12 @@ def audit(run):
         if reason == 'ACCEPT':
             reason = 'RECORD_ONLY' if config['uwb']['mode'] == 'record_only' else 'QUEUED'
         check(row['reason'] == reason, name + ': expected ' + reason + ', got ' + row['reason'])
+        if reason == 'RECORD_ONLY':
+            matches = [r for r in consumed if r['reason'] == reason and int(r['driver_session']) == wire['driver_session_id']
+                       and int(r['producer']) == o['reporter_id'] and int(r['session']) == o['source_session_id']
+                       and int(r['sequence']) == o['source_frame_seq']]
+            check(any((int(r['a_type']), int(r['a'])) == registry[o['node_a']] and
+                      (int(r['b_type']), int(r['b'])) == registry[o['node_b']] for r in matches), name + ': explicit internal ID mapping')
     check(bool(graph), 'no estimator graph output')
     if config['uwb']['mode'] == 'record_only':
         check(all(all(int(r[k]) == 0 for k in ['uwb_ta', 'uwb_aa', 'aa_summary_factors', 'aa_accumulated_measurements']) for r in graph), 'OFF added UWB information')

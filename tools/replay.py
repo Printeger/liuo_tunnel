@@ -14,13 +14,14 @@ import time
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy
-from rclpy.serialization import deserialize_message
+from rclpy.serialization import deserialize_message, serialize_message
 from rosidl_runtime_py.utilities import get_message
 import rosbag2_py
 
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--capture-derived", action="store_true")
     parser.add_argument("--uwb-boundary-fixture", action="store_true")
     parser.add_argument("--uwb-load-fixture", action="store_true")
     parser.add_argument("--uwb-contract-fixture", action="store_true")
@@ -52,6 +53,10 @@ def main():
     node = Node("liuo_frozen_replay")
     publishers = {}
     types = {}
+    writer = None
+    if args.capture_derived:
+        writer = rosbag2_py.SequentialWriter()
+        writer.open(rosbag2_py.StorageOptions(uri=str(run / "export/capture/raw"), storage_id="mcap"), rosbag2_py.ConverterOptions("cdr", "cdr"))
     counts = {"imu": 0, "cloud": 0, "uwb": 0, "clock": 0}
     for topic in reader.get_all_topics_and_types():
         if topic.type == "liuo_tunnel_msgs/msg/UwbRange":
@@ -59,6 +64,8 @@ def main():
         if topic.name not in allowed:
             raise RuntimeError("unsupported frozen topic: " + topic.name)
         types[topic.name] = get_message(topic.type)
+        if writer:
+            writer.create_topic(rosbag2_py.TopicMetadata(id=0, name=target_topic if topic.name == source_topic else topic.name, type=topic.type, serialization_format="cdr"))
         reliable = topic.name in ["/clock", "/sim/truth/odom"]
         qos = QoSProfile(
             depth=32 if allowed[topic.name] == "cloud" else (transport.get("depth", 100) if allowed[topic.name] == "uwb" else 2048),
@@ -192,6 +199,8 @@ def main():
                 if action == "outage_drop": continue
                 if message.observations and not kept: continue
                 message.observations = kept
+            if writer:
+                writer.write(target_topic if topic == source_topic else topic, serialize_message(message), delivery_ns)
             publish_wall_ns = time.monotonic_ns()
             publishers[topic].publish(message)
             if load_delivery_csv and kind == "uwb":
@@ -212,6 +221,8 @@ def main():
         end = start_ns + round(duration * 1e9)
         while time.monotonic_ns() < end:
             rclpy.spin_once(node, timeout_sec=0.001)
+    if writer:
+        writer.close()
     if load_delivery:
         load_delivery.close()
     wall = (time.monotonic_ns() - start_ns) * 1e-9
