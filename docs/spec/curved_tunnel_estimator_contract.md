@@ -126,3 +126,9 @@ free 模式每秒及 A 集合改变时，从实际图导出 `export/map/calibrat
 预声明：导出Jacobian有限差分误差<1e-8，映射均值/全联合协方差解析往返误差<1e-12；人工删除G/A交叉项的反例必须产生非零差异。真实生产审计逐叶核对旧账本保留、新叶来源/值/方差、同stamp图侧fused数量、协方差正定和坐标来源。当前运行的旧二进制不会被追认为已具备此输出。
 
 精确账本审计按单线程回调/图更新日志顺序确定交付集合：必须找到唯一同stamp（误差<1e-8）的graph_update，并取该行之前QUEUED输入中、该检查点端点已就绪的全部新物理叶，与后验新叶集合严格相等。不能用全程eligible集合或相邻时刻的计数替代。接收时钟可能晚于扫描状态时刻，故不以receive_stamp≤measurement_stamp裁剪。负例覆盖等数量未来同边叶替换、不存在/重复检查点及拒绝输入。
+
+## 完整 S 普通路线输入冻结（生成前声明）
+
+使用现有 `straight_reachable_capture.json`、snapshot、原有非单位外参、报告者到车可达性开启；通过 `tools/run.sh --formal --capture-only --duration 540 --config packages/liuo_tunnel/config/straight_reachable_capture.json` 独立录制。CAL为seed0、`--sim-start 0 0 1.2 0`；REUSE为seed1、`--sim-start 0 0.2 1.6 1.5707963267948966`。两者普通outbound沿世界x从0至2350m，最高5m/s，约530秒结束，保留尾部静止；不启用calibration-route/local-calibration/return-trip。S允许体朝向与轨道速度不同，这是原有运动学场景，不冒充公路汽车。
+
+场景参数仅在生成器和离线检查端使用，不作为估计器初值或高度观测。分别保存新owner/raw/真值/源版本与摘要，保留旧360秒包为历史回归。正式生成维持1×和原计时，不与GPU正式估计回放重叠。接收/录包完整性按现有capture-only合同检查；另独立核对全程起止、运动覆盖、三类传感器摘要和seed/随机流及报告者可达性。噪声独立检查在各自真值/姿态/偏置扣除后，跨轮白噪声相关绝对值门限0.05；不能因不同起点/朝向造成的信号差异直接宣布噪声独立。此声明不表示普通S未知Anchor初始化或地图复用已经通过。
