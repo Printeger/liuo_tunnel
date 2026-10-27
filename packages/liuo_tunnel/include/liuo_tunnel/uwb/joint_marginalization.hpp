@@ -1,5 +1,5 @@
 #pragma once
-#include <gtsam/nonlinear/LinearContainerFactor.h>
+#include <liuo_tunnel/optimizers/manifold_marginal_factor.hpp>
 #include <gtsam/linear/GaussianFactorGraph.h>
 #include <gtsam_points/optimizers/linearization_hook.hpp>
 #include <set>
@@ -38,7 +38,8 @@ inline JointMarginalization marginalize_joint(
     hook.linearize(values);
     const auto linear = absorbed.linearize(values);
     const auto remaining = linear->eliminatePartialSequential(gtsam::KeyVector(eliminate.begin(), eliminate.end()), gtsam::EliminateCholesky).second;
-    result.graph.add(gtsam::LinearContainerFactor::ConvertLinearGraph(*remaining, result.values));
+    for (const auto& factor : *remaining)
+      if (factor) result.graph.emplace_shared<solver::ManifoldMarginalFactor>(factor, result.values);
   }
   for (auto key : result.graph.keys())
     if (removed.count(key)) throw std::logic_error("MARGINAL_RETIRED_KEY_SURVIVED");

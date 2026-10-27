@@ -315,3 +315,12 @@ run `20261027T192427Z_824`（2c29438）完整540秒结束，GPU1×墙时539.9959
 
 
 诊断运行`20261027T195239Z_132`（ba22f75）在99.8秒以193个TA初始化A1，100.005秒因局部因子线性化along=−28.267005失败。`profiling/optimizer_failure_state.json`保存全部307个变量，未截断。A1的线性化点已固定，X880未固定；A1现有增量为[−28.842539,0.110303,0.102708]m。独立SciPy旋转变换得到X880下原始theta的A1为[28.327740,2.973264,3.834092]m，而仅对固定A1加回其已有delta后为[−0.513778,2.733813,3.989781]m。见`export/analysis/finite_patch_chart_diagnostic.json`。这支持固定A与可重线性化X的坐标参考不一致方向，但不是重建完整已接受状态，也未证明X880就是失败因子的关联车辆；下一步需带实际因子关联做最小优化器回归。不得直接扩大补丁范围、删掉已吸收信息或把该报告称为定位通过。
+
+
+### 固定线性化参考的最小复现与流形边缘先验修复
+
+新增`test_marginal_chart`用实际项目ISAM2、旧车辆边缘化、持久Anchor和实际有限LocalInstallationFactor复现：测试中的车辆/Anchor共同移动30m，旧实现仍抛出`linearization=1;along=-29.999970`。测试中的笛卡尔相对观测和位姿先验仅用于构造可解反例，不进入生产估计器。旧失败日志`/home/dev/ws_iap/liuo_observation/log/marginal_chart_before.log`。
+
+修复保留每个边缘先验的原始二次型/参考，使用完整Local流形Jacobian表达于当前求解坐标，不再固定活动A/X的theta。共同平移复现测试、非零旋转/大平移的独立有限差分梯度及交叉信息测试、原联合Schur信息/代价回归共3项通过，日志`marginal_chart_after.log`。测试显式将构建目录置于LD_LIBRARY_PATH最前，避免误测旧已安装库。生产完整S/L尚未验证该版本，阶段仍未完成。
+
+生产节点构建/安装通过；上述3项加局部几何12项、静态图5项、地图13项，共33项通过。汇总日志`/home/dev/ws_iap/liuo_observation/log/manifold_marginal_tests.log`。

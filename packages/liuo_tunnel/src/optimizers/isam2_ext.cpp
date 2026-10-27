@@ -27,6 +27,7 @@
 #include <gtsam/inference/Symbol.h>
 
 #include <liuo_tunnel/optimizers/isam2_ext.hpp>
+#include <liuo_tunnel/optimizers/manifold_marginal_factor.hpp>
 #include <gtsam_points/optimizers/dogleg_optimizer_ext_impl.hpp>
 #include <gtsam_points/optimizers/linearization_hook.hpp>
 
@@ -791,14 +792,11 @@ void ISAM2Ext::marginalizeLeaves(const FastList<Key>& leafKeysList, FactorIndice
     for (const auto& factor : key_factors.second) {
       if (factor) {
         factorsToAdd.push_back(factor);
-        // Dogleg evaluates the nonlinear objective to accept its step. Without
-        // a reference, LinearContainerFactor::error returns zero and omits this
-        // historical prior. Keep the same Gaussian information at its original
-        // theta; fixedVariables_ below preserves these reference coordinates.
-        nonlinearFactorsToAdd.emplace_shared<LinearContainerFactor>(factor, theta_);
-        for (Key factorKey : *factor) {
-          fixedVariables_.insert(factorKey);
-        }
+        // Preserve the original quadratic/reference, but transport its full
+        // manifold Jacobian when active variables relinearize. Freezing an A
+        // chart while a newly connected X chart moves can put a finite local
+        // observation outside its domain despite valid common physical motion.
+        nonlinearFactorsToAdd.emplace_shared<ManifoldMarginalFactor>(factor, theta_);
       }
     }
   }

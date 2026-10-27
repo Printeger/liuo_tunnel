@@ -731,6 +731,27 @@
         "continuous_report"
       ],
       "scope": "unchanged frozen raw physical set; finite same-reporter delivery opportunities only"
+    },
+    "manifold_marginal_chart": {
+      "state": "MINIMAL_REPRODUCTION_FIXED_PRODUCTION_PENDING",
+      "failure_reproduction": "/home/dev/ws_iap/liuo_observation/log/marginal_chart_before.log",
+      "regression_log": "/home/dev/ws_iap/liuo_observation/log/manifold_marginal_tests.log",
+      "tests": {
+        "test_marginal_chart": 2,
+        "test_joint_marginalization": 1,
+        "test_local_installation": 12,
+        "test_static_edge_graph": 5,
+        "test_calibrated_map": 13
+      },
+      "invariants": [
+        "Immutable original marginal quadratic and reference",
+        "Full Pose3 Local Jacobian under current right retraction",
+        "Preserved cross blocks and constants",
+        "No frozen active variable chart from new marginal factors",
+        "Finite local patch remains 10m"
+      ],
+      "limitation": "Branch-local marginal approximation; no nonlinear historical measurements recovered. Full S/L effectiveness and resource checks remain pending.",
+      "production_build": "PASS"
     }
   },
   "inputs": {
