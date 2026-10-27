@@ -40,12 +40,14 @@ class Observer(Node):
         self.first_clock = None
         self.last_clock = 0
         self.identities = set()
-        self.network = json.loads((Path(os.environ["LIUO_RUN_DIR"]) / "metadata/config/phase1.json").read_text())["uwb"]["input"]["network_instance"]
+        config = json.loads((Path(os.environ["LIUO_RUN_DIR"]) / "metadata/config/phase1.json").read_text())
+        self.network = config["uwb"]["input"]["network_instance"]
+        self.scan_model = config["scan_model"]
         self.result["duplicate_uwb"] = []
         self.imu_log = open(Path(os.environ["LIUO_RUN_DIR"]) / "export/capture/imu.csv", "w")
         self.imu_log.write("stamp,ax,ay,az,wx,wy,wz\n")
-        self.create_subscription(Imu, "/sensors/imu", self.imu, self.sensor_qos)
-        self.create_subscription(PointCloud2, "/sensors/lidar/points", self.cloud, self.sensor_qos)
+        self.create_subscription(Imu, config["sensors"].get("imu_topic", "/sensors/imu"), self.imu, self.sensor_qos)
+        self.create_subscription(PointCloud2, config["sensors"].get("lidar_topic", "/sensors/lidar/points"), self.cloud, self.sensor_qos)
         self.create_subscription(UwbObservationBatch, self.declare_parameter("uwb_topic", "/liuo/uwb/observations").value, self.uwb, QoSProfile(depth=self.declare_parameter("uwb_qos_depth", 100).value, reliability=ReliabilityPolicy.BEST_EFFORT))
         self.create_subscription(Clock, "/clock", self.clock, self.sensor_qos)
         self.result["odometry_count"] = 0
@@ -118,13 +120,22 @@ class Observer(Node):
             return
         if m.header.frame_id != "lidar":
             self.reject("cloud not lidar frame")
-        if any(fields[k].datatype != 7 for k in fields):
-            self.reject("cloud datatype")
+        if m.height != 1 or m.row_step != m.width * m.point_step or len(m.data) != m.row_step or m.is_bigendian:
+            self.reject("cloud layout")
             return
-        if any(
-            struct.unpack_from("<f", m.data, i * m.point_step + fields["time"].offset)[0] != 0
-            for i in range(m.width * m.height)
-        ):
+        for name in ("x", "y", "z", "intensity", "time"):
+            if fields[name].datatype != 7 or fields[name].count != 1 or fields[name].offset + 4 > m.point_step:
+                self.reject("cloud datatype")
+                return
+        times = np.ndarray((m.width,), dtype='<f4', buffer=m.data, offset=fields["time"].offset, strides=(m.point_step,))
+        if self.scan_model == "rolling":
+            if "ring" not in fields or fields["ring"].datatype != 4 or fields["ring"].count != 1 or fields["ring"].offset + 2 > m.point_step:
+                self.reject("native ring field")
+                return
+            rings = np.ndarray((m.width,), dtype='<u2', buffer=m.data, offset=fields["ring"].offset, strides=(m.point_step,))
+            if np.any(rings >= 40) or not np.isfinite(times).all() or np.any(times < 0) or np.any(times >= .1) or np.any(np.diff(times) < 0):
+                self.reject("rolling time or native ring")
+        elif np.any(times != 0):
             self.reject("snapshot time nonzero")
 
     def uwb(self, m):

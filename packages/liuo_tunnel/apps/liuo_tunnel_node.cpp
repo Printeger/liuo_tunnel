@@ -13,6 +13,7 @@
 #include <liuo_tunnel/uwb/static_edge_graph.hpp>
 #include <rclcpp/serialization.hpp>
 #include <liuo_tunnel/common/imu_integration.hpp>
+#include <liuo_tunnel/common/rolling_motion.hpp>
 #include <liuo_tunnel/common/cloud_covariance_estimation.hpp>
 #include <liuo_tunnel/common/sensors.hpp>
 #include <liuo_tunnel/common/state_covariance.hpp>
@@ -160,9 +161,9 @@ public:
     visual_anchors = create_publisher<visualization_msgs::msg::MarkerArray>("/liuo/visual/anchors", 2);
     pub = create_publisher<nav_msgs::msg::Odometry>("/liuo/odom", 100);
     diagnostics = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/liuo/diagnostics", 10);
-    imu_sub = create_subscription<sensor_msgs::msg::Imu>("/sensors/imu", rclcpp::SensorDataQoS().keep_last(2048), [this](sensor_msgs::msg::Imu::ConstSharedPtr m) { on_imu(*m); });
+    imu_sub = create_subscription<sensor_msgs::msg::Imu>(cfg.at("sensors").value("imu_topic", std::string("/sensors/imu")), rclcpp::SensorDataQoS().keep_last(2048), [this](sensor_msgs::msg::Imu::ConstSharedPtr m) { on_imu(*m); });
     cloud_sub =
-      create_subscription<sensor_msgs::msg::PointCloud2>("/sensors/lidar/points", rclcpp::SensorDataQoS().keep_last(32), [this](sensor_msgs::msg::PointCloud2::ConstSharedPtr m) {
+      create_subscription<sensor_msgs::msg::PointCloud2>(cfg.at("sensors").value("lidar_topic", std::string("/sensors/lidar/points")), rclcpp::SensorDataQoS().keep_last(32), [this](sensor_msgs::msg::PointCloud2::ConstSharedPtr m) {
         if (clouds.size() >= cfg.at("odometry").at("cloud_queue_limit").get<size_t>()) throw std::runtime_error("cloud_queue_limit exceeded");
         clouds.push_back(m);
       });
@@ -1167,7 +1168,7 @@ private:
     }
     while (!clouds.empty()) {
       double t = rclcpp::Time(clouds.front()->header.stamp).seconds();
-      if (latest_imu < t + 1e-8) return;
+      if (latest_imu < t + (cfg.at("scan_model") == "rolling" ? .1 : 1e-8)) return;
       auto cloud = clouds.front();
       clouds.pop_front();
       if (t <= last_cloud) {
@@ -1197,19 +1198,55 @@ private:
   void process(const sensor_msgs::msg::PointCloud2& m, double t) {
     auto start = std::chrono::steady_clock::now();
     if (m.header.frame_id != "lidar" || m.is_bigendian) throw std::runtime_error("pointcloud frame/endian contract");
+    const bool rolling = cfg.at("scan_model") == "rolling";
+    if (m.height != 1 || m.point_step == 0 || uint64_t(m.width) * m.point_step != m.row_step || m.data.size() != m.row_step)
+      throw std::runtime_error("CLOUD_STORAGE_LAYOUT_INVALID");
+    auto require_field = [&](const std::string& name, uint8_t type, uint32_t bytes) {
+      size_t matches = 0;
+      for (const auto& field : m.fields) if (field.name == name) {
+        ++matches;
+        if (field.count != 1 || field.datatype != type || field.offset % bytes || uint64_t(field.offset) + bytes > m.point_step)
+          throw std::runtime_error("CLOUD_FIELD_INVALID: " + name);
+      }
+      if (matches != 1) throw std::runtime_error("CLOUD_FIELD_MISSING_OR_DUPLICATE: " + name);
+    };
+    for (const auto* name : {"x", "y", "z", "intensity", "time"}) require_field(name, sensor_msgs::msg::PointField::FLOAT32, 4);
+    std::optional<sensor_msgs::PointCloud2ConstIterator<uint16_t>> ring;
+    std::unique_ptr<RollingMotion> motion;
+    if (rolling) {
+      require_field("ring", sensor_msgs::msg::PointField::UINT16, 2);
+      ring.emplace(m, "ring");
+      auto prediction_state = state;
+      auto prediction_bias = bias;
+      if (!initialized) {
+        if (!initial_samples) throw std::runtime_error("ROLLING_STATIC_INITIALIZATION_MISSING");
+        const Eigen::Vector3d avg = sum_a / initial_samples;
+        const Eigen::Quaterniond gravity = Eigen::Quaterniond::FromTwoVectors(avg, Eigen::Vector3d(0, 0, 9.80665));
+        prediction_state = gtsam::NavState(gtsam::Pose3(gtsam::Rot3(gravity), gtsam::Point3::Zero()), gtsam::Vector3::Zero());
+        prediction_bias = gtsam::imuBias::ConstantBias(gtsam::Vector3::Zero(), sum_w / initial_samples);
+      }
+      motion = std::make_unique<RollingMotion>(*imu, prediction_state, prediction_bias, initialized ? last_cloud : t, t, t + .1);
+    }
     std::vector<Eigen::Vector4d> points;
     const double line_angle_scale = (self_calibrate || reuse_map || cfg.at("uwb").value("continuous_installation_walls", false)) ? 1000.0 : 1.0;
     const bool ongoing_walls = (bootstrapped || self_calibrate) && fuse && body_walls && cfg.at("uwb").value("continuous_installation_walls", false) && count % 10 == 0;
     std::vector<gtsam::Vector3> wall_points;
     size_t raw_index = 0;
+    float previous_point_time = -1;
     std::set<std::tuple<int, int, int>> occupied;
     double leaf = cfg.at("odometry").at("downsample_m");
     sensor_msgs::PointCloud2ConstIterator<float> x(m, "x"), y(m, "y"), z(m, "z"), dt(m, "time"), intensity(m, "intensity");
     for (; x != x.end(); ++x, ++y, ++z, ++dt, ++intensity, ++raw_index) {
-      if (*dt != 0) throw std::runtime_error("nonzero per-point time with snapshot model; rolling not implemented");
+      if (!std::isfinite(*dt) || (rolling ? (*dt < 0 || *dt >= .1) : *dt != 0)) throw std::runtime_error("CLOUD_POINT_TIME_INVALID");
+      if (rolling && *dt < previous_point_time) throw std::runtime_error("CLOUD_POINT_TIME_ORDER");
+      previous_point_time = *dt;
+      if (ring) {
+        if (**ring >= 40) throw std::runtime_error("CLOUD_NATIVE_RING_INVALID");
+        ++(*ring);
+      }
       Eigen::Vector3d q(*x, *y, *z);
       if (!q.allFinite()) continue;
-      q = T_BL * q;
+      q = motion ? motion->point(q, *dt, T_BL) : T_BL * q;
       if (dedicated_wall_point(ongoing_walls, raw_index)) {
         wall_points.push_back(q);
         continue;

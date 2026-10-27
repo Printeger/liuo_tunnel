@@ -24,11 +24,25 @@
       "position_rmse_m": 0.752492483632072,
       "real_time_factor": 0.9999976252389727,
       "stage_acceptance": "NOT_ASSESSED"
+    },
+    "S_LEGACY_REUSE_STATIC": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T153032Z_460",
+      "source_commit": "117c96e3716224fbdd034af62f5b7c7843ad8a8a",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T031819Z_304",
+      "raw_sha256": "5be10c3a8c89879865f0dc7c11d380d992ea429d51ddf6eca015c1e0a78764b4",
+      "map_run": "20261027T152225Z_083",
+      "single_run_result": "PASS",
+      "prior_absorbed_leaves": 718,
+      "new_fused_leaves": 720,
+      "explicit_edges": 2,
+      "position_rmse_m": 0.8578263654081887,
+      "first_output_stamp": 20.4,
+      "stage_acceptance": "NOT_ASSESSED"
     }
   },
   "limitations": [
     "Old S rail simulator gates AA measurement LOS but lacks separate reporter-to-vehicle reachability; this regression cannot validate C10 delivery physics. New full S generation must add that gate without rewriting frozen inputs.",
     "Four anchors remain uninitialized; vertical accuracy remains weak.",
-    "Full dual-scene matrix, rolling, general curved initialization and independent map reuse are not yet verified."
+    "Full dual-scene matrix, rolling and general curved initialization are not yet verified; independent reuse is verified only on the legacy S calibration route."
   ]
 }

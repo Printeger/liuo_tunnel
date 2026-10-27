@@ -62,3 +62,15 @@ run 路径 `/home/dev/ws_iap/.runtime/0/liuo/20261027T152225Z_083`；owner manif
 另已确认旧 S 生成器只检查 AA 两端的量程/LOS，没有单独检查 reporter→车辆链路。旧包原样保留；本派生器只使用其中已送达的消息，但这不证明无线交付物理成立。新完整 S 采集必须补齐这项物理门限，旧回归不得作为 C10 的 LOS 通过证据。
 
 独立复用的旧输入 `20261027T031819Z_304` 为 seed 1、启动 `[220,0.2,1.6,pi/2]`，与首轮 seed 0、`[200,0,1.2,0]` 不同。专用静态复用配置绑定其 raw SHA256 `5be10c3a8c89879865f0dc7c11d380d992ea429d51ddf6eca015c1e0a78764b4`；复用结果待实际运行，不按配置存在判通过。
+
+### 旧 S 独立复用：`20261027T153032Z_460`
+
+绑定 `117c96e`（相对 CAL 只有配置/文档新增，算法与实际节点二进制未变），真实新进程加载上述 v2 联合地图及其 718 个已吸收叶。命令：
+
+```bash
+data-run -- tools/run.sh --formal --replay /home/dev/ws_iap/.runtime/0/liuo/20261027T031819Z_304 --config packages/liuo_tunnel/config/phase3_static_s_reuse_regression.json --map /home/dev/ws_iap/.runtime/0/liuo/20261027T152225Z_083/export/map/calibrated_map.json --use-aa --wall-timeout 480
+```
+
+run 为 `/home/dev/ws_iap/.runtime/0/liuo/20261027T153032Z_460`，owner completed，单 run 合同 PASS，完整输入核对通过，360 s 实际用时 360.00213 s。保持首轮坐标规范，首次输出 t=20.4，3406 输出中 3387 DEGRADED、19 LOST；位置 RMSE 0.85783 m，分轴 0.04299/0.03496/0.85603 m，处理 p95 43.57 ms。高度仍是主要弱项，不声称精确高度或统计一致性。
+
+最终 3 个持久 A、一个联合地图 prior、零重复安装因子、两个新显式 AA 摘要，独立新输入实际融合 720 叶。原地图 718 叶只在 prior 中，未生成旧显式因子。已完成旧路线的真实未知 A→联合地图→独立复用小闭环；不替代完整 S 主路线、L、第三方对照或重复缓存的生产故障测试。
