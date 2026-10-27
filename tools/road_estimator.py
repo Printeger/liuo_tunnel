@@ -111,8 +111,14 @@ def main():
             progress[:] = [time.monotonic(), message.header.stamp.sec + 1e-9 * message.header.stamp.nanosec]
         subscription = node.create_subscription(Odometry, '/liuo/odom', odometry, 100)
         ready = time.monotonic() + 20
-        while any(publishers[t].get_subscription_count() < 2 for t in kinds if t != '/clock'):
+        while any(publishers[t].get_subscription_count() < 2 for t in kinds):
             if time.monotonic() > ready or any(c.poll() is not None for c in children): raise RuntimeError('road replay consumers not ready')
+            rclpy.spin_once(node, timeout_sec=.01)
+        # DDS graph discovery precedes completed reader matching. No sensor or
+        # clock is published during this bounded settling interval.
+        settled = time.monotonic() + 1.
+        while time.monotonic() < settled:
+            if any(c.poll() is not None for c in children): raise RuntimeError('consumer exited before matching')
             rclpy.spin_once(node, timeout_sec=.01)
         # Warm deserialization before the first timed delivery.
         prefix, prepared = [], set()
@@ -146,12 +152,15 @@ def main():
             if kind == 'cloud': cloud_stamps.append(message.header.stamp.sec + 1e-9 * message.header.stamp.nanosec)
             rclpy.spin_once(node, timeout_sec=0.)
             if time.monotonic() - deadline > .25: raise TimeoutError('1x replay deadline exceeded 250 ms')
+        publish_wall_s = time.monotonic() - started
+        expected_hashes = {k: v.hexdigest() for k, v in hashes.items()}
+        rd.write_subordinate_manifest(run, 'published_input', dict(counts=counts, raw_sha256=expected_hashes,
+                                      publish_wall_s=publish_wall_s, requested_seconds=args.seconds))
         for _ in range(200): rclpy.spin_once(node, timeout_sec=.01)
         for child in children: child.send_signal(signal.SIGINT)
         for child in children:
             if child.wait(timeout=15) not in [0, -signal.SIGINT]: raise RuntimeError('owned child failed at shutdown')
         audit = json.loads((run / 'metadata/manifests/observation_audit.json').read_text())
-        expected_hashes = {k: v.hexdigest() for k, v in hashes.items()}
         if audit['counts'] != counts or audit['raw_sha256'] != expected_hashes or audit['violations']:
             raise RuntimeError('raw observer count/hash/field audit mismatch: ' + str(audit['violations']))
         trajectory = list(csv.DictReader((run / 'export/odometry/trajectory.csv').open()))
@@ -160,7 +169,8 @@ def main():
         if (run / 'runtime/odometry_failure.json').exists(): raise RuntimeError('estimator failure artifact')
         report = dict(scope='native rolling GPU LIO smoke, not curved self-calibration or localization acceptance',
                       result='PASS', raw_counts=counts, raw_sha256=expected_hashes, output_count=len(trajectory),
-                      first_output=float(trajectory[0]['stamp']), last_output=float(trajectory[-1]['stamp']), source_run=str(source))
+                      first_output=float(trajectory[0]['stamp']), last_output=float(trajectory[-1]['stamp']), source_run=str(source),
+                      publish_wall_s=publish_wall_s, real_time_factor=args.seconds / publish_wall_s)
         rd._atomic_write_json(run / 'export/analysis/rolling_smoke.json', report)
         print(json.dumps(report, indent=2), flush=True)
         lifecycle = 'completed'
