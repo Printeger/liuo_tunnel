@@ -12,6 +12,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--run', type=Path, required=True)
     parser.add_argument('--truth-run', type=Path, required=True)
+    parser.add_argument('--truth-format', choices=['road_npz', 'straight_csv'], default='road_npz')
     parser.add_argument('--map-reference-run', type=Path, help='CAL run supplying fixed offline gauge; never align REUSE to its own first truth pose')
     args = parser.parse_args()
     rows = list(csv.DictReader((args.run / 'export/odometry/trajectory.csv').open()))
@@ -31,7 +32,17 @@ def main():
     t = np.array([float(r['stamp']) - 1 for r in rows])
     if np.any(np.diff(t) <= 0):
         raise ValueError('diagnostic requires one increasing-time session')
-    truth = np.load(args.truth_run / 'export/simulation/trajectory.npz')
+    if args.truth_format == 'road_npz':
+        truth = np.load(args.truth_run / 'export/simulation/trajectory.npz')
+    else:
+        with (args.truth_run / 'export/simulation/truth.csv').open() as stream:
+            saved_truth = list(csv.DictReader(stream))
+        truth = dict(t=np.array([float(r['stamp'])-1 for r in saved_truth]),
+                     p=np.array([[float(r[k]) for k in ['x','y','z']] for r in saved_truth]),
+                     v=np.array([[float(r[k]) for k in ['vx','vy','vz']] for r in saved_truth]),
+                     R=Rotation.from_quat([[float(r[k]) for k in ['qx','qy','qz','qw']] for r in saved_truth]).as_matrix())
+    if np.any(np.diff(truth['t']) <= 0):
+        raise ValueError('truth requires one increasing-time session')
     if t[0] < truth['t'][0] or t[-1] > truth['t'][-1]:
         raise ValueError('trajectory outside truth time coverage')
     positions = np.array([[float(r[k]) for k in ['x', 'y', 'z']] for r in rows])
@@ -51,7 +62,7 @@ def main():
     aligned_rotations = transform * rotations
     error = aligned_positions - target_positions
     attitude = (target_rotations.inv() * aligned_rotations).magnitude()
-    result = dict(scope='offline diagnostic only, not stage acceptance', truth_run=str(args.truth_run),
+    result = dict(scope='offline diagnostic only, not stage acceptance', truth_run=str(args.truth_run), truth_format=args.truth_format,
         run=str(args.run), gauge='inherited_CAL_gauge_no_REUSE_alignment' if gauge_reference else 'first_output_yaw_and_translation_only_no_route_fit',
         reference_run=str(args.map_reference_run) if gauge_reference else str(args.run),
         total_output_samples=all_count, pre_map_output_samples=all_count-len(rows),

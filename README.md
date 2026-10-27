@@ -370,6 +370,21 @@ data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liu
 当前曲线静态 AA 开发入口：`data-run -- tools/road_estimator.sh --source-run <冻结L-run> --config packages/liuo_tunnel/config/road_local_static_diagnostic.json --installation <冻结L-run>/metadata/config/installation_metadata.json --seconds 180`。配置中的源SHA256绑定现有冻结L包，不能直接改run路径混用来源。`data-run -- tools/check_road_static.sh <输出run>` 独立核查已交付原始AA、回调CDR和地图账本；不读全局物理日志。地图位于 `export/map/calibrated_map.json`，A-only格式保留联合协方差与精确吸收叶；旧reuse_map入口会拒绝，新的独立复用仍未完成。180秒诊断不是完整路线验收，当前结论及失败见 `docs/curved_tunnel_static_aa_results.md`。
 
 
-A-only复用开发入口为 `uwb.mode=reuse_anchor_map`，示例配置 `packages/liuo_tunnel/config/road_anchor_map_reuse.json`；需为独立生成的第二轮输入绑定该配置中的static source SHA后，再执行 `data-run -- tools/road_estimator.sh --source-run <独立L-run> --config <已绑定第二轮来源的配置> --map <CAL-run>/export/map/calibrated_map.json --installation <独立L-run>/metadata/config/installation_metadata.json --seconds 180`。命令尚待独立生产回放验收；runner拒绝与地图训练包相同的MCAP，字节不同本身不证明噪声独立。接入前在odom输出INITIALIZING，接入后在旧map输出provisional/DEGRADED；已有LOST故障不会被状态标签掩盖。此入口暂不导出链式地图，完整双场景复用尚未完成。
+A-only复用开发入口为 `uwb.mode=reuse_anchor_map`，示例配置 `packages/liuo_tunnel/config/road_anchor_map_reuse.json`；需为独立生成的第二轮输入绑定该配置中的static source SHA后，再执行 `data-run -- tools/road_estimator.sh --source-run <独立L-run> --config <已绑定第二轮来源的配置> --map <CAL-run>/export/map/calibrated_map.json --installation <独立L-run>/metadata/config/installation_metadata.json --seconds 180`。独立180秒生产接入和精确后验账本已检查，完整L定位仍退化；runner拒绝与地图训练包相同的MCAP，字节不同本身不证明噪声独立。接入前在odom输出INITIALIZING，接入后在旧map输出provisional/DEGRADED；已有LOST故障不会被状态标签掩盖。接入后每秒或Anchor集合变化时导出完整G/A传播的A-only后验，保留旧/新精确叶和祖先输入摘要；完整双场景有效复用尚未完成。
 
 独立L传感器输入制作支持 `data-run -- tools/road_scene.sh --seed 20261028`，省略时保持冻结默认seed。参数只控制传感器噪声/声明的driver session，不更换道路、运动或站点布局；生成结果独占新run。
+
+
+完整S普通路线输入与A-only开发接入（未完成算法验收）：
+
+```bash
+# 独立两个capture-only owner；按顺序运行，保留打印出的run路径
+data-run -- tools/run.sh --formal --capture-only --duration 540 --config packages/liuo_tunnel/config/straight_reachable_capture.json --seed 0 --sim-start 0 0 1.2 0
+data-run -- tools/run.sh --formal --capture-only --duration 540 --config packages/liuo_tunnel/config/straight_reachable_capture.json --seed 1 --sim-start 0 0.2 1.6 1.5707963267948966
+# 将占位符替换为实际路径。首次先 --seconds 20 检查接入，再做完整540秒。
+data-run -- tools/road_estimator.sh --scene straight --source-run <S-CAL-input> --config packages/liuo_tunnel/config/straight_local_static.json --installation packages/liuo_tunnel/config/straight_local_offsets.json --seconds 540
+data-run -- tools/road_estimator.sh --scene straight --source-run <S-REUSE-input> --config packages/liuo_tunnel/config/straight_anchor_map_reuse.json --installation packages/liuo_tunnel/config/straight_local_offsets.json --map <S-CAL-run>/export/map/calibrated_map.json --seconds 540
+data-run -- env PYTHONDONTWRITEBYTECODE=1 python3 tools/check_straight_inputs.py --first <S-CAL-input> --second <S-REUSE-input>
+```
+
+`--scene straight`保留S的snapshot、旧话题和非单位外参，与L的rolling合同分开核验。S配置显式要求将原始包SHA绑定到本run的static配置；不会替换已写死的旧SHA。±2.8m安装资料是明确的synthetic精确关系，不是现场标定协方差，不含坐标/高度/顺序。地图导出与静态审计仍使用同一工具。离线固定坐标评价增加 `tools/analyze_road_diagnostic.py --truth-format straight_csv --run <run> --truth-run <S-input>`；REUSE必须加 `--map-reference-run <S-CAL-run>`，不按第二轮起点配准。报告沿用 `road_fixed_{start,map}_diagnostic` 文件名以保持地图坐标来源兼容，内容注明truth_format。
