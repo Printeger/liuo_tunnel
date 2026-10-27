@@ -2,6 +2,7 @@
 """Single owner: allocate, snapshot, start owned processes, retain failure, finalize."""
 import argparse
 import ctypes
+import csv
 import hashlib
 import json
 import math
@@ -176,6 +177,8 @@ def main():
             raise RuntimeError(
                 "LIVE_BLOCKED_BY_DIRTY_WORKTREE: commit project changes before live evidence"
             )
+        if shutil.disk_usage(run).free < 2 * 1024**3:
+            raise RuntimeError("INSUFFICIENT_EVIDENCE_SPACE: less than 2 GiB reserve")
         config = run / "metadata/config/phase1.json"
         shutil.copyfile(args.config, config)
         effective_config = json.loads(config.read_text())
@@ -551,9 +554,26 @@ def main():
                 "progress_files": {k: str(v[0].relative_to(run)) for k, v in progress.items()},
             },
         )
+        resource_file = open(run / "profiling/owner_resources.csv", "w")
+        handles.append(resource_file)
+        resource_csv = csv.writer(resource_file)
+        resource_csv.writerow(["elapsed_wall_s", "monotonic_ns", "process", "pid", "rss_kib", "hwm_kib", "disk_free_bytes"])
+        last_resource_sample = -1.0
         injected = False
         runtime_saved = False
         while True:
+            sample_time = time.monotonic()
+            if sample_time - last_resource_sample >= 1:
+                free_bytes = shutil.disk_usage(run).free
+                if free_bytes < 2 * 1024**3:
+                    raise RuntimeError("DISK_RESERVE_BELOW_2_GIB")
+                for name, child in children.items():
+                    status_path = Path(f"/proc/{child.pid}/status")
+                    if status_path.exists():
+                        status = dict(line.split(":", 1) for line in status_path.read_text().splitlines() if ":" in line)
+                        resource_csv.writerow([sample_time - start, time.monotonic_ns(), name, child.pid, int(status.get("VmRSS", "0 kB").split()[0]), int(status.get("VmHWM", "0 kB").split()[0]), free_bytes])
+                resource_file.flush()
+                last_resource_sample = sample_time
             for name, child in children.items():
                 code = child.poll()
                 if code is not None and (name != "simulation" or code != 0):
