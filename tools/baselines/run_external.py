@@ -35,14 +35,17 @@ def stamp(msg):
     return msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
 
 
-def reader(source):
+def reader(source, topics):
     out = rosbag2_py.SequentialReader()
     out.open(rosbag2_py.StorageOptions(uri=str(source / 'export/capture/raw'), storage_id='mcap'), rosbag2_py.ConverterOptions('cdr', 'cdr'))
+    # Storage filtering precedes the first read, including legacy S bags that
+    # also contain truth. Excluded payloads never enter this replay process.
+    out.set_filter(rosbag2_py.StorageFilter(topics=list(topics)))
     return out
 
 
 def startup(source):
-    stream = reader(source)
+    stream = reader(source, ['/sensors/imu'])
     acc, gyro = [], []
     first = None
     while stream.has_next():
@@ -225,18 +228,26 @@ def main():
         matched_until = time.monotonic() + 1
         while time.monotonic() < matched_until:
             rclpy.spin_once(node, timeout_sec=.01)
-        stream = reader(args.source)
-        first_record, wall_start = None, time.monotonic()
-        last_output[0] = wall_start
         lidar_topic = '/sensors/lidar' if args.scan_model == 'rolling' else '/sensors/lidar/points'
         types = {'/sensors/imu': ('imu', Imu), lidar_topic: ('cloud', PointCloud2), '/clock': ('clock', Clock)}
+        stream = reader(args.source, types)
+        identity['sensor_access_boundary'] = dict(
+            selected_topics=list(types), startup_topics=['/sensors/imu'],
+            excluded_topics=[t.name for t in stream.get_all_topics_and_types() if t.name not in types],
+            storage_filter_before_first_read=True)
+        identity['end_exclusive'] = args.scan_model == 'snapshot'
+        rd.write_subordinate_manifest(run, 'baseline_input', identity)
+        duration_ns = round(args.duration * 1e9)
+        first_record, wall_start = None, time.monotonic()
+        last_output[0] = wall_start
         while stream.has_next():
             topic, data, ts = stream.read_next()
             if topic not in types:
                 continue
             first_record = ts if first_record is None else first_record
             elapsed = (ts - first_record) * 1e-9
-            if elapsed > args.duration:
+            elapsed_ns = ts - first_record
+            if elapsed_ns > duration_ns or (identity['end_exclusive'] and elapsed_ns == duration_ns):
                 break
             target = wall_start + elapsed
             while time.monotonic() < target:

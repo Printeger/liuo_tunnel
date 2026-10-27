@@ -333,3 +333,10 @@ run `20261027T192427Z_824`（2c29438）完整540秒结束，GPU1×墙时539.9959
 这是异常修复证据，不是定位通过。固定起点yaw/translation坐标下RMSE36.203743m（XYZ36.190785/0.384804/0.888859），最大119.437560m，姿态0.293457deg，速度1.338995m/s；RPE1s13.115417m/10s36.068308m。DEGRADED556/LOST523。110.0秒地图只有A1，最小协方差特征值0.0390806；350个AA全部pending，0融合，因此不能作非平凡地图复用。原始AA身份与回调/账本审计PASS仅覆盖交付一致性。
 
 资源最大101车辆状态、586因子、RSS324.281MiB、整卡1159.25MiB，IMU/cloud/UWB队列402/0/2，最大优化67.729ms。分析文件snapshot_smoke.json、road_static_audit.json、road_fixed_start_diagnostic.json/png和full_route_resources.json均保留。下一步同设置完整540秒S路线检查后续Anchor和实际AA。
+
+
+### 资源时间趋势与第三方输入边界补充
+
+资源检查器新增按session分别统计的首末值、变化量、最小二乘变化率及四个等时长窗口的样本数/中位数/最大值，覆盖RSS、整卡显存、车辆状态、因子、Anchor和优化时间。已用独立线性序列、不规则采样、session重置和逆序拒绝用例检查，并对S110运行200157生成实际报告。趋势是描述性证据，不自动判定无泄漏，也不代替60秒生产负载。
+
+FAST-LIO外部入口在首条read_next之前设置仅LiDAR/IMU/clock的StorageFilter，静止启动单独仅选择IMU；legacy S真值/UWB原始payload不进入读取循环。snapshot时段为左闭右开，与原生LIUO一致；rolling保留既有包含末时刻合同。选择/排除topic及端点语义记录在baseline_input manifest。3项适配/过滤顺序测试通过（baseline_input_boundary_tests.log）；真实冻结S-CAL前20秒的过滤后4000IMU/200云计数和原始语义hash，与生产191331输出完全相等（baseline_s20_filtered_input.json）。上述日志均在/home/dev/ws_iap/liuo_observation/log。此次未启动第三方算法，完整对照仍待运行。

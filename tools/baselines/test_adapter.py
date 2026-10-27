@@ -1,14 +1,24 @@
 import unittest
+from unittest.mock import Mock, patch
+from pathlib import Path
 import numpy as np
 from scipy.spatial.transform import Rotation
 from sensor_msgs.msg import Imu
 from sensor_msgs_py import point_cloud2
 from std_msgs.msg import Header
 from sensor_msgs.msg import PointField
-from run_external import Adapter
+from run_external import Adapter, reader
 
 
 class AdapterTest(unittest.TestCase):
+    def test_storage_filter_precedes_any_payload_read(self):
+        fake = Mock()
+        with patch('run_external.rosbag2_py.SequentialReader', return_value=fake):
+            result = reader(Path('/synthetic-source'), ['/sensors/imu'])
+        self.assertIs(result, fake)
+        self.assertEqual([call[0] for call in fake.mock_calls], ['open', 'set_filter'])
+        self.assertEqual(fake.set_filter.call_args.args[0].topics, ['/sensors/imu'])
+
     def test_raw_samples_and_zero_scan_time(self):
         adapter = Adapter(Rotation.identity(), np.zeros(3))
         header = Header(frame_id='lidar')

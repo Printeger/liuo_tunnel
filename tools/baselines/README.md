@@ -65,3 +65,5 @@ data-run -- tools/baselines/run.sh fastlio --source /home/dev/ws_iap/.runtime/0/
 rolling 使用 `fastlio_rolling.yaml`：`lidar_type=2`、`timestamp_unit=0`（秒）、`snapshot=false`、单位外参。上游固定版本 `preprocess.h` 的 SEC=0，`preprocess.cpp` 内部乘 1000 转为 curvature 毫秒，既有 IMU 去畸变读取该时间。原生 uint16 ring 和 float32 相对秒原样保留，不按点坐标重构 ring；不在适配端去畸变。FAST-LIO 的 IMU 消息不添加朝向观测。
 
 snapshot 仍使用旧外参及显式零点时间补丁；时长上限为 540 s，rolling 为 392.6 s。输入必须显式指定且工作树干净。保留全原始/适配后语义 hash；独立订阅者核对已发布适配输入的计数/hash，不声称能证明算法内部没有丢样本。无输出 45 s、1×发布迟到 250 ms、数据盘少于 8 GiB 均失败。每 run 保留二进制、配置、上游版本和 patch 摘要。接入冒烟不替代完整两场景共同输入对照。
+
+读取原包前已设置存储层topic过滤：回放只读取所选LiDAR、IMU和clock，静止启动只读取IMU；原包中的真值/UWB不会进入消息读取循环。baseline_input记录选择/排除topic及端点语义。snapshot截取区间为`[起始时间, 起始时间+duration)`，rolling保留包含末时刻的原合同，均与对应LIUO入口一致。
