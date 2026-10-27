@@ -10,12 +10,19 @@ from rclpy.serialization import deserialize_message, serialize_message
 
 
 class BoundaryFixture:
-    def __init__(self,run,topic,types):
+    def __init__(self,run,topic,types,prototype):
         self.run=run;self.topic=topic;self.types=types
         self.expired=False;self.far_future=False;self.future=0;self.late=False;self.old=None
         self.log=(run/'export/simulation/boundary_sent.csv').open('w')
         self.csv=csv.writer(self.log)
         self.csv.writerow(['scenario','driver_session','batch_seq','source_session','sequence','node_a','node_b','expected_input'])
+        self.future_batches=[]
+        for start in range(0,4097,512):
+            b=deepcopy(prototype);b.batch_seq=900001+start//512;b.observations=[]
+            for offset in range(min(512,4097-start)):
+                o=deepcopy(prototype.observations[0]);o.source_frame_seq=200000+start+offset
+                o.source_frame_stamp.sec=40;o.source_frame_stamp.nanosec=0;b.observations.append(o)
+            self.future_batches.append((b,serialize_message(b)))
 
     def record(self,label,b,expected):
         for o in b.observations:
@@ -47,14 +54,10 @@ class BoundaryFixture:
                     self.far_future=True;m=deepcopy(self.old);m.batch_seq=900011;m.observations=m.observations[:1]
                     o=m.observations[0];o.source_frame_seq=150000;o.source_frame_stamp.sec=1000;o.source_frame_stamp.nanosec=0
                     self.record('far_future',m,'FUTURE_TIME_LIMIT');data=serialize_message(m)
-                elif 30<=elapsed<35 and self.future<4097:
-                    template=deepcopy(self.old.observations[0]);m=deepcopy(self.old);m.observations=[]
-                    m.batch_seq=900001+self.future//512
-                    for _ in range(min(512,4097-self.future)):
-                        o=deepcopy(template);o.source_frame_seq=200000+self.future;o.source_frame_stamp.sec=40;o.source_frame_stamp.nanosec=0
-                        m.observations.append(o);self.future+=1
-                    # Exactly the last entry exceeds the 4096 pending limit.
-                    self.record('future',m,'QUEUE_LIMIT' if self.future==4097 else 'QUEUED');data=serialize_message(m)
+                elif 30+self.future//512*.5<=elapsed<35 and self.future<4097:
+                    m,data=self.future_batches[self.future//512]
+                    self.future+=len(m.observations)
+                    self.record('future',m,'QUEUE_LIMIT' if self.future==4097 else 'QUEUED')
                 elif elapsed>=36 and not self.late:
                     self.late=True;m=deepcopy(self.old);m.batch_seq=900010
                     m.observations=m.observations[:1];m.observations[0].source_frame_seq=300000
