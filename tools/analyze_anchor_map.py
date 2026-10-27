@@ -63,7 +63,45 @@ def topology(positions, counts):
                 singular_values=singular.tolist())
 
 
-def analyze(run, truth_run, gauge_run):
+def truth_inputs(truth_run, truth_format):
+    physical, delivered = Counter(), Counter()
+    if truth_format == 'straight_csv':
+        scenario_path = truth_run/'metadata/config/scenario.json'
+        scenario = json.loads(scenario_path.read_text())
+        truth_path = Path(__file__).resolve().parents[1]/'packages/liuo_tunnel/config/maps/oracle_map.json'
+        fixture = json.loads(truth_path.read_text())
+        if (scenario['scene'] != 'empty_tunnel_straight_v2' or
+                scenario['anchor_layout'] != fixture['simulation_anchor_layout']):
+            raise ValueError('straight truth fixture does not match frozen scenario')
+        truth = [dict(id=a['id'], position=a['mean_m'], s=a['mean_m'][0]) for a in fixture['anchors']]
+        positions = {a['id']: np.array(a['position']) for a in truth}
+        with (truth_run/'export/simulation/physical_uwb.csv').open() as stream:
+            for row in csv.DictReader(stream):
+                if row['a_type'] != '1': continue
+                pair = tuple(sorted((int(row['a']), int(row['b']))))
+                expected = np.linalg.norm(positions[pair[0]]-positions[pair[1]])
+                if abs(expected-float(row['true_range'])) > 1e-8:
+                    raise ValueError('straight truth fixture disagrees with physical AA range')
+                physical[pair] += 1
+                if row['delivered'] == '1': delivered[pair] += 1
+        provenance = dict(format=truth_format, scenario_sha256=hashlib.sha256(scenario_path.read_bytes()).hexdigest(),
+                          scope='repository oracle fixture for offline analysis only; checked against frozen layout and physical AA truth')
+    else:
+        truth_path = truth_run/'export/simulation/anchors.json'
+        truth = json.loads(truth_path.read_text())
+        with (truth_run/'export/simulation/physical_uwb.csv').open() as stream:
+            for row in csv.DictReader(stream):
+                if row['kind']=='1' and row['valid']=='1': physical[tuple(sorted((int(row['a']),int(row['b']))))]+=1
+        with (truth_run/'export/simulation/delivery_uwb.csv').open() as stream:
+            for row in csv.DictReader(stream):
+                if row['action']=='delivered' and int(row['reporter'])!=0:
+                    delivered[tuple(sorted((int(row['reporter']),int(row['peer']))))]+=1
+        provenance = dict(format=truth_format)
+    provenance.update(path=str(truth_path), sha256=hashlib.sha256(truth_path.read_bytes()).hexdigest())
+    return truth, physical, delivered, provenance
+
+
+def analyze(run, truth_run, gauge_run, truth_format='road_npz'):
     map_path=run/'export/map/calibrated_map.json'
     model=json.loads(map_path.read_text())
     if model['schema_version']!='liuo_anchor_map_v3' or model['state_layout']!='A_only':
@@ -73,8 +111,8 @@ def analyze(run, truth_run, gauge_run):
     gauge=json.loads((gauge_run/'export/analysis/road_fixed_start_diagnostic.json').read_text())
     if gauge['gauge']!='first_output_yaw_and_translation_only_no_route_fit':
         raise ValueError('unsupported gauge')
-    truth_path=truth_run/'export/simulation/anchors.json'
-    truth=json.loads(truth_path.read_text()); true_positions={r['id']:np.array(r['position']) for r in truth}
+    truth, physical, delivered, truth_provenance = truth_inputs(truth_run, truth_format)
+    true_positions={r['id']:np.array(r['position']) for r in truth}
     ids=[r['id'] for r in model['anchors']]; means=np.array([r['mean_m'] for r in model['anchors']])
     if not ids or len(ids)!=len(set(ids)) or not set(ids)<=set(true_positions): raise ValueError('invalid map IDs')
     C=np.array(model['joint_covariance']); dimension=3*len(ids)
@@ -98,18 +136,10 @@ def analyze(run, truth_run, gauge_run):
             pairs.append(dict(first=a,second=b,adjacent_in_truth=tuple(sorted((a,b))) in adjacent,
                               distance_m=distance,truth_distance_m=actual,error_m=distance-actual,
                               sigma_m=float(np.sqrt(distance_variance(C,means,i,j)))))
-    physical=Counter(); delivered=Counter()
-    with (truth_run/'export/simulation/physical_uwb.csv').open() as stream:
-        for row in csv.DictReader(stream):
-            if row['kind']=='1' and row['valid']=='1': physical[tuple(sorted((int(row['a']),int(row['b']))))]+=1
-    with (truth_run/'export/simulation/delivery_uwb.csv').open() as stream:
-        for row in csv.DictReader(stream):
-            if row['action']=='delivered' and int(row['reporter'])!=0:
-                delivered[tuple(sorted((int(row['reporter']),int(row['peer']))))]+=1
     fused=Counter(tuple(sorted((r['first'],r['second']))) for r in model['static_edge_ledger']['leaves'])
     result=dict(scope='offline fixed-CAL-gauge map diagnosis; not calibration consistency or localization acceptance',
                 run=str(run),truth_run=str(truth_run),gauge_run=str(gauge_run),
-                map_sha256=hashlib.sha256(map_path.read_bytes()).hexdigest(),truth_anchor_sha256=hashlib.sha256(truth_path.read_bytes()).hexdigest(),
+                map_sha256=hashlib.sha256(map_path.read_bytes()).hexdigest(),truth_anchor_sha256=truth_provenance['sha256'],truth_provenance=truth_provenance,
                 map_stamp=model['measurement_stamp'],anchor_rmse_m=float(np.sqrt(np.mean(np.sum(errors**2,axis=1)))),
                 anchors=anchors,uninitialized_ids=sorted(set(true_positions)-set(ids)),pairs=pairs,
                 joint_covariance_eigenvalues_m2=eigen.tolist(),
@@ -134,7 +164,11 @@ def analyze(run, truth_run, gauge_run):
     axes[0].legend(); axes[0].grid(True)
     if pairs:
         x=np.arange(len(pairs)); sigmas=np.array([p['sigma_m'] for p in pairs])
-        axes[1].fill_between(x,-3*sigmas,3*sigmas,alpha=.2,label='conditional ±3σ with cross covariance')
+        if len(pairs) == 1:
+            axes[1].errorbar(x, np.zeros(len(pairs)), yerr=3*sigmas, fmt='none', capsize=8,
+                            label='conditional ±3σ with cross covariance')
+        else:
+            axes[1].fill_between(x,-3*sigmas,3*sigmas,alpha=.2,label='conditional ±3σ with cross covariance')
         axes[1].plot(x,[p['error_m'] for p in pairs],'o',label='distance error')
         axes[1].set_xticks(x,[f"{p['first']}–{p['second']}" for p in pairs],rotation=90)
         axes[1].legend()
@@ -147,7 +181,8 @@ def analyze(run, truth_run, gauge_run):
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__); p.add_argument('--run',type=Path,required=True)
     p.add_argument('--truth-run',type=Path,required=True); p.add_argument('--gauge-run',type=Path)
-    a=p.parse_args(); r=analyze(a.run,a.truth_run,a.gauge_run or a.run)
+    p.add_argument('--truth-format', choices=['road_npz', 'straight_csv'], default='road_npz')
+    a=p.parse_args(); r=analyze(a.run,a.truth_run,a.gauge_run or a.run,a.truth_format)
     print(json.dumps(dict(anchor_rmse_m=r['anchor_rmse_m'],anchors=len(r['anchors']),
                          pairs=len(r['pairs']),physical_edges=len(r['physical_full_input_graph']['edges']),
                          delivered_edges=len(r['delivered_full_input_graph']['edges']),

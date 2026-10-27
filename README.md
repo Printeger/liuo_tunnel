@@ -399,3 +399,6 @@ data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liu
 独立 FAST-LIO 输入检查：经 `data-run -- bash -c` 加载 `/opt/ros/jazzy/setup.bash` 后执行 `python3 tools/check_baseline_shared_input.py <FAST-run> --liuo-run <相同输入的LIUO-run>`，重新读取冻结包核对原始传感器语义及适配发布/订阅摘要；不提供 `--liuo-run` 时只证明 FAST 自身输入，不宣称配对。完整 S FAST 已结束并记录严重定位失败，见新版结果；完整 S/L 主方法有效性仍未验收。
 
 入口几何离线诊断：加载ROS环境后，经data-run运行 `python3 tools/extract_snapshot_patch_fixture.py --source <冻结snapshot输入> --run <估计run> --stamp 9`，再执行数据盘构建目录中的 `liuo_local_patch_probe <生成的fixture.json>`。探针目标可用 `cmake --build <数据盘构建目录> --target liuo_local_patch_probe` 构建。所有命令及输出都需经data-run；fixture使用估计姿态且只供离线诊断，不回注估计器。
+
+
+A-only v3地图离线评价也支持S：`data-run -- python3 tools/analyze_anchor_map.py --run <run> --truth-run <S-input> --truth-format straight_csv --gauge-run <S-CAL-run>`。须先生成CAL固定首输出规范诊断；REUSE沿用该CAL规范。S从明确匹配的既有oracle布局夹具读取离线真值，并与冻结输入的布局名和物理AA真值距离核对；这些坐标不加载进估计器。L保持默认road_npz。结果含逐站误差、相关协方差下间距误差、物理/交付/融合三种图及PNG，不把条件协方差视为一致性认证。
