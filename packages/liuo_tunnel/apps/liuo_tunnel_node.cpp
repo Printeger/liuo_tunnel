@@ -38,6 +38,7 @@
 #include <liuo_tunnel/uwb/measurement_queue.hpp>
 #include <gtsam_points/optimizers/levenberg_marquardt_ext.hpp>
 #include <liuo_tunnel/uwb/stepped_bootstrap_lm.hpp>
+#include <liuo_tunnel/uwb/candidate_anchor_profile.hpp>
 #include <liuo_tunnel/util/run_log_manager.hpp>
 #include <liuo_tunnel/util/logging.hpp>
 #include <liuo_tunnel/optimizers/incremental_fixed_lag_smoother_ext.hpp>
@@ -1146,6 +1147,16 @@ private:
       // A zero cost change can follow a rejected step at the damping ceiling.
       // Expose that numerical outcome without changing branch acceptance.
       log(batch.id,"CANDIDATE_DAMPING",batch.optimizer->lambda(),batch.optimizer->params().lambdaUpperBound);
+      try {
+        const auto basis=batch.local ? batch.optimizer->values().at<gtsam::Pose3>(batch.local->pose).rotation() : gtsam::Rot3();
+        const auto profile=candidate_anchor_profile(batch.graph,batch.optimizer->values(),A(batch.id),basis);
+        log(batch.id,"CANDIDATE_ANCHOR_GRADIENT",profile.gradient_norm);
+        log(batch.id,"CANDIDATE_ANCHOR_PROBE_1MM",profile.minimum_cost_change[0],profile.feasible_trials[0]);
+        log(batch.id,"CANDIDATE_ANCHOR_PROBE_01MM",profile.minimum_cost_change[1],profile.feasible_trials[1]);
+      } catch (const std::exception& error) {
+        logger->warn("anchor {} conditional diagnostic unavailable: {}",batch.id,error.what());
+        log(batch.id,"CANDIDATE_ANCHOR_PROFILE_UNAVAILABLE");
+      }
       log(batch.id,"CANDIDATE_DOMAIN_SOLVE_WORK",batch.optimizer->domain_solve_calls(),batch.optimizer->domain_solve_ms());
       if (batch.relative_reference) {
         const auto relative=AnchorRelativeCandidate::from_joint(*batch.relative_reference,batch.optimizer->values().at<gtsam::Pose3>(*batch.relative_reference),solution).point;

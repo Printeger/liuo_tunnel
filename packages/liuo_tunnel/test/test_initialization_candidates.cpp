@@ -2,8 +2,48 @@
 #include <liuo_tunnel/uwb/initialization_candidates.hpp>
 #include <liuo_tunnel/uwb/stepped_bootstrap_lm.hpp>
 #include <liuo_tunnel/uwb/local_installation.hpp>
+#include <liuo_tunnel/uwb/candidate_anchor_profile.hpp>
 #include <gtsam/slam/PriorFactor.h>
 using namespace liuo_tunnel;
+
+TEST(CandidateAnchorProfile, MeasuresDescentWithoutBackgroundCostOrStateMutation) {
+  gtsam::NonlinearFactorGraph graph;
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(1, gtsam::Point3::Zero(), gtsam::noiseModel::Isotropic::Sigma(3, 1));
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(2, gtsam::Point3(1e10, 0, 0), gtsam::noiseModel::Isotropic::Sigma(3, 1));
+  gtsam::Values values;
+  values.insert(1, gtsam::Point3(1, 0, 0));
+  values.insert(2, gtsam::Point3(0, 0, 0));
+  const auto profile = candidate_anchor_profile(graph, values, 1, gtsam::Rot3());
+  EXPECT_NEAR(profile.gradient_norm, 1, 1e-12);
+  EXPECT_NEAR(profile.minimum_cost_change[0], -.001 + .5e-6, 1e-12);
+  EXPECT_NEAR(profile.minimum_cost_change[1], -.0001 + .5e-8, 1e-12);
+  EXPECT_TRUE(values.at<gtsam::Point3>(1).isApprox(gtsam::Point3(1, 0, 0)));
+  EXPECT_EQ(graph.size(), 2);
+  values.update(1, gtsam::Point3(0, 0, 0));
+  EXPECT_DOUBLE_EQ(candidate_anchor_profile(graph, values, 1, gtsam::Rot3()).minimum_cost_change[0], 0);
+}
+
+TEST(CandidateAnchorProfile, RespectsHardSupportAndStillFindsTangentialDescent) {
+  LocalInstallationObservation patch{};
+  patch.normal = gtsam::Vector3::UnitY(); patch.tangent = gtsam::Vector3::UnitX(); patch.up = gtsam::Vector3::UnitZ();
+  patch.width = 6; patch.sigma = 1;
+  for (auto& floor : patch.floors) {
+    floor.longitudinal_axis = patch.tangent; floor.minimum_longitudinal = -10; floor.maximum_longitudinal = 10;
+  }
+  gtsam::NonlinearFactorGraph graph;
+  graph.emplace_shared<LocalInstallationFactor>(0, 1, patch, 2.8);
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(1, gtsam::Point3(20, 2.8, 1), gtsam::noiseModel::Isotropic::Sigma(3, 1));
+  gtsam::Values values;
+  values.insert(0, gtsam::Pose3()); values.insert(1, gtsam::Point3(10, 0, 1));
+  const auto profile = candidate_anchor_profile(graph, values, 1, gtsam::Rot3());
+  EXPECT_EQ(profile.feasible_trials[0], 5);
+  EXPECT_NEAR(profile.minimum_cost_change[0], -5.6e-3 + 1e-6, 1e-12);
+  values.update(1, gtsam::Point3(10, 2.8, 1));
+  const auto stationary = candidate_anchor_profile(graph, values, 1, gtsam::Rot3());
+  EXPECT_DOUBLE_EQ(stationary.minimum_cost_change[0], 0);
+  EXPECT_DOUBLE_EQ(stationary.minimum_cost_change[1], 0);
+  EXPECT_NEAR(stationary.gradient_norm, 10, 1e-12);  // normal gradient alone is not a feasible descent.
+}
 
 TEST(FiniteDomainStep, JointRotationAndAnchorStepMustRemainInsideAfterRetract) {
   LocalInstallationObservation patch{};

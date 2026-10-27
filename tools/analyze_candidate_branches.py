@@ -17,7 +17,7 @@ def analyze(run):
     incomplete_tail=not content.endswith('\n')
     if incomplete_tail:
         content=content.rsplit('\n',1)[0]+'\n'
-    batches={}; rejected=[]; terminations=Counter(); domain_work=[]; damping=[]
+    batches={}; rejected=[]; terminations=Counter(); domain_work=[]; damping=[]; profiles=[]
     for row in csv.DictReader(io.StringIO(content)):
         key=(row['session'],row['anchor']);event=row['event']
         if event=='CANDIDATES_STARTED':
@@ -47,6 +47,18 @@ def analyze(run):
             current['final_lambda'], current['lambda_upper_bound'] = value, upper
             current['damping_limit_reached'] = value >= upper
             damping.append(current['damping_limit_reached'])
+        elif event=='CANDIDATE_ANCHOR_GRADIENT':
+            current['anchor_gradient_norm'] = float(row['value_a'])
+        elif event in ('CANDIDATE_ANCHOR_PROBE_1MM', 'CANDIDATE_ANCHOR_PROBE_01MM'):
+            step = '1mm' if event.endswith('_1MM') else '0p1mm'
+            change, feasible = float(row['value_a']), int(float(row['value_b']))
+            if not math.isfinite(change) or change > 0 or feasible < 0 or feasible > 7:
+                raise ValueError('invalid anchor conditional probe')
+            current['anchor_probe_'+step] = dict(minimum_cost_change=change, feasible_trials=feasible)
+            if step == '0p1mm':
+                profiles.append(dict(anchor=int(key[1]), stamp=float(row['stamp']),
+                                     gradient_norm=current['anchor_gradient_norm'],
+                                     probe_1mm=current['anchor_probe_1mm'], probe_0p1mm=current['anchor_probe_0p1mm']))
         elif event=='CANDIDATE_COMMON_REFERENCE':
             current['reference']=int(float(row['value_a']))
         elif event=='CANDIDATE_RELATIVE_XY':
@@ -84,6 +96,8 @@ def analyze(run):
                 damping_diagnostic=dict(available=bool(damping), logged_candidates=len(damping),
                                         at_or_above_upper_bound=sum(damping),
                                         scope='terminal damping only; neither a stationarity test nor a change to acceptance'),
+                anchor_conditional_profiles=dict(available=bool(profiles), candidates=profiles,
+                    scope='all other joint variables fixed; incident-factor cost differences, finite probes only; no acceptance threshold or stationarity certification'),
                 candidate_termination_flags=dict(terminations),
                 domain_work=dict(scope='completed logged candidates only; excludes unfinished/expired candidates and graph linearization/waiting',
                                  available=bool(domain_work),logged_candidates=len(domain_work),

@@ -4167,6 +4167,153 @@
           0.29532940476336766
         ]
       }
+    },
+    "S_DAMPING_DIAGNOSTIC_200": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T225028Z_413",
+      "source_commit": "7bf3aa2",
+      "algorithm_commit": "7bf3aa2",
+      "input_run": "20261027T190229Z_933",
+      "stage_acceptance": "NOT_ASSESSED",
+      "reports": {
+        "snapshot_smoke.json": {
+          "first_output": 3.1,
+          "last_output": 200.9,
+          "output_count": 1979,
+          "publish_wall_s": 199.9955392990014,
+          "raw_counts": {
+            "clock": 40000,
+            "cloud": 2000,
+            "imu": 40000,
+            "uwb": 14359
+          },
+          "raw_sha256": {
+            "clock": "df0e7b3fab81ef84426f452bbdb21433db584910f6f992ec4844a03c3b261f3a",
+            "cloud": "4cf9e9749b24a44a392a638f402dc215d993f1d5e7b39f4bb76f514075cf8b89",
+            "imu": "0f0339761a473004986805ff49ccaf30ee7df6a9ac3c5a37c2d99c6c81dc48b7",
+            "uwb": "8bd6bade42b7480059c8f1ad03a75a8ef2054aedf7b7a14dced7519c777daf3c"
+          },
+          "real_time_factor": 1.0000223040024505,
+          "result": "PASS",
+          "scope": "native snapshot GPU input/output contract, not localization or map acceptance",
+          "source_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933"
+        },
+        "road_static_audit.json": {
+          "scope": "delivered raw AA to callback and map ledger; not localization/reuse acceptance",
+          "result": "PASS",
+          "raw_records": 710,
+          "unique_physical_leaves": 710,
+          "received_records": 710,
+          "map_absorbed_leaves": 185,
+          "final_fused_leaves": 185,
+          "final_pending_leaves": 525,
+          "explicit_edges": 1,
+          "first_fused_stamp": 97.1,
+          "oldest_absorbed_acquisition": 1.012,
+          "map_stamp": 200.0,
+          "anchor_ids": [
+            0,
+            1
+          ],
+          "minimum_map_eigenvalue": 7.965820067328976e-06,
+          "raw_sha256": "8de5439e8e35ae747ee42842aa505b8ec5290548a70b4386b47c71df82ccdd7a"
+        },
+        "road_fixed_start_diagnostic.json": {
+          "scope": "offline diagnostic only, not stage acceptance",
+          "truth_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933",
+          "truth_format": "straight_csv",
+          "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T225028Z_413",
+          "gauge": "first_output_yaw_and_translation_only_no_route_fit",
+          "reference_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T225028Z_413",
+          "total_output_samples": 1979,
+          "pre_map_output_samples": 0,
+          "reference_stamp": 3.1,
+          "yaw_rotation_matrix": [
+            [
+              0.9999999996778394,
+              -2.538348651427955e-05,
+              0.0
+            ],
+            [
+              2.538348651427955e-05,
+              0.9999999996778394,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            9.658074390380384e-06,
+            -4.5202132767116515e-06,
+            1.200132744153788
+          ],
+          "samples": 1979,
+          "first_stamp": 3.1,
+          "last_stamp": 200.9,
+          "covered_seconds": 197.8,
+          "position_rmse_m": 1.061812022505753,
+          "xyz_rmse_m": [
+            0.04762598030579544,
+            0.6792436703061573,
+            0.814742028796042
+          ],
+          "maximum_position_error_m": 2.122880157058136,
+          "attitude_rmse_deg": 0.14520684661583735,
+          "rpe": {
+            "1.0": {
+              "samples": 1969,
+              "translation_rmse_m": 0.06981380217820593,
+              "rotation_rmse_deg": 0.07450587080586113
+            },
+            "10.0": {
+              "samples": 1879,
+              "translation_rmse_m": 0.22869758771608434,
+              "rotation_rmse_deg": 0.08999501898599824
+            }
+          },
+          "route_frame": {
+            "definition": "horizontal truth travel tangent, left horizontal normal, world vertical; no alignment or estimator input",
+            "stationary_direction": "nearest moving truth sample in time; ties choose earlier; speed threshold 1e-6 m/s",
+            "along_cross_height_rmse_m": [
+              0.04762598030579544,
+              0.6792436703061573,
+              0.814742028796042
+            ]
+          },
+          "velocity_rmse_mps": 0.018187688611731503
+        },
+        "candidate_branch_diagnostic.json": {
+          "scope": "logged candidate comparison only; no truth or localization acceptance",
+          "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T225028Z_413",
+          "gate_m": 0.5,
+          "convergence_scope": "finite candidates are numerical outputs, not proven stationary solutions; iteration limit may coincide with another stopping criterion",
+          "configured_iteration_limit": 30,
+          "damping_diagnostic": {
+            "available": true,
+            "logged_candidates": 32,
+            "at_or_above_upper_bound": 24,
+            "scope": "terminal damping only; neither a stationarity test nor a change to acceptance"
+          },
+          "candidate_termination_flags": {
+            "4": 24,
+            "1": 8
+          },
+          "domain_work": {
+            "scope": "completed logged candidates only; excludes unfinished/expired candidates and graph linearization/waiting",
+            "available": true,
+            "logged_candidates": 32,
+            "successful_solve_calls": 1492,
+            "total_solve_ms": 3447.624454,
+            "maximum_candidate_solve_ms": 165.486882
+          },
+          "incomplete_tail_ignored": false,
+          "counts": {
+            "RELATIVE_BRANCH_REMAINS": 2
+          }
+        }
+      }
     }
   },
   "limitations": [
