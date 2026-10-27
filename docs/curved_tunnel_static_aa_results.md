@@ -409,3 +409,19 @@ S202541候选诊断补充：95.5–100.5秒批次的5个有限候选全部记录
 1570输出中1374条在接图之前，地图坐标仅196条140.5–160.0秒。继承201351的CAL规范、没有第二次对齐：该19.5秒区间位置RMSE27.514179m（XYZ7.839920/26.333870/1.446702m），最大31.605895m，姿态1.193265deg、速度0.406050m/s；不把短成功输出区间冒充完整结果。160.0秒检查点8站、427个已吸收AA叶、4边，地图位置RMSE82.309055m。叶包含旧先验，本次尚未完成独立精确增量账本审计。最大101组车辆、818因子、RSS388.980MiB、整卡1160.563MiB、优化75.5461ms。
 
 候选终止诊断新增实际LM测试：预算退出不标作收敛、cost目标与自定义停止可并存；加既有启动/镜像/分步优化回归共25项通过，日志`/home/dev/ws_iap/liuo_observation/log/candidate_termination_tests.log`。这是数值诊断检查，不改变分支接纳或物理信息。
+
+
+### 完整S匹配LIO-only与第三方共同输入
+
+`20261027T205132Z_440`绑定248400e，`data-run -- tools/road_estimator.sh --scene straight --source-run /home/dev/ws_iap/.runtime/0/liuo/20261027T191449Z_257 --config packages/liuo_tunnel/config/straight_matched_lio_only.json --seconds 540`。GPU、1×墙钟539.995315秒，5400云/108000IMU/39827UWB/108000clock输入审计通过，5379输出3.1–540.9秒。UWB仅record_only，未加载地图/安装资料，图中无Anchor或UWB因子。FAST202832独立检查重新读取冻结输入，和此OFF的LiDAR/IMU/clock数量及语义hash完全一致，paired_liuo_verified=true；仍不代表尚未完成的S-REUSE已配对验收。
+
+固定首输出规范RMSE1566.505617m，XYZ1566.504489/1.590937/1.000651m，最大2326.386885m，姿态0.452589deg、速度6.261899m/s，RPE1s7.901544m/10s63.001514m。5379输出全部DEGRADED。最大101车辆状态、400因子、RSS294.047MiB、整设备1154.563MiB、队列IMU402/cloud0/UWB0、优化116.034ms；四等时窗RSS中位数282.027/276.863/278.195/281.441MiB。这是完整失败对照，不是主方法有效性证据。
+
+
+### 新/旧变量混合线性化参考的边界复现
+
+L204511失败前160.1秒已开始移交A9，但尚未写JOINTLY_INITIALIZED，失败状态中含新A9。最小真实ISAM测试以2cm车辆变化和9.99m域内相对点复现新增有限因子时的错误域外线性化：旧版along=10.010000；第二项测试以X/A不同重线性化门限复现既有因子的同类错误。旧失败日志new_finite_chart_before.log、existing_finite_chart_before.log均保留。
+
+修复对新增有限因子及已选中端点的显式有限因子做端点闭包，保持同一当前参考；不扩域、不删因子、不改权重或注入位姿观测。两项新测试加原有流形边缘先验/共同位移回归共4项通过，finite_chart_group_tests.log。日志均在/home/dev/ws_iap/liuo_observation/log；生产L失败区间尚待验证，不能仅凭单测追认原失败已解决。
+
+生产节点构建/安装通过；有限域4项、静态图5项、联合边缘化1项、局部几何14项，共24项回归通过。各suite日志finite_chart_test_*.log和finite_chart_production_build.log、finite_chart_install.log保留。
