@@ -3518,6 +3518,28 @@
       "production_validation": "S110 221135 completed, A0 failed, A1 only, zero fused AA; nonlinear feasibility and window expiry remain unresolved",
       "node_build_log": "/home/dev/ws_iap/liuo_observation/log/constrained_step_node_build.log",
       "solver_scope": "primal feasible active set, temporary exact equalities, negative multiplier release, full cross-variable Gaussian system, at most 256 iterations"
+    },
+    "nonlinear_candidate_domain_restoration": {
+      "scope": "trial feasibility restoration only; original nonlinear cost and candidate thresholds unchanged",
+      "red_log": "/home/dev/ws_iap/liuo_observation/log/nonlinear_domain_before.log",
+      "reproduced_linear_feasible_actual_along_m": 10.801449257384252,
+      "candidate_tests": {
+        "count": 30,
+        "result": "PASS",
+        "log": "/home/dev/ws_iap/liuo_observation/log/nonlinear_domain_candidates.log"
+      },
+      "local_tests": {
+        "count": 20,
+        "result": "PASS",
+        "log": "/home/dev/ws_iap/liuo_observation/log/nonlinear_domain_local.log"
+      },
+      "marginal_tests": {
+        "count": 4,
+        "result": "PASS",
+        "log": "/home/dev/ws_iap/liuo_observation/log/nonlinear_domain_marginal.log"
+      },
+      "production_validation": "PENDING",
+      "limitation": "one explicit finite installation domain per anchor; duplicate domains rejected"
     }
   },
   "inputs": {

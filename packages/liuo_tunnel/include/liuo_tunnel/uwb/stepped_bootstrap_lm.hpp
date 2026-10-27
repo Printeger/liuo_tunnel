@@ -22,6 +22,8 @@ public:
   // establish stationarity, even when another stopping condition also fires.
   unsigned termination_flags() const { return termination_flags_; }
   double last_absolute_error_change() const { return last_change_; }
+  size_t domain_solve_calls() const { return domain_solve_calls_; }
+  double domain_solve_ms() const { return domain_solve_ms_; }
   bool advance() {
     if (complete_) return true;
     double before = error();
@@ -64,8 +66,12 @@ private:
     // gtsam_points 1.2.1 tryLambda calls this virtual interface; merely setting
     // its extension params.solver does not route the installed implementation.
     if (auto* solver = dynamic_cast<FiniteDomainSolver*>(params_.solver.get())) {
+      const auto started = std::chrono::steady_clock::now();
       solver->linearization(values());
-      return solver->solve(graph, *params_.ordering);
+      auto step = solver->solve(graph, *params_.ordering);
+      domain_solve_ms_ += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
+      ++domain_solve_calls_;
+      return step;
     }
     return gtsam::NonlinearOptimizer::solve(graph, parameters);
   }
@@ -78,6 +84,8 @@ private:
     out << getInnerIterations() << ',' << seconds << ',' << current_error << ',' << lambda() << ',' << iterations() << std::endl;
   }
   bool complete_ = false, single_trial_ = false;
+  mutable size_t domain_solve_calls_ = 0;
+  mutable double domain_solve_ms_ = 0;
   unsigned termination_flags_ = 0;
   double last_change_ = NAN;
   double outer_before_ = 0;

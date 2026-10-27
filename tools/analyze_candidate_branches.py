@@ -17,7 +17,7 @@ def analyze(run):
     incomplete_tail=not content.endswith('\n')
     if incomplete_tail:
         content=content.rsplit('\n',1)[0]+'\n'
-    batches={}; rejected=[]; terminations=Counter()
+    batches={}; rejected=[]; terminations=Counter(); domain_work=[]
     for row in csv.DictReader(io.StringIO(content)):
         key=(row['session'],row['anchor']);event=row['event']
         if event=='CANDIDATES_STARTED':
@@ -34,6 +34,12 @@ def analyze(run):
             terminations[str(current['termination_flags'])]+=1
             change=float(row['value_b'])
             current['last_absolute_error_change']=change if math.isfinite(change) else None
+        elif event=='CANDIDATE_DOMAIN_SOLVE_WORK':
+            calls, milliseconds = int(float(row['value_a'])), float(row['value_b'])
+            if calls < 0 or not math.isfinite(milliseconds) or milliseconds < 0:
+                raise ValueError('invalid candidate domain work')
+            current['domain_solve_calls'], current['domain_solve_ms'] = calls, milliseconds
+            domain_work.append((calls,milliseconds))
         elif event=='CANDIDATE_COMMON_REFERENCE':
             current['reference']=int(float(row['value_a']))
         elif event=='CANDIDATE_RELATIVE_XY':
@@ -69,6 +75,11 @@ def analyze(run):
                 convergence_scope='finite candidates are numerical outputs, not proven stationary solutions; iteration limit may coincide with another stopping criterion',
                 configured_iteration_limit=iteration_limit,
                 candidate_termination_flags=dict(terminations),
+                domain_work=dict(scope='completed logged candidates only; excludes unfinished/expired candidates and graph linearization/waiting',
+                                 available=bool(domain_work),logged_candidates=len(domain_work),
+                                 successful_solve_calls=sum(v[0] for v in domain_work),
+                                 total_solve_ms=sum(v[1] for v in domain_work),
+                                 maximum_candidate_solve_ms=max((v[1] for v in domain_work),default=0.)),
                 incomplete_tail_ignored=incomplete_tail,counts=dict(Counter(r['classification'] for r in rejected)),rejected_batches=rejected)
     output=run/'export/analysis/candidate_branch_diagnostic.json';output.parent.mkdir(parents=True,exist_ok=True)
     output.write_text(json.dumps(result,indent=2,allow_nan=False)+'\n')

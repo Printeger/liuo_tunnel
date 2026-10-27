@@ -68,6 +68,47 @@ TEST(LocalInstallation, MissingCentralComponentRemainsRejected) {
   EXPECT_THROW(local_installation_observation(points, body.rotation(), {1, 0, 0}, .02), std::invalid_argument);
 }
 
+TEST(LocalInstallation, TrialRestorationChangesOnlyAlongCoordinateAndOnlyOutsideSupport) {
+  const gtsam::Pose3 body(gtsam::Rot3(), {0, -1.875, 1.66});
+  const auto observed = local_installation_observation(walls(body), body.rotation(), {5, 0, 0}, .02);
+  LocalInstallationFactor factor(0, 1, observed, 5.52);
+  const gtsam::Pose3 pose(gtsam::Rot3::RzRyRx(.2, -.1, .7), {3000, -250, 40});
+  for (double along : {-11., 5., 11.}) {
+    gtsam::Values trial;
+    trial.insert(0, pose);
+    trial.insert(1, pose.transformFrom(gtsam::Point3(along, 7, 2)));
+    const auto before = trial;
+    factor.restore_trial_domain(trial);
+    EXPECT_TRUE(trial.at<gtsam::Pose3>(0).equals(pose, 0));
+    const auto local = pose.transformTo(trial.at<gtsam::Point3>(1));
+    EXPECT_NEAR(local.y(), 7, 1e-10);
+    EXPECT_NEAR(local.z(), 2, 1e-10);
+    EXPECT_LE(std::abs(local.x()), 10);
+    EXPECT_TRUE(std::isfinite(factor.error(trial)));
+    if (along == 5) EXPECT_TRUE(trial.equals(before, 0));
+  }
+}
+
+TEST(LocalInstallation, NonlinearTrialCorrectionIsSecondOrderForLinearTangentStep) {
+  const gtsam::Pose3 body(gtsam::Rot3(), {0, -1.875, 1.66});
+  const auto observed = local_installation_observation(walls(body), body.rotation(), {5, 0, 0}, .02);
+  LocalInstallationFactor factor(0, 1, observed, 5.52);
+  double previous = 0;
+  for (double angle : {.04, .02, .01}) {
+    gtsam::Values trial;
+    trial.insert(0, gtsam::Pose3(gtsam::Rot3::Rz(angle), gtsam::Point3::Zero()));
+    const gtsam::Point3 anchor(10 - 2.8 * angle, 2.8 + 8 * angle, 1);
+    trial.insert(1, anchor);
+    const double analytical_along = std::cos(angle) * anchor.x() + std::sin(angle) * anchor.y();
+    ASSERT_GT(analytical_along, 10);
+    factor.restore_trial_domain(trial);
+    const double correction = (trial.at<gtsam::Point3>(1) - anchor).norm();
+    EXPECT_NEAR(correction, analytical_along - 10 + 1e-8, 1e-10);
+    if (previous) EXPECT_NEAR(previous / correction, 4, .05);
+    previous = correction;
+  }
+}
+
 TEST(LocalInstallation, InstallationSideDoesNotReverseWithEstimatedVelocity) {
   const gtsam::Pose3 body(gtsam::Rot3(), {0, -1.875, 1.66});
   const auto points = walls(body);

@@ -5,6 +5,41 @@
 #include <gtsam/slam/PriorFactor.h>
 using namespace liuo_tunnel;
 
+TEST(FiniteDomainStep, JointRotationAndAnchorStepMustRemainInsideAfterRetract) {
+  LocalInstallationObservation patch{};
+  patch.normal = gtsam::Vector3::UnitY();
+  patch.tangent = gtsam::Vector3::UnitX();
+  patch.up = gtsam::Vector3::UnitZ();
+  patch.width = 6; patch.sigma = 1;
+  for (auto& floor : patch.floors) {
+    floor.longitudinal_axis = patch.tangent;
+    floor.minimum_longitudinal = -10;
+    floor.maximum_longitudinal = 10;
+  }
+  const auto factor = gtsam::make_shared<LocalInstallationFactor>(0, 1, patch, 2.8);
+  gtsam::NonlinearFactorGraph nonlinear;
+  nonlinear.add(factor);
+  gtsam::Values initial;
+  initial.insert(0, gtsam::Pose3());
+  initial.insert(1, gtsam::Point3(9.9, 2.8, 1));
+  gtsam::GaussianFactorGraph linear;
+  const gtsam::Vector6 pose_step = (gtsam::Vector6() << 0, 0, .2, 0, 0, 0).finished();
+  linear.emplace_shared<gtsam::JacobianFactor>(0, gtsam::Matrix66::Identity(), pose_step, gtsam::noiseModel::Isotropic::Sigma(6, 1));
+  linear.emplace_shared<gtsam::JacobianFactor>(1, gtsam::Matrix33::Identity(), gtsam::Vector3(-.46, 5, 0), gtsam::noiseModel::Isotropic::Sigma(3, 1));
+  FiniteDomainSolver solver(nonlinear);
+  solver.linearization(initial);
+  const auto step = solver.solve(linear, gtsam::Ordering{0, 1});
+  const auto domain = factor->linearized_domain(initial);
+  const double predicted = domain.position + (domain.pose_jacobian * step.at(0))[0] + (domain.anchor_jacobian * step.at(1))[0];
+  EXPECT_LE(predicted, domain.upper + 1e-8);
+  const auto trial = initial.retract(step);
+  const auto local = trial.at<gtsam::Pose3>(0).transformTo(trial.at<gtsam::Point3>(1));
+  EXPECT_LE(local.x(), 10);
+  EXPECT_TRUE(std::isfinite(factor->error(trial)));
+  nonlinear.add(factor);
+  EXPECT_THROW(FiniteDomainSolver duplicate(nonlinear), std::invalid_argument);
+}
+
 TEST(FiniteDomainStep, ReleasesBlockingConstraintAndPreservesOriginalQuadratic) {
   gtsam::GaussianFactorGraph graph;
   graph.emplace_shared<gtsam::JacobianFactor>(0, gtsam::Matrix2::Identity(), gtsam::Vector2(2, 4), gtsam::noiseModel::Isotropic::Sigma(2, 1));

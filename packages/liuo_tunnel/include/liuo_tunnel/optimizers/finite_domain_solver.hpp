@@ -4,6 +4,7 @@
 #include <gtsam_points/optimizers/levenberg_marquardt_ext_params.hpp>
 #include <gtsam/linear/JacobianFactor.h>
 #include <Eigen/Cholesky>
+#include <set>
 
 namespace liuo_tunnel {
 // Numerical inequalities for a damped step, never measurement factors or priors.
@@ -88,11 +89,18 @@ inline gtsam::VectorValues constrained_gaussian_step(const gtsam::GaussianFactor
 class FiniteDomainSolver : public gtsam_points::GaussianFactorGraphSolver {
 public:
   explicit FiniteDomainSolver(const gtsam::NonlinearFactorGraph& graph) {
+    std::set<gtsam::Key> anchors;
     for (const auto& factor : graph)
-      if (auto local = std::dynamic_pointer_cast<LocalInstallationFactor>(factor)) factors_.push_back(local);
+      if (auto local = std::dynamic_pointer_cast<LocalInstallationFactor>(factor)) {
+        // Production attaches one finite installation observation per anchor.
+        // Reject ambiguous projection order rather than silently dropping a domain.
+        if (!anchors.insert(local->key2()).second) throw std::invalid_argument("MULTIPLE_LOCAL_DOMAINS_FOR_ANCHOR");
+        factors_.push_back(local);
+      }
   }
   bool empty() const { return factors_.empty(); }
   void linearization(const gtsam::Values& values) {
+    reference_ = values;
     constraints_.clear();
     for (const auto& factor : factors_) {
       const auto d = factor->linearized_domain(values);
@@ -111,11 +119,22 @@ public:
       }
     }
   }
-  gtsam::VectorValues solve(const gtsam::GaussianFactorGraph& graph, const gtsam::Ordering& ordering) override { return constrained_gaussian_step(graph, ordering, constraints_); }
+  gtsam::VectorValues solve(const gtsam::GaussianFactorGraph& graph, const gtsam::Ordering& ordering) override {
+    const auto step = constrained_gaussian_step(graph, ordering, constraints_);
+    auto trial = reference_.retract(step);
+    for (const auto& factor : factors_) factor->restore_trial_domain(trial);
+    const auto restored = reference_.localCoordinates(trial);
+    // The caller retracts this returned step again. Check that exact path,
+    // including its floating-point round trip, before evaluating any likelihood.
+    const auto checked = reference_.retract(restored);
+    for (const auto& factor : factors_) factor->linearized_domain(checked);
+    return restored;
+  }
 
 private:
   std::vector<std::shared_ptr<LocalInstallationFactor>> factors_;
   std::vector<StepInequality> constraints_;
+  gtsam::Values reference_;
 };
 inline gtsam_points::LevenbergMarquardtExtParams finite_domain_parameters(const gtsam::NonlinearFactorGraph& graph, const gtsam_points::LevenbergMarquardtExtParams& original) {
   auto solver = std::make_shared<FiniteDomainSolver>(graph);

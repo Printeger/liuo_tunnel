@@ -519,3 +519,10 @@ S离线地图评价现已接通，固定使用CAL坐标规范，无地图拟合�
 `20261027T221135Z_418`绑定d117c19，GPU1×同输入190229完整110秒结束，1100云/22000IMU/7080UWB/22000clock，1079输出，墙钟109.995775秒。A0未初始化且18.4秒一次候选快照过期；A1在98.8秒由192条TA初始化。350独立AA全部pending、0融合；地图110.0秒仅A1，最小协方差特征值0.038685738。账本PASS仅覆盖空融合集合及输入身份。
 
 固定首输出位置RMSE38.004384m（XYZ37.992514/0.268968/0.910897m），最大184.961324m、姿态0.295804deg、速度1.361199m/s；RPE1秒19.063868m、10秒42.221843m。数值终止7次预算、13次绝对cost变化；11.3秒候选批仍有1.587978m相对分支差，其中一支相对横向3.799081m、另一支2.800659m。因此解析QP反例通过不证明生产候选已稳定；不能扩大窗口或门限掩盖失败。后续需独立检查线性域内步在联合Pose/Anchor非线性retract后是否越域，并核查其额外计算开销；当前未把该推断当已证实原因。完整报告在run/export/analysis。
+
+
+### 非线性可行性反例与试探恢复
+
+真实FiniteDomainSolver最小联合旋转/Anchor反例复现：线性预测沿向≤10，实际retract后10.801449257m，LocalInstallationFactor返回Inf；日志nonlinear_domain_before.log两个断言失败。新增试探恢复只处理实际越域Anchor的局部沿向，其余试探状态/横向/高度不变，并重新验证返回delta的实际retract路径。原非线性图决定步接受，不增加观测或prior，不改支持边界/候选门限。
+
+30候选、20局部、4边缘回归全部通过，包含原反例、二阶修正缩放、域内原样、全局变换、重复域明确拒绝。日志nonlinear_domain_candidates.log、nonlinear_domain_local.log、nonlinear_domain_marginal.log位于/home/dev/ws_iap/liuo_observation/log。新增CANDIDATE_DOMAIN_SOLVE_WORK及分析汇总，只覆盖已完成并记录的候选；旧日志标available=false，未完成/过期候选与图线性化等待不冒充已测耗时。生产是否改善仍待新运行。

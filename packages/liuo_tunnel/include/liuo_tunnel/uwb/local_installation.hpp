@@ -103,6 +103,24 @@ public:
     double position, lower, upper;
     gtsam::Matrix pose_jacobian, anchor_jacobian;
   };
+  void restore_trial_domain(gtsam::Values& trial) const {
+    const auto& floor = observed_.floors[offset_ >= 0 ? 1 : 0];
+    if (!floor.longitudinal_axis.isApprox(observed_.tangent, 1e-12) || std::abs(observed_.tangent.squaredNorm() - 1) > 1e-12)
+      throw std::invalid_argument("LOCAL_FLOOR_DOMAIN_AXIS_MISMATCH");
+    const double lower = std::max(observed_.minimum_longitudinal, floor.minimum_longitudinal);
+    const double upper = std::min(observed_.maximum_longitudinal, floor.maximum_longitudinal);
+    if (!std::isfinite(lower) || !std::isfinite(upper) || lower >= upper) throw std::invalid_argument("EMPTY_LOCAL_TRIAL_DOMAIN");
+    const auto& pose = trial.at<gtsam::Pose3>(key1());
+    auto local = pose.transformTo(trial.at<gtsam::Point3>(key2()));
+    if (!local.allFinite()) throw std::domain_error("NONFINITE_LOCAL_TRIAL");
+    const double along = observed_.tangent.dot(local);
+    if (along >= lower && along <= upper) return;
+    const double reserve = std::min(1e-8, (upper - lower) * .25);
+    local += observed_.tangent * (std::clamp(along, lower + reserve, upper - reserve) - along);
+    trial.update(key2(), pose.transformFrom(local));
+    // This only restores a proposed trial; callers still evaluate the original
+    // likelihood. No robot state, lateral offset, height or graph is changed.
+  }
   LongitudinalDomain linearized_domain(const gtsam::Values& values) const {
     const auto& floor = observed_.floors[offset_ >= 0 ? 1 : 0];
     if (!floor.longitudinal_axis.isApprox(observed_.tangent, 1e-12)) throw std::invalid_argument("LOCAL_FLOOR_DOMAIN_AXIS_MISMATCH");
