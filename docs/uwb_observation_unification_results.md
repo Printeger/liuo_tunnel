@@ -94,3 +94,43 @@ Clean commit `f7edbfa`, repeated OFF replay `20261026T131233Z_175`:
 GPU execution identity verified. Evidence `evidence/replay-smoke-3.log` and the
 run's export/analysis/report.json. This remains six-second record-only smoke
 coverage, not TA/AA fusion, load, or representative-route acceptance.
+
+## Continued production acceptance (2026-10-27)
+
+Resumed from clean `3dbe34b`; no existing task process was active. Data-run ABI 7
+preflight passed; RTX 4070 Ti SUPER driver 580.126.09, 130 GiB available.
+No reset, branch or worktree was created. The active Goal is still incomplete.
+
+- `c792c12`: topic/depth propagation, source/target replay topic distinction and
+  configurable fault scheduling. Build passed; 57 Python tests plus 8 targeted
+  delivery tests passed (data root `liuo_observation/evidence/topic-*.log`).
+  Capture `20261027T025815Z_012`, `/acceptance/uwb`, depth 37; replay
+  `20261027T025831Z_074`, `/acceptance/replayed_uwb`, depth 37, visualization on.
+  Raw hash/counts matched; GPU record-only run contract PASS. This is configuration
+  coverage only, not fusion acceptance. Both runs reside under
+  `/home/dev/ws_iap/.runtime/0/liuo/`.
+- `d5ce11a`: production per-item input decisions with queue/identity/retirement
+  sizes and timing; physical pre-float32 simulator samples; public ROS contract
+  fixture on frozen IMU/LiDAR/clock. Build, 58 Python tests and targeted input/UWB
+  CTests passed (`callback-*.log`). Run `20261027T030137Z_117` uses
+  `/acceptance/contract`, depth 37 and the OFF configuration. All 41 batches and
+  61 per-item decisions match the predeclared plan; 40 graph updates have zero
+  TA/AA information. `export/analysis/uwb_contract_audit.json` PASS covers only
+  this callback/OFF subset of T02–T08/T11. Nominal evaluator FAIL is intentionally
+  retained for malformed fields, duplicates, changed UWB stream and rejections.
+  The auditor initially hit Python CSV's 128 KiB field limit on the oversized
+  batch; its parser now has an explicit 4 MiB bound, without changing production
+  limits. This audit-only correction does not change the tested binary.
+
+Commands (all from project root, all outputs on the data disk):
+
+```bash
+data-run -- tools/run.sh --duration 6 --capture-only --capture --uwb-topic /acceptance/uwb --uwb-qos-depth 37 --wall-timeout 60
+data-run -- tools/run.sh --replay /home/dev/ws_iap/.runtime/0/liuo/20261027T025815Z_012 --config packages/liuo_tunnel/config/phase2_continuous_walls_off.json --uwb-topic /acceptance/replayed_uwb --uwb-qos-depth 37 --visualize --wall-timeout 60
+data-run -- tools/run.sh --replay /home/dev/ws_iap/.runtime/0/liuo/20261027T025815Z_012 --config packages/liuo_tunnel/config/phase2_continuous_walls_off.json --uwb-topic /acceptance/contract --uwb-qos-depth 37 --uwb-contract-fixture --wall-timeout 60
+data-run -- python3 tools/audit_uwb_contract.py /home/dev/ws_iap/.runtime/0/liuo/20261027T030137Z_117
+```
+
+Remaining: fused graph fixture, clock/reset/capacity boundaries, 60 s load and
+slow subscribers, transport transforms live verification, representative GPU
+self-calibration/export/reuse and historical physical equivalence.

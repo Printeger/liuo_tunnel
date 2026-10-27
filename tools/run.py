@@ -51,6 +51,7 @@ def main():
     )
     p.add_argument("--uwb-contract-fixture", action="store_true", help="predeclared software callback fixture on frozen IMU/LiDAR/clock")
     p.add_argument("--capture-only", action="store_true", help="live raw capture and observer only; no estimator or localization acceptance")
+    p.add_argument("--use-aa", action=argparse.BooleanOptionalAction, default=None, help="explicit AA ablation; default preserves config")
     p.add_argument("--uwb-topic", default="/liuo/uwb/observations")
     p.add_argument("--uwb-qos-depth", type=int, default=100)
     p.add_argument("--duration", type=float, default=45)
@@ -177,6 +178,8 @@ def main():
         effective_config = json.loads(config.read_text())
         if args.capture_only and effective_config["uwb"]["mode"] != "record_only":
             raise RuntimeError("capture-only requires record_only configuration; no estimator map/installation")
+        if args.use_aa is not None:
+            effective_config["uwb"]["use_aa"] = args.use_aa
         effective_config["uwb"]["transport"] = dict(topic=args.uwb_topic, depth=args.uwb_qos_depth, reliability="best_effort", durability="volatile")
         effective_config["logging"]["raw_bag"] = args.capture
         config.write_text(json.dumps(effective_config, indent=2) + "\n")

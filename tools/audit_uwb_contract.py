@@ -8,6 +8,9 @@ from pathlib import Path
 
 
 def audit(run):
+    # The intentional 1025-entry over-limit batch exceeds csv's 128 KiB default.
+    # Bound audit parsing separately from the production 1024-entry input limit.
+    csv.field_size_limit(4 * 1024 * 1024)
     plan_path = run / 'metadata/config/uwb_contract_expected.json'
     plan = json.loads(plan_path.read_text())
     config = json.loads((run / 'metadata/config/phase1.json').read_text())
