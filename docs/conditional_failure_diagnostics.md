@@ -46,6 +46,14 @@ JSON及世界/沿横向图分别为`road_fixed_start_diagnostic_focus_180_320.*`
 
 复现：`data-run -- bash tools/conditional_road_estimator.sh --scene straight --source-run /home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933 --config packages/liuo_tunnel/config/straight_local_static.json --map /home/dev/ws_iap/conditional_diagnostics_20261027/S_oracle_anchors.json --seconds 320`。独立评价：`data-run -- python3 tools/analyze_road_diagnostic.py --run /home/dev/ws_iap/.runtime/0/liuo/20261027T232558Z_196 --truth-run /home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933 --truth-format straight_csv --oracle-world --focus-start 180 --focus-end 320`。审计：`data-run -- python3 tools/audit_conditional_vehicle.py --run /home/dev/ws_iap/.runtime/0/liuo/20261027T232558Z_196 --observations /home/dev/ws_iap/conditional_diagnostics_20261027/S_observations.json --start 180 --end 320`。图/JSON位于该run的export/analysis/conditional_oracle_vehicle_focus_180_320.*及_route.png。
 
+## L-D2：原8秒启动失败，30秒收集取得有效关注段
+
+234156绑定d0ceddf、节点1c7f413，使用事先声明的原Cholesky/30秒收集/零初值；120秒原包前缀，1200云/24001IMU/6786UWB/30787clock，墙钟120.001624秒，ROS31.0–120.9共900输出。关注[45,120]的751输出全为DEGRADED；直接世界坐标位置RMSE2.717660m、最大4.095605m，沿/横/高0.020714/0.604090/2.649589m，姿态0.179540deg、速度0.054584m/s。原D3同段横向RMSE8.919269m；D2横向较小，但高度仍有数米误差，不能称理想Anchor条件下车辆链路已经完全正常。
+
+全部6552条TA在决策流有对应原始样本；关注段4400 ACCEPT_TA，记录残差RMSE0.103495m。原始234条AA全部无车辆因子，未知Anchor状态/地图prior/安装因子为0，无导出地图。bias范围及审计见`234156/export/analysis/conditional_vehicle_audit.json`；世界/沿横高图与指标为`conditional_oracle_vehicle_focus_45_120.*`及_route.png。不能由小TA残差排除高度分支或弱约束；也不能只凭前述线性系统停止判为不可辨识。30秒收集与原8秒的差异说明初始化上下文影响此次可运行性，但未独立证明具体数值或物理根因。
+
+复现入口同S-D2命令结构，source-run改为134947，config为`packages/liuo_tunnel/config/road_conditional_anchor_bootstrap30.json`，map为`L_oracle_anchors.json`，seconds120，省略scene straight。评价使用`--oracle-world --focus-start 45 --focus-end 120`及road_npz默认；审计使用L_observations.json和start45/end120。生产估计器没有车辆真值输入；这些oracle结果不进入A的定位闭环结论。
+
 ## 归因表（当前证据边界）
 
 L-D2首次233329（4f39421，只观察日志节点）在ROS9.1秒、首输出之前抛出x0附近IndeterminantLinearSystemException，无有效关注段输出。它使用原Cholesky分解；前8秒真实交付TA包括A11/A3（161/160条），不能因异常就称没有Anchor信息。保留原失败。

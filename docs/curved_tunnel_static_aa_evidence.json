@@ -4618,7 +4618,35 @@
     "authority": "explicit user instruction in active thread",
     "contract": "docs/spec/engineering_diagnostic_scope_20261027.md",
     "stage_A": "INCOMPLETE_AUDIT_AND_PRODUCTION_LOAD_GAPS",
-    "stage_B": "PLAN_FROZEN_IMPLEMENTATION_PENDING",
+    "stage_B": "S_L_D2_EXECUTED_D1_AND_D3_CONTEXT_PENDING",
+    "legacy_current_loop": {
+      "cal": "20261027T230820Z_728",
+      "reuse": "20261027T231612Z_174",
+      "absorbed_prior_leaves": 1077,
+      "independent_new_explicit_leaves": 1080,
+      "explicit_edges": 3,
+      "joint_priors": 1,
+      "old_block_retransmission_production_test": "PENDING_A6"
+    },
+    "conditional_vehicle": {
+      "S": {
+        "run": "20261027T232558Z_196",
+        "focus_ros_s": [180, 320],
+        "position_rmse_m": 0.29688689776325833,
+        "maximum_error_m": 0.7730285502370616,
+        "bootstrap_s": 8,
+        "scope": "oracle anchors only; no vehicle truth input or truth alignment"
+      },
+      "L": {
+        "run": "20261027T234156Z_163",
+        "focus_ros_s": [45, 120],
+        "position_rmse_m": 2.7176597983738913,
+        "along_cross_height_rmse_m": [0.02071449056568234, 0.6040899354745938, 2.6495888434692136],
+        "bootstrap_s": 30,
+        "retained_startup_failures": ["20261027T233329Z_244", "20261027T233509Z_768", "20261027T233851Z_666"],
+        "scope": "oracle anchors; height remains weak/incorrect; not full vehicle validity"
+      }
+    },
     "deferred_not_complete": [
       "new S/L full-route effective calibration and independent map reuse",
       "full-route accuracy improvement/ranking/all anchors",
