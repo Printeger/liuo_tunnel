@@ -301,6 +301,203 @@
       "max_factors": 754,
       "map": "export/map/calibrated_map.json",
       "stage_acceptance": "INCOMPLETE"
+    },
+    "L_REUSE_FULL_FIRST": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T184325Z_343",
+      "source_commit": "cc5bca2",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414",
+      "map_run": "20261027T183140Z_829",
+      "audit": {
+        "result": "PASS_INPUT_AND_GRAPH_COUNTS",
+        "scope": "independent delivered records, prior lifecycle and graph counts; not exact posterior checkpoint or localization acceptance",
+        "raw_sha256": "d146412b1e3e7a93939ff0809c44dd1baf31184070f7fcccf5de5ab678fffcfa",
+        "raw_records": 730,
+        "received_records": 730,
+        "unique_new_leaves": 730,
+        "inherited_map_leaves": 94,
+        "inherited_map_sha256": "8db1145e33fa3c5c48bb586d2837a425187901e149b8fa7de0a02be380744823",
+        "attachment_stamp": 140.4,
+        "known_anchor_ids": [
+          2,
+          3,
+          5,
+          7,
+          12,
+          13,
+          14,
+          16,
+          18
+        ],
+        "final_fused_new_leaves": 369,
+        "final_pending_leaves": 361,
+        "explicit_edges": 5,
+        "eligible_new_leaves_by_edge": {
+          "7-16": 67,
+          "2-13": 62,
+          "3-16": 94,
+          "2-18": 73,
+          "5-18": 73
+        },
+        "map_frame_output_samples": 2532,
+        "wire_frame_transition_checked": false,
+        "exact_reuse_posterior_ledger_exported": false,
+        "limitation": "final leaf membership inferred from ready endpoints and validated counts; reuse posterior ledger export remains pending"
+      },
+      "fixed_CAL_gauge_metrics": {
+        "scope": "offline diagnostic only, not stage acceptance",
+        "truth_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414",
+        "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T184325Z_343",
+        "gauge": "inherited_CAL_gauge_no_REUSE_alignment",
+        "reference_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T183140Z_829",
+        "total_output_samples": 3905,
+        "pre_map_output_samples": 1373,
+        "reference_stamp": 3.1,
+        "yaw_rotation_matrix": [
+          [
+            0.9999999980587346,
+            -6.230995536688394e-05,
+            0.0
+          ],
+          [
+            6.230995536688394e-05,
+            0.9999999980587346,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "translation": [
+          2.071926999503614e-05,
+          -1.8749812112680937,
+          1.6625022996056171
+        ],
+        "samples": 2532,
+        "first_stamp": 140.4,
+        "last_stamp": 393.5,
+        "covered_seconds": 253.1,
+        "position_rmse_m": 146.33239365113113,
+        "xyz_rmse_m": [
+          63.927097987831175,
+          131.5764005535862,
+          3.7611689520769707
+        ],
+        "maximum_position_error_m": 256.30201014693455,
+        "attitude_rmse_deg": 3.244103787533757,
+        "rpe": {
+          "1.0": {
+            "samples": 2522,
+            "translation_rmse_m": 9.12231678421915,
+            "rotation_rmse_deg": 0.05264883391294656
+          },
+          "10.0": {
+            "samples": 2432,
+            "translation_rmse_m": 34.26199403870647,
+            "rotation_rmse_deg": 0.3543635205712319
+          }
+        },
+        "velocity_rmse_mps": 1.5880519380388096
+      },
+      "stage_acceptance": "NOT_PASSED"
+    },
+    "L_REUSE_EXACT_POSTERIOR_180": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T185849Z_530",
+      "source_commit": "1daa642",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414",
+      "map_run": "20261027T183140Z_829",
+      "audit": {
+        "result": "PASS_INPUT_GRAPH_AND_EXACT_POSTERIOR_LEDGER",
+        "scope": "independent delivered records, prior lifecycle, exact posterior ledger and covariance; not localization acceptance",
+        "raw_sha256": "d146412b1e3e7a93939ff0809c44dd1baf31184070f7fcccf5de5ab678fffcfa",
+        "raw_records": 349,
+        "received_records": 349,
+        "unique_new_leaves": 349,
+        "inherited_map_leaves": 94,
+        "inherited_map_sha256": "8db1145e33fa3c5c48bb586d2837a425187901e149b8fa7de0a02be380744823",
+        "attachment_stamp": 140.4,
+        "known_anchor_ids": [
+          3,
+          5,
+          7,
+          14,
+          16
+        ],
+        "final_fused_new_leaves": 161,
+        "final_pending_leaves": 188,
+        "explicit_edges": 2,
+        "eligible_new_leaves_by_edge": {
+          "7-16": 67,
+          "3-16": 94
+        },
+        "map_frame_output_samples": 406,
+        "wire_frame_transition_checked": true,
+        "exact_reuse_posterior_ledger_exported": true,
+        "limitation": "Gaussian joint posterior and exact physical ledger checked; global initialization, accuracy and consistency not certified",
+        "posterior_stamp": 180.0,
+        "posterior_absorbed_old_leaves": 94,
+        "posterior_absorbed_new_leaves": 161,
+        "posterior_minimum_eigenvalue": 1.1660523919211655e-05
+      },
+      "fixed_CAL_gauge_metrics": {
+        "scope": "offline diagnostic only, not stage acceptance",
+        "truth_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414",
+        "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T185849Z_530",
+        "gauge": "inherited_CAL_gauge_no_REUSE_alignment",
+        "reference_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T183140Z_829",
+        "total_output_samples": 1779,
+        "pre_map_output_samples": 1373,
+        "reference_stamp": 3.1,
+        "yaw_rotation_matrix": [
+          [
+            0.9999999980587346,
+            -6.230995536688394e-05,
+            0.0
+          ],
+          [
+            6.230995536688394e-05,
+            0.9999999980587346,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "translation": [
+          2.071926999503614e-05,
+          -1.8749812112680937,
+          1.6625022996056171
+        ],
+        "samples": 406,
+        "first_stamp": 140.4,
+        "last_stamp": 180.9,
+        "covered_seconds": 40.5,
+        "position_rmse_m": 31.854477837121713,
+        "xyz_rmse_m": [
+          10.91423108942148,
+          29.86464071644942,
+          1.921081174697203
+        ],
+        "maximum_position_error_m": 41.402623516679945,
+        "attitude_rmse_deg": 1.228997699511335,
+        "rpe": {
+          "1.0": {
+            "samples": 396,
+            "translation_rmse_m": 0.05462130779170339,
+            "rotation_rmse_deg": 0.032775874734774654
+          },
+          "10.0": {
+            "samples": 306,
+            "translation_rmse_m": 0.39856179970037536,
+            "rotation_rmse_deg": 0.13327745122734413
+          }
+        },
+        "velocity_rmse_mps": 0.4560974021902039
+      },
+      "stage_acceptance": "NOT_PASSED"
     }
   },
   "limitations": [
@@ -310,15 +507,18 @@
   ],
   "implementation_checks": {
     "anchor_map_reuse_seam": {
-      "state": "UNIT_CHECKED_PRODUCTION_REPLAY_PENDING",
+      "state": "PRODUCTION_EXACT_POSTERIOR_CHECKED_180S",
       "base_commit": "669ba7c",
       "tests": {
-        "test_calibrated_map": 12,
+        "test_calibrated_map": 13,
         "test_static_edge_graph": 5,
-        "test_estimator_status": 13
+        "test_estimator_status": 13,
+        "test_checkpoint_ledger_audit": 4,
+        "test_road_fixed_map_gauge": 1
       },
       "review": "standards and spec; duplicate pending TA and masked LOST fixed and rechecked",
-      "independent_reuse_verified": false
+      "independent_reuse_verified": true,
+      "limitation": "Production attachment and exact posterior ledger verified; full-route localization effectiveness remains unverified"
     }
   },
   "inputs": {

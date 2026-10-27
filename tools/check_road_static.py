@@ -96,6 +96,7 @@ def check_reuse_seam(run, expected, audit, digest, raw_records, received_count):
         assert np.linalg.eigvalsh(covariance).min() > 0
         assert {a['id'] for a in posterior['anchors']} == checkpoint_known
         report.update(result='PASS_INPUT_GRAPH_AND_EXACT_POSTERIOR_LEDGER',
+                      scope='independent delivered records, prior lifecycle, exact posterior ledger and covariance; not localization acceptance',
                       exact_reuse_posterior_ledger_exported=True, posterior_stamp=posterior['measurement_stamp'],
                       posterior_absorbed_old_leaves=len(old_ids),posterior_absorbed_new_leaves=len(new_ids),
                       posterior_minimum_eigenvalue=float(np.linalg.eigvalsh(covariance).min()),
