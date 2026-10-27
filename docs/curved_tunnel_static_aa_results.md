@@ -127,3 +127,5 @@ FAST-LIO2 原生 20 s 接入 run `20261027T161207Z_043`，提交 `619f462`：200
 已复现旧 S 缺少 reporter→车辆门限。新增显式 `uwb.enforce_reporter_delivery=true`（旧配置默认 false，历史包不修改）：AA 先完成原有两站 range/LOS 物理测距，推进独立样本编号与物理 deadline，再单独检查 reporter→tag 的 800 m 三维 range 和全世界 LOS，失败不发布。物理样本无论交付成功均记录独立 `physical_uwb.csv`；既有 `uwb.csv` 只记录交付，静态派生器仍不得读取全局物理日志。保留 250/s 调度，不因不可交付而减少物理测距或增加基站。此 S 软件交付为零额外延迟的理想模型，非射频/MAC 或 L 有限延迟模型。
 
 新 `straight_reachable_capture.json` 只开启该生成端门限，首项 8 s 检查要求有可达与不可交付的独立 AA、物理样本数=交付+阻断、逐秒总测距≤250、传感器包中无被阻断样本。旧 snapshot 二进制回归单独保留原配置。正式 540 s 新输入尚未生成。
+
+新二进制首个 snapshot 8 s 回归 `20261027T162550Z_889` 在模拟器启动即退出 127：安装环境缺少 `libliuo_tunnel_renderer.so` 的库路径导出，未开始生成。库已在数据盘安装，并非物理/算法失败。补齐模拟器包的 ament 库导出后重新检查安装环境；不使用系统盘 fallback。
