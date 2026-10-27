@@ -103,3 +103,10 @@ free 模式每秒及 A 集合改变时，从实际图导出 `export/map/calibrat
 `tools/road_estimator.sh --map <v3.json>` 快照并记录旧图hash/source/map_id，拒绝旧图训练MCAP本身作为第二轮。不同hash仅证明字节不同，独立噪声必须另由生成seed/模型证据证明。新配置 `road_anchor_map_reuse.json` 的static source identity必须与新输入匹配，不能直接把首轮身份套到另一包。全路CAL、独立生成、信息充分性与生产复用仍未验收。
 
 新增输出速度联合Jacobian的有限差分误差预声明<1e-8；账本用例覆盖移交后的时钟重置、新叶回队列与旧叶不复活。
+
+
+## L独立第二轮输入冻结
+
+独立噪声seed预声明为20261028，首轮仍为20261027。`tools/road_scene.sh --seed 20261028`生成完整392.6秒第二轮，保留默认scene.json和旧原始包；seed只进入LiDAR噪声stream1、IMU bias/噪声stream10–13、UWB独立物理噪声stream30及声明的driver_session。道路/车辆连续运动/站点ID与几何/LOS/发射和物理交换计划均不变，未复制旧测量；新AA物理身份绑定新原始包SHA，仍用原部署epoch。独立生成用新owner与目录，真值仅给离线比较。
+
+独立输入检查预声明：除seed外配置完全相同；运动t/p/R/v/a/omega逐数组完全相同、Anchor/安装/设施清单相同；三类传感器语义摘要均不同，clock相同，消息数量及点数相同。对两轮IMU去除各自真值与bias后的白噪声逐轴相关绝对值<0.05；TA/AA物理噪声跨轮相关绝对值<0.05；这仅检查仿真随机流，不称真实传感器独立性认证。完整场景原有几何/时序/包审计继续执行。复用先用既有180秒CAL图检查生产接缝，再完成全路CAL图与全路独立REUSE；短图不能替代完整首轮。

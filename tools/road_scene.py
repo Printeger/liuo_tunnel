@@ -31,6 +31,7 @@ def write_json(path, value):
 def main():
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument('--check', action='store_true')
+  parser.add_argument('--seed', type=int, help='independent sensor noise seed; frozen geometry and motion unchanged')
   parser.add_argument('--seconds', type=float, help='short capture; omitted means full route')
   parser.add_argument('--start', type=float, default=0, help='short test absolute trajectory time')
   parser.add_argument('--allow-dirty', action='store_true', help='development fixtures only')
@@ -40,6 +41,8 @@ def main():
   if not configured_root.is_absolute() or not configured_root.resolve().is_relative_to('/home/dev/ws_iap'):
     raise RuntimeError('invoke through data-run; data-disk LIUO_RUN_ROOT required')
   cfg = json.loads((MODEL / 'scene.json').read_text())
+  if args.seed is not None:
+    cfg['seed'] = args.seed
   if not args.allow_dirty and rd._git_value('status', '--porcelain'):
     raise RuntimeError('formal generation requires clean committed source')
   run = rd.resolve_run_directory(entrypoint='road_scene', scenario='road_tunnel_7km')
