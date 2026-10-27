@@ -20,3 +20,9 @@
 `sensors.lidar_topic` 和 `sensors.imu_topic` 显式配置生产节点及独立 observer；旧配置默认 topic 保持兼容。L 使用 `/sensors/lidar` 和单位外参。`tools/road_estimator.sh` 使用单 owner、单 run、独立 ROS domain 和唯一回放 clock；只读取冻结传感器包，不读取真值或全局物理 UWB 日志。当前入口只允许 GPU rolling LIO-only 的接入冒烟，不能据此宣布未知 Anchor 或定位性能通过；后续会扩展至需求的 CAL/REUSE/OFF 主矩阵。
 
 原始内容 SHA256 必须匹配场景 manifest，发布与独立 observer 的逐 topic 语义 hash、计数及字段检查一致；所有输出通过 data-run 留在数据盘。1×回放 deadline 最大迟到 250 ms，缺估计输出进展 30 s、剩余磁盘小于 8 GiB 或子进程失败均停止并保留失败。不得改时间、丢帧或降低速率让检查通过。
+
+## 无全局轴的候选初值
+
+`free_anchor_seeds` 已有独立解析测试，但尚未接入生产未知 A 初始化。它仅由估计 tag 位置和原始距离构造三维球面初值，不输入轴、ID 顺序、里程或高度。平面曲线保留两个镜像；直线运动留下连续圆周自由度，返回 pending，不任意选一个横向或高度方向。空间激励初值通过任意刚体坐标变化等变检查。
+
+数值初值的局部秩不是可观性或唯一性证书。生产接入仍需有界联合候选图，使旧 TA 所依赖的 X/V/B 不确定度和相关性参与原始联合似然；不能把这些种子用到的 tag 点估计当成精确测量。现有全局 L 初始化尚未解除，不因该函数存在声称 C03 完成。

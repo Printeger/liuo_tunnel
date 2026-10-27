@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <liuo_tunnel/uwb/unknown_anchor_candidates.hpp>
+#include <Eigen/Geometry>
 using namespace liuo_tunnel;
 namespace {
 std::vector<TagRangeSeedObservation> observations(const Eigen::Vector3d& anchor, bool excite) {
@@ -10,7 +11,7 @@ std::vector<TagRangeSeedObservation> observations(const Eigen::Vector3d& anchor,
   }
   return samples;
 }
-}
+}  // namespace
 TEST(UnknownAnchorSeeds, RetainsHeightMirrorsWithoutCoordinatesOrOrder) {
   Eigen::Vector3d anchor(190, 2.8, 3.4);
   auto samples = observations(anchor, false);
@@ -45,4 +46,41 @@ TEST(UnknownAnchorSeeds, TranslationAndYawGaugeDoNotChangePhysicalSeeds) {
   auto seeds = unknown_anchor_seeds(samples, normal, normal.dot(translation.head<2>()), 2.8);
   ASSERT_EQ(seeds.points.size(), 1);
   EXPECT_LT((seeds.points.front() - rotation * anchor - translation).norm(), 1e-8);
+}
+
+TEST(FreeAnchorSeeds, CurvedPlanarMotionRetainsBothHeightBranchesWithoutAnAxisPrior) {
+  const Eigen::Vector3d anchor(120, 15, 4);
+  std::vector<TagRangeSeedObservation> samples;
+  for (int i = 0; i < 64; ++i) {
+    const double angle = i * 4. / 3000.;
+    const Eigen::Vector3d p(3000 * std::sin(angle), 3000 * (1 - std::cos(angle)), 0);
+    samples.push_back({p, (p - anchor).norm()});
+  }
+  auto seeds = free_anchor_seeds(samples);
+  ASSERT_EQ(seeds.reason, "UNRESOLVED_MIRROR_PAIR");
+  ASSERT_EQ(seeds.points.size(), 2u);
+  EXPECT_LT(std::min((seeds.points[0] - anchor).norm(), (seeds.points[1] - anchor).norm()), 1e-5);
+  EXPECT_NEAR(seeds.points[0].z() + seeds.points[1].z(), 0, 1e-8);
+  for (const auto& a : seeds.points)
+    for (const auto& sample : samples) EXPECT_NEAR((sample.tag - a).norm(), sample.range, 1e-6);
+}
+
+TEST(FreeAnchorSeeds, StraightMotionDoesNotInventACircleDirectionOrHeight) {
+  auto seeds = free_anchor_seeds(observations({190, 2.8, 3.4}, false));
+  EXPECT_TRUE(seeds.points.empty());
+  EXPECT_EQ(seeds.reason, "UNOBSERVED_ANCHOR_CIRCLE");
+}
+
+TEST(FreeAnchorSeeds, SpatialSeedIsEquivariantUnderRigidCoordinateChange) {
+  const Eigen::Vector3d anchor(40, -12, 7), shift(-70, 9, 15);
+  const Eigen::Matrix3d rotation = Eigen::AngleAxisd(.7, Eigen::Vector3d(1, 2, 3).normalized()).toRotationMatrix();
+  std::vector<TagRangeSeedObservation> samples;
+  for (int i = 0; i < 64; ++i) {
+    const Eigen::Vector3d p(i, 3 * std::sin(i * .2), 2 * std::cos(i * .3));
+    samples.push_back({rotation * p + shift, (p - anchor).norm()});
+  }
+  auto seeds = free_anchor_seeds(samples);
+  ASSERT_EQ(seeds.reason, "SPATIAL_RANGE_SEED");
+  ASSERT_EQ(seeds.points.size(), 1u);
+  EXPECT_LT((seeds.points[0] - rotation * anchor - shift).norm(), 1e-7);
 }
