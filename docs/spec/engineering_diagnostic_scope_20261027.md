@@ -51,6 +51,19 @@ A结论限定：“静态 AA 信息生命周期、地图闭环、rolling 接入�
 
 A7受影响闭环回归已完成：CAL230820→REUSE231612，实际节点bf79d67。REUSE逐字节加载CAL地图，1077个旧叶仅在一个联合prior，本轮1080个独立新叶进入3个显式摘要因子；无重新安装因子、无raw AA重复接纳。其余1080个实际交付叶因端点未在地图中初始化而明确UNKNOWN_ANCHOR，不冒称全部融合。审计输出`231612/export/analysis/legacy_static_loop_audit.json`，命令见结果报告。旧块重传仍待A6，不能由独立输入不重叠代替重传压力测试。
 
+当前定向证据映射（原有测试可复用，本轮运行已建CPU测试二进制，共32项通过；不是新增GPU性能实验）：
+
+| 工程项 | 测试及实际断言 | 边界 |
+|---|---|---|
+| A1/A3 | StaticAnchorEdges 6项：1000次反向重传count=1/weight=100、同ID改内容拒绝、满账本拒绝不逐出、256字节身份上限、已吸收前缀只取新样本、非法/重复checkpoint拒绝 | 静态库逻辑；ROS/驱动重启压力还需A6 |
+| A2/A3 | StaticEdgeGraph 5项：未知端点pending→真实ISAM2入图、替换实际remove一个因子且总图3因子；1000重传不新增；候选读取不融合；deferred prior只去掉旧pending，保留新显式信息/成本，拒绝已融合重叠和冲突 | 不把接收计数当作信息矩阵 |
+| A2 | StaticRecordInput.OldAcquisitionIsValidWithoutVehicleTimeBracket；UwbQueue.StaticAlignmentIsBoundedAndNeverExtrapolatesLatePose | 旧AA不依赖车辆bracket，TA静止边界不外推；不是任意时钟域兼容 |
+| A3 | UwbFactors.StaticPairSummaryPreservesRawCostGradientAndInformation；KnownMap.ReplacingStaticPairSummaryBoundsHistoryWithoutRepeatingMapPrior | 独立原始因子与摘要实际cost/gradient/Hessian相等；误差独立是声明模型条件，不由不同ID推得 |
+| A4 | CalibratedMap/MapFramePrior共13项：相关地图往返成本/信息、原子账本、cross information、拒绝hidden axis/未计AA、joint derivatives、独立起点规范、pose/velocity交叉、pending TA只移交一次 | 旧格式没有账本不捏造；不认证实际高度或统计一致性 |
+| A5 | RollingMotion 4项：高速/yaw/lever静态点、测得比力加速度、缺失/逆序/重复IMU拒绝 | 独立解析夹具；结合已有L rolling与S snapshot生产片段，不代替真实硬件认证 |
+
+命令统一经`data-run --`，测试路径`/home/dev/ws_iap/liuo_observation/build/liuo_tunnel/`，LD_LIBRARY_PATH包含该build和`/usr/local/lib`；依次执行test_static_anchor_edges、test_static_edge_graph、test_static_record_input、test_calibrated_map、test_rolling_motion，以及test_uwb的上述两摘要项和UwbQueue.*。源码位于`packages/liuo_tunnel/test/`。当前新增日志只在node中，未改这些数学/输入实现；后续仅补日志编译和实际输出审计，不无故重复此组测试。
+
 ## 阶段 B 固定诊断计划（执行前冻结）
 
 每场景只用下列一个失败片段。原包不变，不挑更容易成功的片段。时间均为ROS measurement stamp；前缀从原包首时刻开始，不用真值补造车辆初始状态。
@@ -93,6 +106,8 @@ D2首次入口232238在3.005秒因缺少`initial_position_guess`退出，保留�
 假设：条件问题与实际联合结果之差可能来自初始化、状态耦合、候选分支、窗口信息移交或实现缺陷。
 
 优先复用同输入实际联合结果及已有反例，补缺少的只观察日志；不得调整权重/接受门限。记录每批初值、有效TA/AA数量、初始化/拒绝时刻、终止/梯度/可行下降、窗口年龄/过期、移交及漂移起点。225744的新增profile仅观察，不改变因子、状态或接受逻辑；其运行开销仍需核对，200秒前缀不足覆盖S漂移段，不能冒充完整B-S。
+
+只观察日志补项预声明：现有CSV没有真实候选初值，也未保存局部几何完整normal/tangent/up及地面支持参数，不能从摘要重建D1合法偏距因子。新增candidate_inputs.jsonl记录每批实际种子、TA身份/数值/时间插值、静态AA充分统计及局部patch引用；local_geometry.jsonl保存同一实际held-out LiDAR/估计IMU运动得到的完整body-frame观测。只序列化，不回读、不改图/接受/权重；约1Hz几何及有界候选批次，仍记录运行资源。为取得缺失信息，只补冻结S320/L120相同前缀，不扩展窗口、不跑完整路线。D1把这些观测放在固定真值车辆位姿上；它们仍含原估计重力/运动补偿误差，不能冒称理想无误几何。日志代码编译与代表生产运行通过前保持待验。
 
 ### 归因与停止规则
 

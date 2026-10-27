@@ -1113,6 +1113,29 @@ private:
           batch.graph.emplace_shared<AnchorAnchorRangeFactor>(A(entry.first.first),A(entry.first.second),stats.mean,stats.sigma(),stats.scatter);
         }
         extension_last_attempt[id]=t;
+        // Observation-only diagnostic: preserve the actual seed and sample
+        // context, without feeding any serialized value back to the solver.
+        nlohmann::json context = {{"session",session},{"stamp",t},{"anchor",id},{"oldest",batch.oldest},
+                                  {"factors",batch.graph.size()},{"seeds",nlohmann::json::array()},
+                                  {"ta",nlohmann::json::array()}};
+        for (const auto& seed : batch.seeds) context["seeds"].push_back({seed.x(),seed.y(),seed.z()});
+        context["static_aa"] = nlohmann::json::array();
+        if (static_edges && use_aa)
+          for (const auto& [pair,summary] : static_edges->candidate_summaries(id,current))
+            context["static_aa"].push_back({{"first",pair.first},{"second",pair.second},{"count",summary.count},
+              {"weight",summary.weight},{"mean",summary.mean},{"scatter",summary.scatter}});
+        if (local) context["local"] = {{"pose",gtsam::Symbol(local->pose).index()},{"stamp",local->stamp},{"offset",local->offset}};
+        for (const auto& pending : extension_ranges) {
+          const auto& o=pending.observation;
+          if (o.a_type!=0 || o.b!=id || o.stamp<t-lag/2) continue;
+          const auto& b=pending.bracket;
+          context["ta"].push_back({{"producer",o.producer},{"session",o.session},{"sequence",o.sequence},
+                                  {"network",o.network},{"driver_session",o.driver_session},{"stamp",o.stamp},
+                                  {"range",o.range},{"variance",o.variance},{"left",gtsam::Symbol(b.left).index()},
+                                  {"right",b.right ? nlohmann::json(gtsam::Symbol(*b.right).index()) : nlohmann::json(nullptr)},
+                                  {"beta",b.beta}});
+        }
+        std::ofstream(RunLogManager::instance().profiling_path("candidate_inputs.jsonl"),std::ios::app) << context.dump() << '\n';
         log(id,"CANDIDATES_STARTED",seeds.baseline,batch.graph.size());
         break;
       }
@@ -1710,6 +1733,21 @@ private:
           state.pose().rotation().unrotate(state.velocity()),
           cfg.at("sensors").at("sigma_lidar_range"),
           previous_left);
+        const auto vec = [](const gtsam::Vector3& v) { return nlohmann::json::array({v.x(),v.y(),v.z()}); };
+        nlohmann::json geometry = {{"session",session},{"stamp",t},{"pose",count},
+          {"source","heldout_lidar_estimated_imu_motion_no_truth"},{"frame","body_at_scan_reference"},
+          {"normal",vec(observed.normal)},{"tangent",vec(observed.tangent)},{"up",vec(observed.up)},
+          {"center_offset",observed.center_offset},{"width",observed.width},{"sigma",observed.sigma},
+          {"minimum_height",observed.minimum_height},{"maximum_height",observed.maximum_height},
+          {"surface_model_error",observed.surface_model_error},
+          {"minimum_longitudinal",observed.minimum_longitudinal},{"maximum_longitudinal",observed.maximum_longitudinal},
+          {"floors",nlohmann::json::array()}};
+        for (const auto& floor : observed.floors)
+          geometry["floors"].push_back({{"normal",vec(floor.normal)},{"center",vec(floor.center)},
+            {"along",vec(floor.along)},{"across",vec(floor.across)},{"longitudinal_axis",vec(floor.longitudinal_axis)},
+            {"variance",floor.variance},{"along_spread",floor.along_spread},{"across_spread",floor.across_spread},
+            {"minimum_longitudinal",floor.minimum_longitudinal},{"maximum_longitudinal",floor.maximum_longitudinal}});
+        std::ofstream(RunLogManager::instance().profiling_path("local_geometry.jsonl"),std::ios::app) << geometry.dump() << '\n';
         std::ofstream orientation_audit(RunLogManager::instance().profiling_path("local_orientation.csv"), std::ios::app);
         if (orientation_audit.tellp() == 0) orientation_audit << "stamp,pose,reference_pose,speed,normal_dot_motion_left\n";
         const gtsam::Vector3 motion_left = observed.up.cross(state.pose().rotation().unrotate(state.velocity()));

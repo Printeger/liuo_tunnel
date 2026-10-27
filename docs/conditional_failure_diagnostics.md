@@ -1,6 +1,6 @@
 # 正常车辆固定失败片段：条件诊断报告
 
-状态：B实施中；D1/D2尚未执行，D3已提取冻结片段指标但完整归因未完成。范围及执行前计划见[当前Goal修订](spec/engineering_diagnostic_scope_20261027.md)。禁止把本报告当工程定位成功或正常汽车全程有效性认证。
+状态：B实施中；S-D2已完成执行与初步审计，L-D2/D1待完成，D3已提取冻结片段指标但完整归因未完成。范围及执行前计划见[当前Goal修订](spec/engineering_diagnostic_scope_20261027.md)。禁止把本报告当工程定位成功或正常汽车全程有效性认证。
 
 ## 冻结观测与比较规范
 
@@ -35,6 +35,16 @@ data-run -- python3 tools/analyze_road_diagnostic.py --run /home/dev/ws_iap/.run
 ```
 
 JSON及世界/沿横向图分别为`road_fixed_start_diagnostic_focus_180_320.*`和`road_fixed_start_diagnostic_focus_45_120.*`；JSON顶层保留原输出范围统计，`focus`对象才是本次诊断段，图仅画关注段。未用完整路线新运行替代片段解释。
+
+## S-D2：固定真实Anchor，车辆仍由原传感器估计
+
+232558（源db02f0d、节点bf79d67）完成320秒原前缀，3200云/64000IMU/24063UWB/64000clock，墙钟319.995319秒，3120输出ROS9.0–320.9。关注[180,320]有1401输出，直接世界规范RMSE0.296887m、最大0.773029m，沿/横/高0.011990/0.149557/0.256185m，姿态0.179186deg、速度0.016621m/s。1400 DEGRADED/1 LOST均保留；不能因误差较小将状态改判正常。
+
+条件审计确认22873条TA全部对应冻结输入决策，前缀22749 ACCEPT_TA/117 WINDOW_EXPIRED/7 SHUTDOWN_PENDING；关注段10763 ACCEPT_TA，记录决策状态的残差RMSE0.101440m。1190原AA保留交付但全部AA_ABLATION_DISABLED；图中A变量/AA因子/地图prior/安装因子均为0，Anchor是exact常量，没有导出地图。bias分量范围、状态、输入集合哈希见`export/analysis/conditional_vehicle_audit.json`。首次审计将CSV十进制double直接与原float32比较，出现最大5.68e-14的打印差异；改为恢复原wire float32后精确比较，无范围容差放宽。
+
+相比同片段D3的6.842311m RMSE，本次理想Anchor条件未出现同量级漂移。这只排除了“在本次条件/初始化下剩余车辆链路仍必然同量级失控”的解释，不排除运动补偿近似、噪声或联合耦合，不证明未知Anchor问题可辨识。D2采用固定地图入口8秒收集/零数值初值，D3采用未知地图规范初始化；此差异明确保留。
+
+复现：`data-run -- bash tools/conditional_road_estimator.sh --scene straight --source-run /home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933 --config packages/liuo_tunnel/config/straight_local_static.json --map /home/dev/ws_iap/conditional_diagnostics_20261027/S_oracle_anchors.json --seconds 320`。独立评价：`data-run -- python3 tools/analyze_road_diagnostic.py --run /home/dev/ws_iap/.runtime/0/liuo/20261027T232558Z_196 --truth-run /home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933 --truth-format straight_csv --oracle-world --focus-start 180 --focus-end 320`。审计：`data-run -- python3 tools/audit_conditional_vehicle.py --run /home/dev/ws_iap/.runtime/0/liuo/20261027T232558Z_196 --observations /home/dev/ws_iap/conditional_diagnostics_20261027/S_observations.json --start 180 --end 320`。图/JSON位于该run的export/analysis/conditional_oracle_vehicle_focus_180_320.*及_route.png。
 
 ## 归因表（当前证据边界）
 
