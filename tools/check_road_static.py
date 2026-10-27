@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Independently compare delivered road AA, received records and absorbed leaves."""
 import argparse
+import csv
 import hashlib
 import itertools
 import json
@@ -10,6 +11,51 @@ import rosbag2_py
 from rclpy.serialization import deserialize_message
 from liuo_uwb_msgs.msg import UwbObservationBatch
 from liuo_tunnel_msgs.msg import StaticAnchorRecord
+
+
+def check_reuse_seam(run, expected, audit, digest, raw_records, received_count):
+    snapshot = run / 'metadata/config/reuse_map.json'
+    identity = json.loads((run / 'metadata/manifests/reuse_map_input.json').read_text())
+    assert hashlib.sha256(snapshot.read_bytes()).hexdigest() == identity['sha256']
+    model = json.loads(snapshot.read_text())
+    assert model['schema_version'] == 'liuo_anchor_map_v3'
+    assert model['map_id'] == identity['prior_map_id']
+    old_ids = {leaf['physical_id'] for leaf in model['static_edge_ledger']['leaves']}
+    assert not old_ids.intersection(expected), 'this independent-input fixture must have distinct physical leaves'
+    attachments = [json.loads(x) for x in (run/'export/odometry/map_frame.jsonl').read_text().splitlines()]
+    assert len(attachments) == 1 and attachments[0]['map_id'] == model['map_id']
+    stamp = attachments[0]['stamp']
+    graph = list(csv.DictReader((run/'export/odometry/graph.csv').open()))
+    for row in graph:
+        attached = float(row['stamp']) >= stamp
+        assert int(row['joint_map_priors']) == int(attached)
+        assert int(row['map_priors']) == int(attached)
+    initialized = list(csv.DictReader((run/'profiling/anchor_extension.csv').open()))
+    known = {int(a['id']) for a in model['anchors']}
+    known.update(int(r['anchor']) for r in initialized if r['event'] == 'JOINTLY_INITIALIZED')
+    eligible = {key:value for key,value in expected.items() if set(value['pair']).issubset(known)}
+    edges = {tuple(value['pair']) for value in eligible.values()}
+    updates = [row for row in audit if row['event'] == 'graph_update']
+    final = updates[-1]
+    assert final['fused_leaves'] == len(eligible) > 0
+    assert final['explicit_factors'] == len(edges)
+    assert final['fused_leaves'] + final['pending'] == len(expected)
+    assert int(graph[-1]['A']) == len(known)
+    assert int(graph[-1]['aa_accumulated_measurements']) == len(eligible)
+    trajectory = list(csv.DictReader((run/'export/odometry/trajectory.csv').open()))
+    for row in trajectory:
+        assert (row['map_id'] == model['map_id']) == (float(row['stamp']) >= stamp)
+    by_edge = {f'{a}-{b}':sum(value['pair'] == [a,b] for value in eligible.values()) for a,b in edges}
+    report = dict(result='PASS_INPUT_AND_GRAPH_COUNTS', scope='independent delivered records, prior lifecycle and graph counts; not exact posterior checkpoint or localization acceptance',
+                  raw_sha256=digest, raw_records=raw_records, received_records=received_count,
+                  unique_new_leaves=len(expected), inherited_map_leaves=len(old_ids), inherited_map_sha256=identity['sha256'],
+                  attachment_stamp=stamp, known_anchor_ids=sorted(known), final_fused_new_leaves=len(eligible),
+                  final_pending_leaves=final['pending'], explicit_edges=len(edges), eligible_new_leaves_by_edge=by_edge,
+                  map_frame_output_samples=sum(float(r['stamp']) >= stamp for r in trajectory),
+                  exact_reuse_posterior_ledger_exported=False,
+                  limitation='final leaf membership inferred from ready endpoints and validated counts; reuse posterior ledger export remains pending')
+    (run/'export/analysis/road_reuse_seam_audit.json').write_text(json.dumps(report,indent=2)+'\n')
+    return report
 
 
 def check(run):
@@ -73,6 +119,8 @@ def check(run):
     assert received == expected and received_count == raw_records
     published = json.loads((run / 'export/simulation/static_delivery.json').read_text())
     assert published['records'] == raw_records and set(published['unique_physical_ids']) == set(expected)
+    if config['uwb']['mode'] == 'reuse_anchor_map':
+        return check_reuse_seam(run, expected, audit, digest, raw_records, received_count)
     model = json.loads((run / 'export/map/calibrated_map.json').read_text())
     assert model['static_information_policy'] == 'EXACT_LEDGER'
     assert model['static_edge_ledger']['network'] == config['uwb']['static_edges']['network']

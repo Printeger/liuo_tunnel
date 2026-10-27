@@ -218,3 +218,14 @@ data-run -- tools/check_road_static.sh /home/dev/ws_iap/.runtime/0/liuo/20261027
 独立比较器 `tools/check_road_independence.py --first <旧L> --second <新L>`（data-run及ROS/shared消息环境）通过：除seed配置相同，全部运动数组精确相同，站点/设施/安装资料相同；clock同摘要、三类传感器异摘要、数量/点数相同。IMU白噪声跨轮相关最大绝对值0.004717；21130条TA噪声相关−0.003943、4323条AA噪声相关−0.015134，均满足预声明0.05。两轮bias不同。报告在新run `export/analysis/independent_input.json`。首次比较器因反复读取NPZ整数组被主动中断，改为一次物化后通过；未改数据或容差。
 
 固定CAL坐标评价加入 `--map-reference-run`，回归fixture保留预设15m起点误差，接入前样本单列。新reuse配置已绑定新L输入SHA，接下来的180秒运行仅检查新版生产复用接缝。
+
+
+### 首次A-only独立生产复用180秒接缝检查
+
+run `20261027T182811Z_609`，代码60f9f5a，GPU1×，输入为独立seed20261028完整L包的前180秒，加载 `20261027T174621Z_416` 的4A/94叶地图，快照SHA `900a9038250a2c8df46894127a1f7391761cc674e1d65922930ed308f67eea50`。命令为 `data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414 --config packages/liuo_tunnel/config/road_anchor_map_reuse.json --map /home/dev/ws_iap/.runtime/0/liuo/20261027T174621Z_416/export/map/calibrated_map.json --installation /home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414/metadata/config/installation_metadata.json --seconds 180`。
+
+输入检查PASS：1800cloud/36001IMU/10216UWB/46217clock，1779输出，墙时180.001137秒。A3@56.3、A7@99.3、A14@140.6由本轮原始图初始化；旧图不含A7，故至140.6才有两个公共A，真实加入一个联合MapFramePrior，旧图A16/A5经该prior进入图。全局G无独立先验，输出继承旧map_id，新增总A集合[3,5,7,14,16]，车辆101组仍有界。原始未初始化/LOST区间保留。
+
+`tools/check_road_static.sh <run>`新增复用接缝审计：349原始独立AA=349回调，161新叶入图（3–16:94；7–16:67）、188pending、2显式边，旧图94叶与新身份不重叠；图中prior接入前0、之后1。此审计只证明交付与图计数，叶归属由已知端点和计数推断，当前复用入口没有直接导出最终精确后验叶账本，不声称已经完成该验收。结果 `road_reuse_seam_audit.json`。
+
+固定旧CAL规范评价 `data-run -- python3 tools/analyze_road_diagnostic.py --run <reuse> --truth-run <newL> --map-reference-run <oldCAL>`：1375条接入前局部输出单列；140.6–180.9秒404条旧map输出RMSE32.1867m、XYZ10.9792/30.1533/2.49387m、最大41.7695m、姿态1.23838deg、速度0.45937m/s；1s/10s相对平移RMSE0.05600/0.38369m。未按第二轮起点或整条轨迹对齐。图/误差见 `road_fixed_map_diagnostic.{json,png}`。这证明生产接缝实际运行，不证明定位有效、任意启动或完整L复用完成；完整392.6秒CAL与之后全路REUSE继续。

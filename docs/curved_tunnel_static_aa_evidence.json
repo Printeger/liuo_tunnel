@@ -257,6 +257,24 @@
       "position_rmse_fixed_start_m": 18.82912229925729,
       "reuse_verified": false,
       "stage_acceptance": "INCOMPLETE"
+    },
+    "L_INDEPENDENT_REUSE_SEAM_180": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182811Z_609",
+      "source_commit": "60f9f5a",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414",
+      "prior_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T174621Z_416",
+      "input_result": "PASS",
+      "map_attachment_stamp": 140.6,
+      "map_frame_output_samples": 404,
+      "pre_map_output_samples": 1375,
+      "new_fused_AA": 161,
+      "new_pending_AA": 188,
+      "inherited_AA": 94,
+      "explicit_AA_edges": 2,
+      "fixed_CAL_gauge_position_rmse_m": 32.18673153357723,
+      "exact_reuse_posterior_ledger_exported": false,
+      "full_route": false,
+      "stage_acceptance": "INCOMPLETE"
     }
   },
   "limitations": [
