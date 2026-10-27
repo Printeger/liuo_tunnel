@@ -107,3 +107,9 @@ data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liu
 180 s 投影诊断最终在 t=171.5、x1675 附近发生 `OPTIMIZATION_FAILED`，run `20261027T160542Z_501` 为 failed，未出具片段 PASS。
 
 外部 Adapter 新增显式 rolling 模式：校验字段/存储/时间/ring 后返回原消息，snapshot 继续原零时间转换。新增测试先因缺 scan_model 参数失败，再实现并与既有 snapshot 测试一起通过（2 测试）。尚未改变外部 runner 的场景选择、配置、时长或输出路径；不能称完整 FAST-LIO2 接通。
+
+Dogleg 诊断 `20261027T160857Z_694`：t=47 x=307.52 m，t=60 x=-599.96 m，仍发生早期跳变；最终 t=122.545 因 cloud_queue_limit 退出。该次中途并行执行了独立 FAST-LIO2 构建，不作为实时资源验收。没有证据支持仅更换求解器即可修复。
+
+下一项 `road_rolling_lio_bounded.json` 与 Dogleg 配置只修改关键帧连接预算：connection_window=1、max_keyframes=1，与既有 S 自标定生产设置一致。旧 L 配置一窗口最终约 1596 因子；本对照检查长期历史关键帧连接的影响，不改变噪声/物理输入/真值边界。新运行与构建串行，仍以全输入和 1×为要求，未预判精度。
+
+FAST-LIO2 原生 20 s 接入 run `20261027T161207Z_043`，提交 `619f462`：200 cloud、4001 IMU、4841 clock，196 输出；实际发布 20.00164 s，原始/适配后/独立订阅者 LiDAR 和 IMU 语义 hash 全相同，原生进程退出 0。未发布 UWB/真值/LIUO 地图。仅完成接入冒烟，不是完整第三方性能对照；上游启动跳过初始点云的日志原样保留。
