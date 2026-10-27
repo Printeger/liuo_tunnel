@@ -38,6 +38,11 @@ class ConditionalContractTest(unittest.TestCase):
             with self.subTest(field=field), self.assertRaises(ValueError):
                 validate_oracle_map(bad, self.base, 'raw')
 
+    def test_preserves_explicit_diagnostic_collection_interval(self):
+        self.base['uwb']['bootstrap_s'] = 30.
+        derived = vehicle_condition_config(self.base)
+        self.assertEqual(derived['uwb']['bootstrap_s'], 30.)
+
 
 if __name__ == '__main__':
     unittest.main()
