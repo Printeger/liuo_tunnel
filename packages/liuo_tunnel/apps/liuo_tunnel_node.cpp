@@ -1013,14 +1013,15 @@ private:
       if (!batch.optimizer->advance()) return;
       const auto solution=batch.optimizer->values().at<gtsam::Point3>(A(batch.id));
       double cost=batch.optimizer->error();
+      if (!solution.allFinite() || !std::isfinite(cost)) throw std::runtime_error("NONFINITE_ANCHOR_CANDIDATE");
       if (batch.local && !batch.local->observation.supports(batch.optimizer->values().at<gtsam::Pose3>(batch.local->pose).transformTo(solution))) {
         log(batch.id,"CANDIDATE_OUTSIDE_OBSERVED_HEIGHT");
         cost=std::numeric_limits<double>::infinity();
       }
-      if (!solution.allFinite() || std::isnan(cost)) throw std::runtime_error("NONFINITE_ANCHOR_CANDIDATE");
       log(batch.id,"CANDIDATE_ITERATIONS",batch.optimizer->iterations(),cost);
       batch.solutions.push_back(solution); batch.costs.push_back(cost); batch.optimizer.reset();
       log(batch.id,"CANDIDATE_SOLVED",solution.z(),cost);
+      log(batch.id,"CANDIDATE_POSITION_XY",solution.x(),solution.y());
     } catch (const std::exception& error) {
       logger->warn("anchor {} candidate failed: {}",batch.id,error.what());
       log(batch.id,"CANDIDATE_FAILED"); extension_previous.erase(batch.id); extension_batch.reset(); return;
@@ -1034,7 +1035,9 @@ private:
       log(id,"UNRESOLVED_POSITION_BRANCH",(batch.solutions[i]-point).norm());
       extension_previous.erase(id); extension_batch.reset(); return;
     }
-    const bool stable=extension_previous.count(id) && (extension_previous.at(id)-point).norm()<.5;
+    const double stability_delta=extension_previous.count(id) ? (extension_previous.at(id)-point).norm() : NAN;
+    log(id,"CANDIDATE_STABILITY_DELTA",stability_delta);
+    const bool stable=std::isfinite(stability_delta) && stability_delta<.5;
     extension_previous.insert_or_assign(id,point);
     if (!stable) { log(id,"AWAITING_NEW_DATA"); extension_batch.reset(); return; }
     // Commit only current-window RAW measurements. Candidate robot states and
