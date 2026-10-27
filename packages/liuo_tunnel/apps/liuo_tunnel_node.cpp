@@ -1124,7 +1124,14 @@ private:
           for (const auto& [pair,summary] : static_edges->candidate_summaries(id,current))
             context["static_aa"].push_back({{"first",pair.first},{"second",pair.second},{"count",summary.count},
               {"weight",summary.weight},{"mean",summary.mean},{"scatter",summary.scatter}});
-        if (local) context["local"] = {{"pose",gtsam::Symbol(local->pose).index()},{"stamp",local->stamp},{"offset",local->offset}};
+        if (local) {
+          context["local"] = {{"pose",gtsam::Symbol(local->pose).index()},{"stamp",local->stamp},{"offset",local->offset}};
+          context["seeds_local"] = nlohmann::json::array();
+          for (const auto& seed : batch.seeds) {
+            const auto point = current.at<gtsam::Pose3>(local->pose).transformTo(seed);
+            context["seeds_local"].push_back({point.x(),point.y(),point.z()});
+          }
+        }
         for (const auto& pending : extension_ranges) {
           const auto& o=pending.observation;
           if (o.a_type!=0 || o.b!=id || o.stamp<t-lag/2) continue;
