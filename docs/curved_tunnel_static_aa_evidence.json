@@ -2116,6 +2116,126 @@
       },
       "figure": "/home/dev/ws_iap/.runtime/0/liuo/20261027T212350Z_070/export/analysis/static_pair.png",
       "stage_acceptance": "STATIC_INFORMATION_AND_SOFTWARE_TRAFFIC_ONLY"
+    },
+    "L_FULL_MATCHED_OFF": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T212924Z_334",
+      "source_commit": "6f75c1f",
+      "algorithm_change": "836fa17",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414",
+      "config": "packages/liuo_tunnel/config/road_matched_lio_only.json",
+      "input": {
+        "first_output": 3.1,
+        "last_output": 393.5,
+        "output_count": 3905,
+        "publish_wall_s": 392.6008335769948,
+        "raw_counts": {
+          "clock": 100381,
+          "cloud": 3926,
+          "imu": 78521,
+          "uwb": 21860
+        },
+        "raw_sha256": {
+          "clock": "227a12220fbbdf8403ff542135bdda5418d0e8d3807126366812b1d0982c870f",
+          "cloud": "4c92c2f885b423bed6d57e82a7dd738174cb68de32dead9a8a31bae3c009b149",
+          "imu": "d89eeb02c662f9b3064d3cdef91ddc4d28ba4445b83f203944e19715f17a7665",
+          "uwb": "7bd24f7b17381013872204c7fee91584e9f96212a0607075faed421a095f8bd2"
+        },
+        "real_time_factor": 0.9999978767824124,
+        "result": "PASS",
+        "scope": "native rolling GPU input/output contract, not localization or map acceptance",
+        "source_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414"
+      },
+      "diagnostic": {
+        "scope": "offline diagnostic only, not stage acceptance",
+        "truth_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414",
+        "truth_format": "road_npz",
+        "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T212924Z_334",
+        "gauge": "first_output_yaw_and_translation_only_no_route_fit",
+        "reference_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T212924Z_334",
+        "total_output_samples": 3905,
+        "pre_map_output_samples": 0,
+        "reference_stamp": 3.1,
+        "yaw_rotation_matrix": [
+          [
+            0.9999999997656358,
+            -2.1650140715971086e-05,
+            0.0
+          ],
+          [
+            2.1650140715971086e-05,
+            0.9999999997656358,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "translation": [
+          -3.530880499117095e-05,
+          -1.8751576762651856,
+          1.662700224730111
+        ],
+        "samples": 3905,
+        "first_stamp": 3.1,
+        "last_stamp": 393.5,
+        "covered_seconds": 390.4,
+        "position_rmse_m": 279.31965751181804,
+        "xyz_rmse_m": [
+          246.42743698764133,
+          131.4568239262675,
+          3.4774725649065283
+        ],
+        "maximum_position_error_m": 674.7182861178144,
+        "attitude_rmse_deg": 5.519471962696156,
+        "rpe": {
+          "1.0": {
+            "samples": 3895,
+            "translation_rmse_m": 7.261947280934978,
+            "rotation_rmse_deg": 0.05222682069874596
+          },
+          "10.0": {
+            "samples": 3805,
+            "translation_rmse_m": 29.262993417755894,
+            "rotation_rmse_deg": 0.443268175323925
+          }
+        },
+        "route_frame": {
+          "definition": "horizontal truth travel tangent, left horizontal normal, world vertical; no alignment or estimator input",
+          "stationary_direction": "nearest moving truth sample in time; ties choose earlier; speed threshold 1e-6 m/s",
+          "along_cross_height_rmse_m": [
+            245.80503041664505,
+            132.6169871432458,
+            3.4774725649065283
+          ]
+        },
+        "velocity_rmse_mps": 2.883587013437126
+      },
+      "shared_input_audit": {
+        "scope": "original published sensors and independent adapted subscriber; not algorithm-internal consumption or localization acceptance",
+        "result": "PASS",
+        "baseline_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T203815Z_656",
+        "source_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414",
+        "liuo_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T212924Z_334",
+        "paired_liuo_verified": true,
+        "counts": {
+          "imu": 78521,
+          "cloud": 3926,
+          "clock": 100381
+        },
+        "raw_sha256": {
+          "imu": "d89eeb02c662f9b3064d3cdef91ddc4d28ba4445b83f203944e19715f17a7665",
+          "cloud": "4c92c2f885b423bed6d57e82a7dd738174cb68de32dead9a8a31bae3c009b149"
+        },
+        "source_capture_sha256": {
+          "raw_0.mcap": "d146412b1e3e7a93939ff0809c44dd1baf31184070f7fcccf5de5ab678fffcfa"
+        },
+        "baseline_failure": null,
+        "estimated_poses": 3922
+      },
+      "resources": "export/analysis/full_route_resources.json",
+      "result": "COMPLETE_INPUT_VALID_LOCALIZATION_FAILED"
     }
   },
   "limitations": [
