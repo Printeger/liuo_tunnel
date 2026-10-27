@@ -1,0 +1,181 @@
+{
+  "schema_version": "liuo_phase1_v1",
+  "scan_model": "rolling",
+  "sensors": {
+    "T_BL_translation": [
+      0,
+      0,
+      0
+    ],
+    "T_BL_yaw": 0,
+    "T_BU_translation": [
+      0,
+      0,
+      0
+    ],
+    "imu_rate_hz": 200,
+    "lidar_rate_hz": 10,
+    "sigma_acc_sample": 0.02,
+    "sigma_gyro_sample": 0.001,
+    "sigma_ba_density": 0.001,
+    "sigma_bg_density": 0.0001,
+    "sigma_lidar_range": 0.02,
+    "initial_acc_bias_sigma": 0.005,
+    "initial_gyro_bias_sigma": 0.001,
+    "lidar_topic": "/sensors/lidar",
+    "imu_topic": "/sensors/imu"
+  },
+  "odometry": {
+    "lag_s": 10.0,
+    "connection_window": 1,
+    "voxel_resolution": 0.5,
+    "downsample_m": 0.25,
+    "threads": 2,
+    "initialization_s": 2.0,
+    "imu_queue_limit": 10000,
+    "cloud_queue_limit": 32,
+    "covariance_neighbors": 20,
+    "validate_covariance_planarity": true,
+    "backend": "gpu",
+    "project_weak_lidar_translation": true,
+    "use_dogleg": true,
+    "max_keyframes": 1
+  },
+  "uwb": {
+    "mode": "self_calibrate_free",
+    "maximum_range_m": 800.0,
+    "sigma_m": 0.1,
+    "exchange_budget_hz": 250,
+    "ta_round_hz": 20,
+    "aa_link_hz": 1,
+    "use_aa": false,
+    "input": {
+      "network_instance": "liuo_simulation",
+      "receiver_id": 0,
+      "nodes": [
+        {
+          "logical_id": 0,
+          "type": 0,
+          "internal_id": 0
+        },
+        {
+          "logical_id": 1,
+          "type": 1,
+          "internal_id": 1
+        },
+        {
+          "logical_id": 2,
+          "type": 1,
+          "internal_id": 2
+        },
+        {
+          "logical_id": 3,
+          "type": 1,
+          "internal_id": 3
+        },
+        {
+          "logical_id": 4,
+          "type": 1,
+          "internal_id": 4
+        },
+        {
+          "logical_id": 5,
+          "type": 1,
+          "internal_id": 5
+        },
+        {
+          "logical_id": 6,
+          "type": 1,
+          "internal_id": 6
+        },
+        {
+          "logical_id": 7,
+          "type": 1,
+          "internal_id": 7
+        },
+        {
+          "logical_id": 8,
+          "type": 1,
+          "internal_id": 8
+        },
+        {
+          "logical_id": 9,
+          "type": 1,
+          "internal_id": 9
+        },
+        {
+          "logical_id": 10,
+          "type": 1,
+          "internal_id": 10
+        },
+        {
+          "logical_id": 11,
+          "type": 1,
+          "internal_id": 11
+        },
+        {
+          "logical_id": 12,
+          "type": 1,
+          "internal_id": 12
+        },
+        {
+          "logical_id": 13,
+          "type": 1,
+          "internal_id": 13
+        },
+        {
+          "logical_id": 14,
+          "type": 1,
+          "internal_id": 14
+        },
+        {
+          "logical_id": 15,
+          "type": 1,
+          "internal_id": 15
+        },
+        {
+          "logical_id": 16,
+          "type": 1,
+          "internal_id": 16
+        },
+        {
+          "logical_id": 17,
+          "type": 1,
+          "internal_id": 17
+        },
+        {
+          "logical_id": 18,
+          "type": 1,
+          "internal_id": 18
+        }
+      ],
+      "model": {
+        "id": "synthetic_independent_sigma_0_10_v1",
+        "source": "road_tunnel_scene_v1 synthetic independent range noise",
+        "clock_domain": "ROS simulation clock",
+        "time_evidence": "shared simulation clock; original measurement timestamps retained",
+        "noise_evidence": "simulation assumption sigma=0.10 m, variance=0.01 m2",
+        "independence_evidence": "new independent per-edge sample; freshness required; first available AA reporter only",
+        "ta_sigma_m": 0.1,
+        "aa_sigma_m": 0.1,
+        "max_time_uncertainty_s": 0.0
+      }
+    },
+    "local_installation": true,
+    "static_edges": {
+      "network": "liuo_road_simulation",
+      "deployment_epoch": "road-tunnel-7km-v1-fixed-layout",
+      "source_identity": "sha256:05095c59adad36e908bfb802978e1ecc3ec3b63686755a03c081cb5d40b13005",
+      "source_model": "road_sim_global_exchange_v1",
+      "noise_evidence": "road_scene/uwb.py independent Gaussian physical exchange sigma=0.10m; frozen raw payload",
+      "independence_evidence": "global physical source_frame_seq assigned before reporter delivery; repeat direction/driver does not create a sample",
+      "time_basis": "shared_simulation_clock",
+      "variance_m2": 0.01,
+      "max_leaves": 8192,
+      "topic": "/liuo/uwb/static_edges"
+    }
+  },
+  "logging": {
+    "raw_bag": false
+  }
+}

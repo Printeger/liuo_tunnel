@@ -402,3 +402,6 @@ data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liu
 
 
 A-only v3地图离线评价也支持S：`data-run -- python3 tools/analyze_anchor_map.py --run <run> --truth-run <S-input> --truth-format straight_csv --gauge-run <S-CAL-run>`。须先生成CAL固定首输出规范诊断；REUSE沿用该CAL规范。S从明确匹配的既有oracle布局夹具读取离线真值，并与冻结输入的布局名和物理AA真值距离核对；这些坐标不加载进估计器。L保持默认road_npz。结果含逐站误差、相关协方差下间距误差、物理/交付/融合三种图及PNG，不把条件协方差视为一致性认证。
+
+
+有限CAL消融配置为`straight_local_static_ta_only.json`（S110）和`road_local_static_ta_only.json`（L120），只关闭AA，保留TA、局部安装观测与原始静态交付。按相同source-run/installation/seconds分别运行对应TA+AA与TA-only配置；先生成双方`analyze_road_diagnostic.py`报告，再执行`data-run -- python3 tools/compare_ta_ablation.py --full <TA+AA-run> --ta-only <TA-only-run>`。TA+AA组须先通过`check_road_static.sh`且有真实AA融合；比较器核查相同二进制、输入和静态CDR，以及TA-only零AA账本和图计数。此入口不等于消融已通过，实际证据见结果文档。
