@@ -21,6 +21,7 @@ import rosbag2_py
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--uwb-boundary-fixture", action="store_true")
     parser.add_argument("--uwb-load-fixture", action="store_true")
     parser.add_argument("--uwb-contract-fixture", action="store_true")
     parser.add_argument("--source-run", type=Path, required=True)
@@ -130,6 +131,9 @@ def main():
     if args.uwb_load_fixture:
         from uwb_load_fixture import LoadFixture
         stream = LoadFixture(source, run, source_topic).records(stream)
+    if args.uwb_boundary_fixture:
+        from uwb_boundary_fixture import BoundaryFixture
+        stream = BoundaryFixture(run, source_topic, types).records(stream)
     load_delivery = (run / "export/simulation/load_delivery.csv").open("w") if args.uwb_load_fixture else None
     load_delivery_csv = csv.writer(load_delivery) if load_delivery else None
     if load_delivery_csv:

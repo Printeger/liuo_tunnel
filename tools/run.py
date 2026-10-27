@@ -50,6 +50,7 @@ def main():
         type=Path,
         help="explicit frozen-replay UWB transport fault profile",
     )
+    p.add_argument("--uwb-boundary-fixture", action="store_true", help="public queue capacity, expiry and clock-reset recovery test")
     p.add_argument("--uwb-load-fixture", action="store_true", help="60s synthetic 50Hz/5Hz protocol load with independent slow subscriber")
     p.add_argument("--uwb-contract-fixture", action="store_true", help="predeclared software callback fixture on frozen IMU/LiDAR/clock")
     p.add_argument("--capture-only", action="store_true", help="live raw capture and observer only; no estimator or localization acceptance")
@@ -128,6 +129,8 @@ def main():
         not math.isfinite(args.wall_timeout) or args.wall_timeout <= 0
     ):
         p.error("wall timeout must be finite and positive")
+    if args.uwb_boundary_fixture and (not args.replay or args.uwb_load_fixture or args.uwb_contract_fixture or args.delivery_profile):
+        p.error("boundary fixture requires replay without other transformations")
     if args.uwb_load_fixture and (not args.replay or args.uwb_contract_fixture or args.delivery_profile):
         p.error("load fixture requires replay without other input transformations")
     if args.uwb_contract_fixture and (not args.replay or args.delivery_profile):
@@ -467,6 +470,14 @@ def main():
                 load_plan = dict(source="software synthetic only, not independent physical TWR frequency", duration_s=60, local_hz=50, local_edges=[[0,1],[0,2],[0,3]], remote_round_hz=5, remote_edges=[[2,1],[2,3]], shard_count=2, missing_tail="cycle % 10 == 9", slow_subscriber=dict(depth=37, sleep_s=.1, recovery_elapsed_s=50), expected_local_reports_per_edge=3000, expected_remote_reports=[300,270], noise_seed=79031, sigma_m=.1)
                 rd._atomic_write_json(run / "metadata/config/uwb_load_expected.json", load_plan)
                 rd.register_config_snapshot(run, run / "metadata/config/uwb_load_expected.json")
+            if args.uwb_boundary_fixture:
+                if args.duration < 60:
+                    raise RuntimeError("boundary fixture requires >=60s frozen input")
+                commands["simulation"] += ["--uwb-boundary-fixture"]
+                boundary_plan = dict(expired_elapsed_s=25, future_elapsed_s=30, future_count=4097, queue_limit=4096, future_stamp=1000, reset_elapsed_s=35, reset_offset_s=35, late_retired_driver_elapsed_s=36, expected_future_queued=4096, expected_future_queue_limit=1, expected_reset_drained=4096, post_reset="new dataset resumes actual TA/AA graph consumption", source="software timestamp/reset/capacity transformation; not physical regression")
+                rd._atomic_write_json(run / "metadata/config/uwb_boundary_expected.json", boundary_plan)
+                rd.register_config_snapshot(run, run / "metadata/config/uwb_boundary_expected.json")
+                identity["boundary_fixture_sha256"] = digest(ROOT / "tools/uwb_boundary_fixture.py")
             identity["frozen_input"] = frozen
         if args.delivery_profile:
             from delivery_schedule import DeliverySchedule
