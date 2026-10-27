@@ -2,7 +2,8 @@
 
 统一 UWB 接口使用 `liuo_uwb_msgs/msg/UwbObservationBatch`，默认
 `/liuo/uwb/observations`、best effort/volatile、depth 100。当前验收进展与失败见
-[接口统一结果](docs/uwb_observation_unification_results.md)，尚未宣布全部完成。
+[接口统一结果](docs/uwb_observation_unification_results.md)：T01–T14 已通过声明范围的软件集成、
+负载及代表性 GPU 仿真融合/地图复用验收；不扩展为硬件或全场景部署认证。
 
 ```bash
 cd /home/dev/code/ws_tunnel/src/liuo_tunnel

@@ -107,3 +107,12 @@ the production callback. Actual received identities, loss and recovery are audit
 initialization); owner disk preflight/monitoring maintains a 2 GiB reserve.
 The observer retains up to 128 observed dataset IDs to audit rejected IDs beyond
 the production retirement limit; this does not enlarge production identity state.
+
+`--replay-declared-contract` is an explicit negative-test-only replay: the source
+must be completed, have a passing contract audit and matching plan hash/counts.
+It republishes original malformed/unknown fields to the production callback and
+forbids additional transformations. Nominal evaluation failures remain visible.
+Normal replay still rejects legacy UwbRange bags. `--legacy-reference-run` selects
+a hash-verified retained old binary/core only for separately labeled migration
+reference experiments; its inverse representation requires original simulation
+sample provenance. It never bridges the new production estimator through UwbRange.

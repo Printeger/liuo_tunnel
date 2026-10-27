@@ -1,6 +1,6 @@
 # UWB 观测接口统一任务需求书
 
-日期：2026-10-26（Asia/Shanghai）。状态：待实现；本文不代表迁移或测试已完成，也不启动开发 Goal。
+日期：2026-10-26（Asia/Shanghai）。状态：2026-10-27 UTC，T01–T14 必需项已完成声明范围的软件验收；逐项证据与限制见[结果报告](uwb_observation_unification_results.md)。
 
 启动文本：[持续开发 Goal prompt](uwb_observation_unification_goal_prompt.md)。
 
@@ -167,7 +167,7 @@
 
 ## 7. 测试矩阵与验收
 
-先冻结合成输入、配置、预期报告身份集合及最小路线，再运行测试。下面是待执行要求，不是现有通过记录。
+先冻结合成输入、配置、预期报告身份集合及最小路线，再运行测试。下面保留原验收条件；T01–T14 均已通过，实际命令、版本、数据盘证据及失败记录见[结果报告](uwb_observation_unification_results.md)。
 
 | ID | 必测场景 | 可观察的通过条件 |
 |---|---|---|
