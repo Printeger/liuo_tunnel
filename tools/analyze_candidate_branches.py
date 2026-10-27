@@ -17,7 +17,7 @@ def analyze(run):
     incomplete_tail=not content.endswith('\n')
     if incomplete_tail:
         content=content.rsplit('\n',1)[0]+'\n'
-    batches={}; rejected=[]
+    batches={}; rejected=[]; terminations=Counter()
     for row in csv.DictReader(io.StringIO(content)):
         key=(row['session'],row['anchor']);event=row['event']
         if event=='CANDIDATES_STARTED':
@@ -31,6 +31,7 @@ def analyze(run):
             current['iteration_limit_reached']=current['iterations']>iteration_limit
         elif event=='CANDIDATE_TERMINATION':
             current['termination_flags']=int(float(row['value_a']))
+            terminations[str(current['termination_flags'])]+=1
             change=float(row['value_b'])
             current['last_absolute_error_change']=change if math.isfinite(change) else None
         elif event=='CANDIDATE_COMMON_REFERENCE':
@@ -67,6 +68,7 @@ def analyze(run):
     result=dict(scope='logged candidate comparison only; no truth or localization acceptance',run=str(run),gate_m=.5,
                 convergence_scope='finite candidates are numerical outputs, not proven stationary solutions; iteration limit may coincide with another stopping criterion',
                 configured_iteration_limit=iteration_limit,
+                candidate_termination_flags=dict(terminations),
                 incomplete_tail_ignored=incomplete_tail,counts=dict(Counter(r['classification'] for r in rejected)),rejected_batches=rejected)
     output=run/'export/analysis/candidate_branch_diagnostic.json';output.parent.mkdir(parents=True,exist_ok=True)
     output.write_text(json.dumps(result,indent=2,allow_nan=False)+'\n')
