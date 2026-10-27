@@ -109,3 +109,17 @@ TEST(EstimatorStatus, WeakRangeGeometryCannotBeCertifiedBySmallJointPosterior) {
   EXPECT_EQ(fused_status(12, 12, -1, "", .01, .02, -1, 6, 1e9, -1, trace).state, "LOST");
   EXPECT_EQ(fused_status(12, 10, -1, "", .01, .02, -1, 6, 6, -1, trace).reason, "UWB_ABSENT_LIO_CONTINUES");
 }
+
+TEST(EstimatorStatus, MapFrameStageNeverMasksFailure) {
+  for (bool attached : {false, true}) {
+    const auto failure = liuo_tunnel::map_frame_status(fused_status(9, 9, -1, "", 1, 101), attached);
+    EXPECT_EQ(failure.state, "LOST");
+    EXPECT_EQ(failure.reason, "POSTERIOR_UNBOUNDED");
+    const auto postfit = liuo_tunnel::map_frame_status(fused_status(9, 9, -1, "", .01, .02, -1, 6, 1e9), attached);
+    EXPECT_EQ(postfit.state, "LOST");
+    EXPECT_EQ(postfit.reason, "UWB_POSTFIT_INCONSISTENT");
+    const auto weak = liuo_tunnel::map_frame_status({"DEGRADED", "POSITION_POSTERIOR_WEAK"}, attached);
+    EXPECT_EQ(weak.state, attached ? "DEGRADED" : "INITIALIZING");
+    EXPECT_NE(weak.reason.find("POSITION_POSTERIOR_WEAK"), std::string::npos);
+  }
+}

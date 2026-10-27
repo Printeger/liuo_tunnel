@@ -263,5 +263,18 @@
     "Old S frozen inputs lack reporter reachability. New opt-in gate passed an 8 s independent audit; full 540 s inputs not generated.",
     "Four anchors remain uninitialized; vertical accuracy remains weak.",
     "Full dual-scene matrix, rolling and general curved initialization are not yet verified; independent reuse is verified only on the legacy S calibration route."
-  ]
+  ],
+  "implementation_checks": {
+    "anchor_map_reuse_seam": {
+      "state": "UNIT_CHECKED_PRODUCTION_REPLAY_PENDING",
+      "base_commit": "669ba7c",
+      "tests": {
+        "test_calibrated_map": 12,
+        "test_static_edge_graph": 5,
+        "test_estimator_status": 13
+      },
+      "review": "standards and spec; duplicate pending TA and masked LOST fixed and rechecked",
+      "independent_reuse_verified": false
+    }
+  }
 }

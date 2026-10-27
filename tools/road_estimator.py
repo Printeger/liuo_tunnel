@@ -28,6 +28,7 @@ def main():
     parser.add_argument('--source-run', type=Path, required=True)
     parser.add_argument('--config', type=Path, required=True)
     parser.add_argument('--seconds', type=float, default=20.)
+    parser.add_argument('--map', type=Path, help='previous independent run A-only joint map')
     parser.add_argument('--installation', type=Path, help='coordinate-free synthetic local offsets; never a coordinate map')
     args = parser.parse_args()
     if not 3 <= args.seconds <= 392.6:
@@ -53,8 +54,8 @@ def main():
         shutil.copyfile(args.config, config_path)
         rd.register_config_snapshot(run, config_path)
         config = json.loads(config_path.read_text())
-        if config['odometry']['backend'] != 'gpu' or config['uwb']['mode'] not in {'record_only', 'self_calibrate_free'}:
-            raise ValueError('road diagnostic requires GPU record_only or self_calibrate_free')
+        if config['odometry']['backend'] != 'gpu' or config['uwb']['mode'] not in {'record_only', 'self_calibrate_free', 'reuse_anchor_map'}:
+            raise ValueError('road diagnostic requires GPU record_only, self_calibrate_free or reuse_anchor_map')
         if config['scan_model'] != 'rolling':
             raise ValueError('native road bag must retain rolling scan model')
         bag = source / 'export/capture/raw'
@@ -92,8 +93,27 @@ def main():
             schema_version='liuo_map_source_identity_v1', source=meta['source'],
             config_sha256=digest(config_path), binary_sha256={'odometry': digest(binary)},
             frozen_raw_sha256={'mcap': sha}, installation_sha256=digest(installation) if installation else None))
+        map_input = None
+        if config['uwb']['mode'] == 'reuse_anchor_map':
+            if args.map is None: raise ValueError('reuse requires explicit previous A-only map')
+            map_input = run / 'metadata/config/reuse_map.json'
+            shutil.copyfile(args.map, map_input)
+            prior = json.loads(map_input.read_text())
+            if prior.get('schema_version') != 'liuo_anchor_map_v3': raise ValueError('A-only map required')
+            prior_hashes = prior['source_identity'].get('frozen_raw_sha256', {})
+            if not prior_hashes or sha in prior_hashes.values():
+                raise ValueError('reuse requires a distinct raw input; cannot fuse the map training bag again')
+            rd.write_subordinate_manifest(run, 'reuse_map_input', dict(source=str(args.map), sha256=digest(map_input),
+                prior_source_run=prior['source_run'], prior_map_id=prior['map_id'],
+                independence_scope='distinct input bytes checked; generator seed/noise independence requires separate evidence'))
+            meta = json.loads(manifest.read_text())
+            meta['retained_input_run_ids'] = sorted(set(meta['retained_input_run_ids'] + [Path(prior['source_run']).name]))
+            rd._atomic_write_json(manifest, meta)
+        elif args.map is not None:
+            raise ValueError('map input forbidden outside reuse_anchor_map')
         commands = [[str(binary), '--ros-args', '-p', 'config_file:=' + str(config_path), '-p', 'use_sim_time:=true'],
                     [sys.executable, str(ROOT / 'tools/observe.py'), '--ros-args', '-p', 'use_sim_time:=true']]
+        if map_input: commands[0] += ['-p', 'map_file:=' + str(map_input)]
         if installation: commands[0] += ['-p', 'installation_file:=' + str(installation)]
         for name, command in zip(['odometry', 'observer'], commands):
             handle = (run / 'runtime' / (name + '.log')).open('w')

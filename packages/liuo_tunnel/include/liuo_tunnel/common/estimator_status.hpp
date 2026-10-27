@@ -9,6 +9,13 @@ namespace liuo_tunnel {
 struct EstimatorStatus {
   std::string state, reason;
 };
+// Coordinate initialization must never hide an existing estimator failure.
+inline EstimatorStatus map_frame_status(EstimatorStatus status, bool attached) {
+  if (status.state == "LOST") return status;
+  status.state = attached ? "DEGRADED" : "INITIALIZING";
+  status.reason = (attached ? "JOINT_MAP_FRAME_PROVISIONAL:" : "MAP_FRAME_PENDING_LOCAL_ANCHORS:") + status.reason;
+  return status;
+}
 // Post-fit measurement residual reference, NOT predictive NIS or a calibrated
 // nonlinear false-alarm guarantee. It never changes a factor or its weight.
 inline double postfit_range_limit(size_t samples) {

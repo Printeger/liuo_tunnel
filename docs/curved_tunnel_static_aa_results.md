@@ -199,3 +199,13 @@ data-run -- tools/check_road_static.sh /home/dev/ws_iap/.runtime/0/liuo/20261027
 ```
 
 地图复用基础模块推进：新增未知重力坐标关系G及单一完整相关MapFramePrior，没有车辆起点/朝向观测或旧bias。地图测试10项通过（含联合代价/Hessian、导数、不同起点的高斯优化测试模型和输出交叉协方差）；静态图测试5项通过（含延迟prior准备、旧/新信息分离、1000次重发、已融合重叠和内容冲突拒绝）。这些尚未被生产复用入口调用；旧入口仍拒绝A-only地图。下一项必须接通有界初始化、地图/本轮账本原子协调和带G交叉项的输出，再生成独立噪声数据验证，不能拿这些单元测试代替C09/C14。
+
+
+### A-only 独立复用生产接入开发
+
+基础模块提交669ba7c的10项地图/5项静态图测试通过。随后新增reuse_anchor_map节点入口、延迟联合G/A先验与旧AA隔离、全联合G/X/V输出协方差、reset后的新叶恢复、显式--map快照及同训练包拒绝。旧reuse_map仍保留；新模式在地图坐标关系建立前输出INITIALIZING/local odom，接入后仅DEGRADED/provisional，不称全局初始化认证。该记录是实现进展，尚无独立第二轮生产验收；本轮未启动新的定位回放，完整S/L矩阵仍未完成。
+
+
+本次针对性检查：`data-run -- ... cmake --build ... --target test_calibrated_map test_static_edge_graph test_estimator_status -j2` 后分别执行三个二进制，12+5+13=30项通过；Python回放入口使用数据盘PYTHONPYCACHEPREFIX编译通过。首次测试编译发现gtest模板逗号宏括号问题，已修复；一次未设置缓存目录的py_compile被data-run拒绝在源码树写缓存，随后显式设置数据盘路径，未绕过隔离。
+
+按code-review技能做规则/需求两路只读审查，发现两个P1：接入地图后已有A的待定TA重复启动候选、复用状态覆盖LOST。均已修复并复核：真实待定TA与map prior同次加入，成功才消费队列并计入postfit；过期记录明确退休，未知A仍待定；状态保留原始故障与原因。新增对应回归。这里仍没有新的生产定位运行证据，不替代完整S/L验收。

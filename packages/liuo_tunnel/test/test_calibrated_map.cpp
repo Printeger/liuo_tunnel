@@ -254,3 +254,65 @@ TEST(MapFramePrior, JointGaussianFixtureRecoversIndependentStartWithoutFramePrio
   const auto start = map_frame_pose(solution.at<gtsam::Vector4>(frame_key), gtsam::Pose3());
   EXPECT_LT((start.translation() - gtsam::Point3(200, -40, 8)).norm(), 1e-5);
 }
+
+TEST(MapFramePrior, NavigationOutputIncludesFrameVelocityCoupling) {
+  const gtsam::Vector4 frame(700, 12, -3, 4);
+  const gtsam::Pose3 pose(gtsam::Rot3::RzRyRx(.1, -.2, .5), gtsam::Point3(35, -2, 1));
+  const gtsam::Vector3 velocity(16, 3, -.5);
+  const auto H = map_frame_navigation_jacobian(frame, pose, velocity);
+  const auto base = map_frame_pose(frame, pose);
+  const auto base_v = gravity_frame_pose(frame).rotation().rotate(velocity);
+  for (int k = 0; k < 13; ++k) {
+    auto eval = [&](double step) {
+      auto g = frame;
+      auto x = pose;
+      auto v = velocity;
+      if (k < 4)
+        g[k] += step;
+      else if (k < 10) {
+        gtsam::Vector6 d = gtsam::Vector6::Zero();
+        d[k - 4] = step;
+        x = x.retract(d);
+      } else
+        v[k - 10] += step;
+      Eigen::Matrix<double, 9, 1> out;
+      out.head<6>() = base.localCoordinates(map_frame_pose(g, x));
+      out.tail<3>() = gravity_frame_pose(g).rotation().rotate(v) - base_v;
+      return out;
+    };
+    EXPECT_LT(((eval(1e-4) - eval(-1e-4)) / (2e-4) - H.col(k)).norm(), 1e-8);
+  }
+  EXPECT_GT((H.block<3, 1>(6, 0).norm()), .01);
+}
+
+#include <liuo_tunnel/uwb/pending_anchor_ranges.hpp>
+TEST(MapFramePrior, ThirdMappedAnchorPendingRawTAIsTransferredOnce) {
+  using gtsam::symbol_shorthand::A;
+  using gtsam::symbol_shorthand::X;
+  gtsam::Values ready;
+  ready.insert(X(4), gtsam::Pose3());
+  for (uint32_t id : {1, 2, 3}) ready.insert(A(id), gtsam::Point3(id * 10, 0, 0));
+  RangeObservation o;
+  o.b = 3;
+  o.stamp = 12;
+  o.range = 30.1;
+  o.variance = .01;
+  const RangeBracket bracket{"SYNC", X(4), std::nullopt, 0};
+  std::vector<PendingAnchorRange> pending{{o, bracket}};
+  o.b = 4;
+  pending.push_back({o, bracket});  // still unknown
+  o.b = 3;
+  o.stamp = 1;
+  pending.push_back({o, bracket});  // expired
+  const auto transfer = prepare_known_anchor_ranges(pending, ready, 5, gtsam::Point3::Zero());
+  EXPECT_EQ(pending.size(), 3u);  // preparation is transactional
+  ASSERT_EQ(transfer.factors.size(), 1u);
+  EXPECT_NEAR(transfer.factors.error(ready), .5, 1e-10);
+  EXPECT_EQ(transfer.accepted.size(), 1u);
+  EXPECT_EQ(transfer.expired.size(), 1u);
+  ASSERT_EQ(transfer.remaining.size(), 1u);
+  EXPECT_EQ(transfer.remaining[0].observation.b, 4u);
+  const auto repeat = prepare_known_anchor_ranges(transfer.remaining, ready, 5, gtsam::Point3::Zero());
+  EXPECT_TRUE(repeat.factors.empty());
+  EXPECT_TRUE(repeat.accepted.empty());
+}

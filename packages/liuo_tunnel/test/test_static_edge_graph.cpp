@@ -132,6 +132,14 @@ TEST(StaticEdgeGraph, DeferredMapPriorPreservesNewExplicitInformationAndDeduplic
   // The explicit likelihood contains fresh + next; old is ONLY in the prior.
   EXPECT_NEAR(additions[0]->error(known), .5 * ((10.2 - 10) * (10.2 - 10) + (10.4 - 10) * (10.4 - 10)) / .01, 1e-9);
   edges->abort();
+  auto reset = edges->without_map_prior();
+  EXPECT_EQ(reset->pending(), 2u);  // fresh and next, never the old prior leaf
+  EXPECT_EQ(reset->fused(), 0u);
+  EXPECT_EQ(reset->factor_count(), 0u);
+  EXPECT_TRUE(reset->checkpoint()["leaves"].empty());
+  auto reattached = reset->with_map_prior(checkpoint);
+  EXPECT_EQ(reattached->pending(), 2u);
+  EXPECT_EQ(reattached->checkpoint()["leaves"].size(), 1u);
 }
 TEST(StaticEdgeGraph, DeferredMapPriorCannotEraseInformationAlreadyFusedInCurrentGraph) {
   const StaticRangeBlock block{"network", "deployment", 4, 9, "same", "independent-gaussian-v1", 10, .01};

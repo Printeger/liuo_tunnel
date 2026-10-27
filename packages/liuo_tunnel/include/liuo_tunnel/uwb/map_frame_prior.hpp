@@ -23,6 +23,21 @@ inline gtsam::Pose3 map_frame_pose(const gtsam::Vector4& frame, const gtsam::Pos
   return pose;
 }
 
+// Output chart: right-perturbed pose then map-world velocity; input is
+// [G(4), local right-pose(6), local world velocity(3)].
+inline Eigen::Matrix<double, 9, 13> map_frame_navigation_jacobian(const gtsam::Vector4& frame, const gtsam::Pose3& local, const gtsam::Vector3& velocity) {
+  Eigen::Matrix<double, 6, 4> Hg;
+  gtsam::Matrix66 Hx;
+  map_frame_pose(frame, local, &Hg, &Hx);
+  const auto rotation = gravity_frame_pose(frame).rotation();
+  Eigen::Matrix<double, 9, 13> H = Eigen::Matrix<double, 9, 13>::Zero();
+  H.block<6, 4>(0, 0) = Hg;
+  H.block<6, 6>(0, 4) = Hx;
+  H.block<3, 1>(6, 0) = .001 * gtsam::Vector3::UnitZ().cross(rotation.rotate(velocity));
+  H.block<3, 3>(6, 10) = rotation.matrix();
+  return H;
+}
+
 // Correspondences provide a numerical starting point only. This routine never
 // creates a pose observation or claims that the alignment is observable.
 inline gtsam::Vector4 gravity_frame_seed(const std::vector<gtsam::Point3>& local, const std::vector<gtsam::Point3>& map) {

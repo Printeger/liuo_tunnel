@@ -110,6 +110,17 @@ public:
     return next;
   }
 
+  // A clock reset discards G and its map prior. Retain only this run's raw
+  // leaves as pending; the separate immutable old ledger guards old repeats.
+  std::unique_ptr<StaticEdgeGraph> without_map_prior() const {
+    if (transaction_) throw std::logic_error("STATIC_MAP_RESET_DURING_UPDATE");
+    auto next = std::make_unique<StaticEdgeGraph>(network_, deployment_, capacity_);
+    std::vector<StaticRangeBlock> blocks;
+    for (const auto& [id, block] : history_) blocks.push_back(block);
+    next->offer(blocks);
+    return next;
+  }
+
   // The vehicle graph was discarded: retain physical records, but only the
   // original loaded map's leaves remain absorbed. Re-add other leaves once A
   // is initialized again; never claim they are already in the replacement graph.

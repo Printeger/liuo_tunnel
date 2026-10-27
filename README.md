@@ -368,3 +368,6 @@ data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liu
 这只是 LIO-only 接入检查；当前 L 长片段发生发散，不代表定位有效或未知站点已初始化。静态 AA 的旧 S 校准/独立复用命令和地图路径见结果文档，不能代替完整 S 普通路线。FAST-LIO2 数据盘构建及原生 rolling 入口见 [外部接入说明](tools/baselines/README.md)，完整共同输入对照尚未完成。
 
 当前曲线静态 AA 开发入口：`data-run -- tools/road_estimator.sh --source-run <冻结L-run> --config packages/liuo_tunnel/config/road_local_static_diagnostic.json --installation <冻结L-run>/metadata/config/installation_metadata.json --seconds 180`。配置中的源SHA256绑定现有冻结L包，不能直接改run路径混用来源。`data-run -- tools/check_road_static.sh <输出run>` 独立核查已交付原始AA、回调CDR和地图账本；不读全局物理日志。地图位于 `export/map/calibrated_map.json`，A-only格式保留联合协方差与精确吸收叶；旧reuse_map入口会拒绝，新的独立复用仍未完成。180秒诊断不是完整路线验收，当前结论及失败见 `docs/curved_tunnel_static_aa_results.md`。
+
+
+A-only复用开发入口为 `uwb.mode=reuse_anchor_map`，示例配置 `packages/liuo_tunnel/config/road_anchor_map_reuse.json`；需为独立生成的第二轮输入绑定该配置中的static source SHA后，再执行 `data-run -- tools/road_estimator.sh --source-run <独立L-run> --config <已绑定第二轮来源的配置> --map <CAL-run>/export/map/calibrated_map.json --installation <独立L-run>/metadata/config/installation_metadata.json --seconds 180`。命令尚待独立生产回放验收；runner拒绝与地图训练包相同的MCAP，字节不同本身不证明噪声独立。接入前在odom输出INITIALIZING，接入后在旧map输出provisional/DEGRADED；已有LOST故障不会被状态标签掩盖。此入口暂不导出链式地图，完整双场景复用尚未完成。
