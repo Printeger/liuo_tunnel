@@ -74,3 +74,20 @@ data-run -- tools/run.sh --formal --replay /home/dev/ws_iap/.runtime/0/liuo/2026
 run 为 `/home/dev/ws_iap/.runtime/0/liuo/20261027T153032Z_460`，owner completed，单 run 合同 PASS，完整输入核对通过，360 s 实际用时 360.00213 s。保持首轮坐标规范，首次输出 t=20.4，3406 输出中 3387 DEGRADED、19 LOST；位置 RMSE 0.85783 m，分轴 0.04299/0.03496/0.85603 m，处理 p95 43.57 ms。高度仍是主要弱项，不声称精确高度或统计一致性。
 
 最终 3 个持久 A、一个联合地图 prior、零重复安装因子、两个新显式 AA 摘要，独立新输入实际融合 720 叶。原地图 718 叶只在 prior 中，未生成旧显式因子。已完成旧路线的真实未知 A→联合地图→独立复用小闭环；不替代完整 S 主路线、L、第三方对照或重复缓存的生产故障测试。
+
+### L 原生 rolling GPU 接入
+
+新增生产 `RollingMotion` 条件预处理及 `tools/road_estimator.sh`。无噪声 80 km/h+yaw+非单位外参、恒加速度及缺 IMU 覆盖测试通过；保留全部原始样本字段，未加载真值用于去畸变。
+
+固定输入为原 L 冻结包。命令模板：
+
+```bash
+data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968 --config packages/liuo_tunnel/config/road_rolling_lio.json --seconds 120
+```
+
+- `20261027T154331Z_498`：20 s 首次运行失败。独立逐字节语义复查证明 LiDAR/UWB 完整，但 observer 漏收最早 3 条 IMU 和 3 条 clock，起始 IMU 从 1.015 s 开始。没有放宽计数/hash 条件；修复 DDS 图发现早于实际读者匹配的启动竞态，发布前等待 1 s、不发布预热传感器。
+- `20261027T154547Z_447`：修复后同一 20 s 片段 PASS。200 cloud / 4001 IMU / 840 UWB batch / 4841 clock 全部 count/hash 一致；输出 179 个状态，t=3.1–20.9，实际发布 20.00153 s。
+- `20261027T154655Z_668`：120 s 片段 PASS。1200 cloud / 24001 IMU / 6786 UWB batch / 30787 clock 全部核对；1179 输出覆盖 t=3.1–120.9，实际发布 120.00172 s。独立真值仅用于范围检查：到达 s≈1809.38 m，包含第一段左弯，最高 **70 km/h**，不能作为 80 km/h 生产证据。
+- `20261027T155126Z_709`：180 s 片段失败。节点在 measurement_stamp=175.2 报 `OPTIMIZATION_FAILED`，GTSAM Cholesky 在 x1712 附近检测到欠约束系统。80 km/h 从场景 t≈161.315 开始，失败之前已进入该区间，但 180 s 未完成，不能判 PASS。保留失败和原始噪声模型。下一项为同一因子/输入仅改 QR 的数值求解诊断，结果未预判。
+
+这些入口检查均为 GPU、1×、原始 rolling LIO-only；没有完成 L 未知站点自标定，也未证明定位有效。代码、配置与小闭环验收不能替代 C01–C16 的完整矩阵。
