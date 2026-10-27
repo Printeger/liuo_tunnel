@@ -74,3 +74,6 @@
 这是固定revision1原始叶的发现/去重同步最小策略，不能替代累计摘要版本更新、部署重置与故障恢复验收。实际传输次数、重复次数、机会数、CDR payload字节数、缓存上限单独记录，字节数不含DDS/RF开销。
 
 STATIC-PAIR预声明：相同原始包、已发布四话题语义hash/数量、实际节点二进制和依赖、地图输入、除交付策略外的配置必须精确相等；独立回调/图/后验账本审计通过后，两个检查点stamp相同、已吸收物理叶payload集合完全相同，逐边count/weight/weighted_range/weighted_squared_range完全相同。cache_sync无重复、continuous_report必须实际有重复且传输次数/字节更高；不要求非线性轨迹逐点相同，也不以相同计数替代身份。`compare_static_delivery.py`只给这些信息/通信结论，非定位或RF/MAC通过。先L独立REUSE前180秒（固定完整CAL图）走一对，再S具备实际地图后选相应片段。
+
+
+L STATIC-PAIR 首次生产比较预声明：冻结独立输入`20261027T182209Z_414`，继承CAL`20261027T201351Z_374/export/map/calibrated_map.json`，配置road_anchor_map_reuse.json，时段0–150.0秒（包含rolling原有末时刻语义），两次均GPU1×；仅`--static-delivery-strategy cache_sync`/`continuous_report`不同。150秒覆盖已知的140.5秒附近地图接入和旧AA吸收阶段，避免把整个定位实验矩阵变成重复重跑；若本次没有实际接入/融合，则比较失败，不据历史接入时间认定通过。使用compare_static_delivery.py核对150.0秒实际导出检查点的完整旧/新物理叶及逐边充分统计，并检查独立静态审计、全传感器输入摘要、源/二进制/配置一致与实际字节差。不同初始化导致叶集合不等也按失败保存，不事后挑共同子集或更换检查点。比较只验唯一计权与软件交付量，不称RF/MAC节能或定位等价。
