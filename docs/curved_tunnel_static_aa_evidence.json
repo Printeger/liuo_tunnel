@@ -223,6 +223,40 @@
       "position_rmse_fixed_start_m": 17.792848101595887,
       "reuse_verified": false,
       "stage_acceptance": "INCOMPLETE"
+    },
+    "L_STATIC_JOINT_CANDIDATE_180": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T174621Z_416",
+      "source_commit": "fbb273e",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968",
+      "input_contract_result": "PASS",
+      "initialized_anchor_ids": [
+        3,
+        16,
+        14,
+        5
+      ],
+      "initialization_stamps": [
+        56.1,
+        79.4,
+        140.3,
+        178.8
+      ],
+      "delivered_unique_static_leaves": 349,
+      "received_static_records": 349,
+      "actual_aa_fused": 94,
+      "static_explicit_edges": 1,
+      "static_pending_leaves": 255,
+      "first_aa_fused_stamp": 79.4,
+      "oldest_absorbed_source_stamp": 1.012,
+      "map_checkpoint_stamp": 180.0,
+      "map": "export/map/calibrated_map.json",
+      "map_dimension": 12,
+      "map_minimum_eigenvalue": 1.6325365263771466e-05,
+      "audit": "export/analysis/road_static_audit.json",
+      "output_count": 1779,
+      "position_rmse_fixed_start_m": 18.82912229925729,
+      "reuse_verified": false,
+      "stage_acceptance": "INCOMPLETE"
     }
   },
   "limitations": [

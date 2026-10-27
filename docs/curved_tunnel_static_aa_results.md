@@ -186,3 +186,14 @@ A-only 真实导出 run `20261027T173616Z_391`（781b4f1）完成180 s输入合�
 只从该run已交付UWB记录读取到AA端点：2–13、3–16、5–18、9–5、11–3、16–7、18–2；每条均至少有一个尚未初始化端点，因此这轮TA-only未产生实际AA入图。后续必须接通合法交付的静态记录与有界联合候选，保持未知端点不凭空创建、同一物理块仅计权一次；不从全局物理日志补图。新地图的生产复用初始化、独立第二轮和完整S/L矩阵仍未完成。
 
 静态候选通路已新增只读pending摘要和同次主图事务移交；真实ISAM2两项生命周期/候选测试通过。S与L派生器两项Python测试通过，L检查正反交付及driver重启保持物理身份、新物理序号才增加样本、缺freshness拒绝。生产验证预声明为冻结L前180 s，新 `road_local_static_diagnostic.json`，与此前TA-only的原始LiDAR/IMU/UWB/clock完全相同；只从已交付AA生成项目本地静态记录。检查实际候选使用、静态物理叶集合、A和真实AA入图；仍全pending或AA=0时不得宣称静态主线完成。
+
+静态联合候选 run `20261027T174621Z_416`（fbb273e）完成180 s输入合同，1779输出。所有四类原始输入计数/hash与前一TA-only 180 s相同，1×发布180.00103 s。A3在56.1 s、A16在79.4 s、A14在140.3 s、A5在178.8 s入图；A16候选实际使用连接A3的静态似然，同一次主图update移交79个独立物理AA，形成一条累计边。最终94个独立AA已入图、255个因端点未知待定；该边从79.4持续到180.9 s，超过车辆10 s lag。最早已吸收样本采集于1.012 s，未改成当前车辆时刻。A7等剩余多分支明确拒绝，不能把此轮当全Anchor初始化。
+
+独立 `tools/check_road_static.sh` 重新读取冻结传感器包（仅已交付AA），逐条核对原始物理序号/无向端点/距离/采集时间与生产回调CDR，再核对地图账本。349条原始交付=349条接收=349个唯一物理叶；94个地图吸收叶逐值匹配，94+255=349。地图为180.0 s检查点，A=[3,16,14,5]、12×12完整相关协方差，最小特征值1.63254e-5；EXACT_LEDGER含94叶。记录为 `export/analysis/road_static_audit.json`，不读取全局physical日志。
+
+同一固定首时刻规范离线位置RMSE18.8291 m、XYZ7.1084/17.4157/0.8360 m、最大44.1714 m，姿态RMSE0.8777°、速度RMSE0.4492 m/s。比先前TA-only 17.7928 m并未改善，因此本轮只证明持久静态AA和实际相关地图账本通路；不宣称精度收益、统计一致性或完整C14完成。新地图复用初始化与完整S/L矩阵仍须实现/执行。
+
+```bash
+data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968 --config packages/liuo_tunnel/config/road_local_static_diagnostic.json --installation /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968/metadata/config/installation_metadata.json --seconds 180
+data-run -- tools/check_road_static.sh /home/dev/ws_iap/.runtime/0/liuo/20261027T174621Z_416
+```
