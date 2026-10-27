@@ -267,7 +267,7 @@ private:
     pending_calibration_ranges.clear();
     for (const auto& pending : extension_ranges) log_range(pending.observation,"CLOCK_RESET",pending.bracket);
     local_patches.clear();
-    extension_ranges.clear(); extension_batch.reset(); extension_previous.clear(); extension_last_attempt.clear();
+    extension_ranges.clear(); extension_batch.reset(); extension_previous.clear(); extension_relative_audit.clear(); extension_last_attempt.clear();
     calibration_prepared = false;
     calibration_previous.reset();
     bootstrap_idle_failure = nullptr;
@@ -966,7 +966,12 @@ private:
         extension_batch=std::make_unique<ExtensionBatch>();
         auto& batch=*extension_batch;
         batch.id=id; batch.stamp=t; batch.oldest=t; batch.initial=current; batch.seeds=seeds.points; batch.local=local;
-        if (local) batch.oldest=std::min(batch.oldest,local->stamp);
+        if (local) {
+          batch.oldest=std::min(batch.oldest,local->stamp);
+          batch.audit_reference=local->pose;
+          const auto previous=extension_relative_audit.find(id);
+          if (previous!=extension_relative_audit.end() && current.exists(previous->second.first)) batch.audit_reference=previous->second.first;
+        }
         const auto& old=smoother->getFactors();
         const size_t replaced=free_calibrate ? old.size() : installation_subset_index(old,map.ids);
         for (size_t i=0;i<old.size();++i) if (old[i] && i!=replaced) batch.graph.push_back(old[i]->clone());
@@ -1019,24 +1024,38 @@ private:
         cost=std::numeric_limits<double>::infinity();
       }
       log(batch.id,"CANDIDATE_ITERATIONS",batch.optimizer->iterations(),cost);
+      if (batch.audit_reference) {
+        const auto relative=batch.optimizer->values().at<gtsam::Pose3>(*batch.audit_reference).transformTo(solution);
+        batch.audit_relative_points.push_back(relative);
+        log(batch.id,"CANDIDATE_COMMON_REFERENCE",gtsam::Symbol(*batch.audit_reference).index());
+        log(batch.id,"CANDIDATE_RELATIVE_XY",relative.x(),relative.y());
+        log(batch.id,"CANDIDATE_RELATIVE_Z",relative.z());
+      }
       batch.solutions.push_back(solution); batch.costs.push_back(cost); batch.optimizer.reset();
       log(batch.id,"CANDIDATE_SOLVED",solution.z(),cost);
       log(batch.id,"CANDIDATE_POSITION_XY",solution.x(),solution.y());
     } catch (const std::exception& error) {
       logger->warn("anchor {} candidate failed: {}",batch.id,error.what());
-      log(batch.id,"CANDIDATE_FAILED"); extension_previous.erase(batch.id); extension_batch.reset(); return;
+      log(batch.id,"CANDIDATE_FAILED"); extension_previous.erase(batch.id); extension_relative_audit.erase(batch.id); extension_batch.reset(); return;
     }
     if (batch.solutions.size()<batch.seeds.size()) return;
     const uint32_t id=batch.id;
     const size_t best=std::distance(batch.costs.begin(),std::min_element(batch.costs.begin(),batch.costs.end()));
-    if (!std::isfinite(batch.costs[best])) { log(id,"NO_VALID_LOCAL_HEIGHT_BRANCH"); extension_previous.erase(id); extension_batch.reset(); return; }
+    if (!std::isfinite(batch.costs[best])) { log(id,"NO_VALID_LOCAL_HEIGHT_BRANCH"); extension_previous.erase(id); extension_relative_audit.erase(id); extension_batch.reset(); return; }
     const auto point=batch.solutions[best];
     for (size_t i=0;i<batch.solutions.size();++i) if (std::isfinite(batch.costs[i]) && (batch.solutions[i]-point).norm()>=.5) {
       log(id,"UNRESOLVED_POSITION_BRANCH",(batch.solutions[i]-point).norm());
-      extension_previous.erase(id); extension_batch.reset(); return;
+      extension_previous.erase(id); extension_relative_audit.erase(id); extension_batch.reset(); return;
     }
     const double stability_delta=extension_previous.count(id) ? (extension_previous.at(id)-point).norm() : NAN;
     log(id,"CANDIDATE_STABILITY_DELTA",stability_delta);
+    if (batch.audit_reference) {
+      const auto& relative=batch.audit_relative_points.at(best);
+      const auto previous=extension_relative_audit.find(id);
+      if (previous!=extension_relative_audit.end() && previous->second.first==*batch.audit_reference)
+        log(id,"CANDIDATE_RELATIVE_STABILITY_DELTA",(relative-previous->second.second).norm());
+      extension_relative_audit.insert_or_assign(id,std::make_pair(*batch.audit_reference,relative));
+    }
     const bool stable=std::isfinite(stability_delta) && stability_delta<.5;
     extension_previous.insert_or_assign(id,point);
     if (!stable) { log(id,"AWAITING_NEW_DATA"); extension_batch.reset(); return; }
@@ -1079,7 +1098,7 @@ private:
     frame_factors.add(additions);
     map.ids=std::move(ids); map.means.push_back(point);
     log(id,"JOINTLY_INITIALIZED",accepted_ta,accepted_aa);
-    extension_previous.erase(id); extension_batch.reset();
+    extension_previous.erase(id); extension_relative_audit.erase(id); extension_batch.reset();
   }
 
   void retain_calibration_ranges(double t) {
@@ -2063,11 +2082,14 @@ private:
     std::vector<gtsam::Point3> seeds, solutions;
     std::optional<LocalAnchorAssociation> local;
     std::vector<double> costs;
+    std::optional<gtsam::Key> audit_reference;
+    std::vector<gtsam::Point3> audit_relative_points;
     std::unique_ptr<SteppedBootstrapLM> optimizer;
     std::exception_ptr failure;
   };
   std::unique_ptr<ExtensionBatch> extension_batch;
   std::map<uint32_t,gtsam::Point3> extension_previous;
+  std::map<uint32_t,std::pair<gtsam::Key,gtsam::Point3>> extension_relative_audit;
   std::map<uint32_t,double> extension_last_attempt;
   KnownMap map;
   std::optional<LateralReference> lateral_reference;
