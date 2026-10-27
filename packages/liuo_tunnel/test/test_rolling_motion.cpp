@@ -45,3 +45,13 @@ TEST(RollingMotion, AccelerationUsesMeasuredSpecificForceWithBoundedInterpolatio
     EXPECT_LT((motion.point(raw, t, Eigen::Isometry3d::Identity()) - world).norm(), 4e-6);
   }
 }
+
+TEST(RollingMotion, RejectsDuplicateAndReversedSamplesWithFullCoverage) {
+  for (double bad_stamp : {1.05, 1.049}) {
+    IMUIntegration imu;
+    for (int i = 0; i <= 10; ++i) imu.insert_imu(1 + i * .005, {0, 0, 9.80665}, {0, 0, 0});
+    imu.insert_imu(bad_stamp, {0, 0, 9.80665}, {0, 0, 0});
+    for (int i = 11; i <= 20; ++i) imu.insert_imu(1 + i * .005, {0, 0, 9.80665}, {0, 0, 0});
+    EXPECT_THROW((RollingMotion(imu, {}, {}, 1, 1, 1.1)), std::invalid_argument);
+  }
+}

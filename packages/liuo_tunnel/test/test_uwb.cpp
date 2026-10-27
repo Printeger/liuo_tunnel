@@ -95,6 +95,34 @@ TEST(UwbFactors, InterpolationEndpointsAndAcceleratedMotionEnvelope) {
     EXPECT_LT(std::abs((q - anchor).norm() - (actual.transformFrom(lever) - anchor).norm()), .01);
   }
 }
+// Independent circular-path oracle; the chord/SLERP implementation is not used
+// to construct the intermediate reference. ||p''|| dt^2 / 8 bounds chord error.
+TEST(UwbFactors, HighwayCurvatureAndBrakingInterpolationBound) {
+  constexpr double duration = .1, radius = 2998.125, max_speed = 80. / 3.6;
+  const gtsam::Point3 lever(.5, -.2, .1);
+  const gtsam::Pose3 gauge(gtsam::Rot3::RzRyRx(.02, -.005, .7), {21, -13, 4});
+  const std::vector<gtsam::Point3> anchors{{800, 5, 3}, {-700, -5, 2}, {0, 5, 3}};
+  for (double acceleration : {-1.5, 0., 1.}) {
+    const double v0 = max_speed - std::max(0., acceleration) * duration;
+    auto pose = [&](double t) {
+      const double angle = (v0 * t + .5 * acceleration * t * t) / radius;
+      return gauge.compose(gtsam::Pose3(gtsam::Rot3::Rz(angle), {radius * std::sin(angle), radius * (1 - std::cos(angle)), 0}));
+    };
+    const double translation_acceleration = std::hypot(acceleration, max_speed * max_speed / radius);
+    const double lever_acceleration = lever.norm() * (std::abs(acceleration) / radius + std::pow(max_speed / radius, 2));
+    const double bound = (translation_acceleration + lever_acceleration) * duration * duration / 8;
+    ASSERT_LT(bound, .00190);
+    for (int i = 0; i <= 100; ++i) {
+      const double t = duration * i / 100.;
+      const auto estimated = interpolated_tag(pose(0), pose(duration), t / duration, lever);
+      const auto actual = pose(t).transformFrom(lever);
+      EXPECT_LE((estimated - actual).norm(), bound + 1e-9);
+      for (const auto& anchor : anchors) {
+        EXPECT_LE(std::abs((estimated - anchor).norm() - (actual - anchor).norm()), bound + 1e-9);
+      }
+    }
+  }
+}
 TEST(UwbFactors, CorrelatedMapPriorRetainsCrossTerms) {
   gtsam::Matrix covariance = gtsam::Matrix::Identity(6, 6) * .04;
   covariance(0, 3) = covariance(3, 0) = .02;
