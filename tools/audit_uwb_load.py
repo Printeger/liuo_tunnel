@@ -46,11 +46,20 @@ def audit(run):
     def stats(values):
         values=sorted(values)
         return dict(min=values[0],p50=values[len(values)//2],p95=values[int((len(values)-1)*.95)],max=values[-1]) if values else None
+    owner = rows("profiling/owner_resources.csv")
+    production_memory = [r for r in owner if r["process"] == "odometry"]
+    publishing = {r["batch_seq"]: int(r["publish_wall_ns"]) for r in rows("export/simulation/load_delivery.csv")}
+    check(len(production_memory) >= 60, "incomplete owner memory sampling")
+    wall_latency_ms = [(int(r["callback_wall_ns"]) - publishing[r["batch_seq"]]) / 1e6 for r in decisions]
     result=dict(result='FAIL' if failures else 'PASS',failures=failures,scope='60 seconds software synthetic reporting load, not hardware TWR rate or hours-long stability',
                 batches_sent=len(sent_batches),items_sent=len(published),unique_reports_sent=len(expected),
                 batches_received=len(set(r['batch_seq'] for r in decisions)),items_received=len(decisions),
                 input_reasons=dict(Counter(r['reason'] for r in decisions)),consumer_reasons=dict(Counter(r['reason'] for r in consumed)),
                 fused=graph['unique_fused_reports'],per_edge=per_edge,missing_shard_items=sum(r['sent']=='0' for r in sent),
+                publish_to_callback_wall_ms=stats(wall_latency_ms),
+                owner_rss_kib={name:stats([int(r["rss_kib"]) for r in owner if r["process"]==name]) for name in sorted({r["process"] for r in owner})},
+                owner_production_rss_change_kib=int(production_memory[-1]["rss_kib"])-int(production_memory[0]["rss_kib"]),
+                owner_sample_count=len(production_memory),
                 callback_processing_us=stats([float(r['processing_us']) for r in decisions]),
                 received_to_callback_sim_s=stats([float(r['callback_stamp'])-float(r['received_stamp']) for r in decisions]),
                 queue_peak=max(int(r['queue_size']) for r in decisions),identity_peak=max(int(r['identity_size']) for r in decisions),retired_peak=max(int(r['retired_size']) for r in decisions),

@@ -130,6 +130,10 @@ def main():
     if args.uwb_load_fixture:
         from uwb_load_fixture import LoadFixture
         stream = LoadFixture(source, run, source_topic).records(stream)
+    load_delivery = (run / "export/simulation/load_delivery.csv").open("w") if args.uwb_load_fixture else None
+    load_delivery_csv = csv.writer(load_delivery) if load_delivery else None
+    if load_delivery_csv:
+        load_delivery_csv.writerow(["batch_seq", "publish_wall_ns", "observations"])
     first_stamp = None
     start_ns = None
     clock_session = 1
@@ -184,7 +188,10 @@ def main():
                 if action == "outage_drop": continue
                 if message.observations and not kept: continue
                 message.observations = kept
+            publish_wall_ns = time.monotonic_ns()
             publishers[topic].publish(message)
+            if load_delivery_csv and kind == "uwb":
+                load_delivery_csv.writerow([message.batch_seq, publish_wall_ns, len(message.observations)])
             if time.monotonic_ns() - deadline > 250_000_000:
                 raise RuntimeError(
                     "REPLAY_DEADLINE_MISSED: deserialize/publish exceeded 250ms on " + topic
@@ -201,6 +208,8 @@ def main():
         end = start_ns + round(duration * 1e9)
         while time.monotonic_ns() < end:
             rclpy.spin_once(node, timeout_sec=0.001)
+    if load_delivery:
+        load_delivery.close()
     wall = (time.monotonic_ns() - start_ns) * 1e-9
     result = {
         "simulation_s": duration,

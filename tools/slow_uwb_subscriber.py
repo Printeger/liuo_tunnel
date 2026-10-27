@@ -20,7 +20,7 @@ def main():
             delay=.1 if stamp<51 else 0.
             writer.writerow([b.batch_seq,stamp,time.monotonic_ns(),delay,len(b.observations)]);f.flush()
             if delay:time.sleep(delay)
-        node.create_subscription(UwbObservationBatch,node.declare_parameter('uwb_topic','/liuo/uwb/observations').value,receive,QoSProfile(depth=2,reliability=ReliabilityPolicy.BEST_EFFORT))
+        node.create_subscription(UwbObservationBatch,node.declare_parameter('uwb_topic','/liuo/uwb/observations').value,receive,QoSProfile(depth=37,reliability=ReliabilityPolicy.BEST_EFFORT))
         try:rclpy.spin(node)
         except (KeyboardInterrupt,rclpy.executors.ExternalShutdownException):pass
         finally:node.destroy_node()

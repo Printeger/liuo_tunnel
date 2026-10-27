@@ -464,7 +464,7 @@ def main():
                 rd.register_config_snapshot(run, config)
                 identity["config_sha256"] = digest(config)
                 identity["load_fixture_sha256"] = digest(ROOT / "tools/uwb_load_fixture.py")
-                load_plan = dict(source="software synthetic only, not independent physical TWR frequency", duration_s=60, local_hz=50, local_edges=[[0,1],[0,2],[0,3]], remote_round_hz=5, remote_edges=[[2,1],[2,3]], shard_count=2, missing_tail="cycle % 10 == 9", slow_subscriber=dict(depth=2, sleep_s=.1, recovery_elapsed_s=50), expected_local_reports_per_edge=3000, expected_remote_reports=[300,270], noise_seed=79031, sigma_m=.1)
+                load_plan = dict(source="software synthetic only, not independent physical TWR frequency", duration_s=60, local_hz=50, local_edges=[[0,1],[0,2],[0,3]], remote_round_hz=5, remote_edges=[[2,1],[2,3]], shard_count=2, missing_tail="cycle % 10 == 9", slow_subscriber=dict(depth=37, sleep_s=.1, recovery_elapsed_s=50), expected_local_reports_per_edge=3000, expected_remote_reports=[300,270], noise_seed=79031, sigma_m=.1)
                 rd._atomic_write_json(run / "metadata/config/uwb_load_expected.json", load_plan)
                 rd.register_config_snapshot(run, run / "metadata/config/uwb_load_expected.json")
             identity["frozen_input"] = frozen
