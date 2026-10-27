@@ -3975,6 +3975,198 @@
           0.015194617048523899
         ]
       }
+    },
+    "L_ROLLING_NONLINEAR_DOMAIN_120": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T224427Z_941",
+      "source_commit": "eb29842",
+      "algorithm_commit": "7b58726",
+      "input_run": "20261027T134947Z_968",
+      "stage_acceptance": "NOT_ASSESSED",
+      "reports": {
+        "rolling_smoke.json": {
+          "first_output": 3.1,
+          "last_output": 120.9,
+          "output_count": 1179,
+          "publish_wall_s": 120.00123982800142,
+          "raw_counts": {
+            "clock": 30787,
+            "cloud": 1200,
+            "imu": 24001,
+            "uwb": 6786
+          },
+          "raw_sha256": {
+            "clock": "0c178cb509fa9323c1f3b0ead9fc5ccdb80e3f94c0c66bd133492735abfaa06e",
+            "cloud": "1675341106dcab3caef0c498a3bffed2a6b44cf54377ea2a02ab9921221d1726",
+            "imu": "7b594aea2081eeb3c770722b70c09f6de1e76717d72bfd25c88cc0fc6e2a1a9a",
+            "uwb": "00427dd887d8a372e0d1bbeaace62d08f07e5b7ae83fc9ab1048ebf5e8751757"
+          },
+          "real_time_factor": 0.9999896682067353,
+          "result": "PASS",
+          "scope": "native rolling GPU input/output contract, not localization or map acceptance",
+          "source_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968"
+        },
+        "road_static_audit.json": {
+          "scope": "delivered raw AA to callback and map ledger; not localization/reuse acceptance",
+          "result": "PASS",
+          "raw_records": 234,
+          "unique_physical_leaves": 234,
+          "received_records": 234,
+          "map_absorbed_leaves": 94,
+          "final_fused_leaves": 94,
+          "final_pending_leaves": 140,
+          "explicit_edges": 1,
+          "first_fused_stamp": 80.4,
+          "oldest_absorbed_acquisition": 1.012,
+          "map_stamp": 120.0,
+          "anchor_ids": [
+            3,
+            16
+          ],
+          "minimum_map_eigenvalue": 2.015325712689333e-05,
+          "raw_sha256": "05095c59adad36e908bfb802978e1ecc3ec3b63686755a03c081cb5d40b13005"
+        },
+        "road_fixed_start_diagnostic.json": {
+          "scope": "offline diagnostic only, not stage acceptance",
+          "truth_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968",
+          "truth_format": "road_npz",
+          "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T224427Z_941",
+          "gauge": "first_output_yaw_and_translation_only_no_route_fit",
+          "reference_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T224427Z_941",
+          "total_output_samples": 1179,
+          "pre_map_output_samples": 0,
+          "reference_stamp": 3.1,
+          "yaw_rotation_matrix": [
+            [
+              0.9999999980587329,
+              -6.230998580251566e-05,
+              0.0
+            ],
+            [
+              6.230998580251566e-05,
+              0.9999999980587329,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            2.0719273637053137e-05,
+            -1.8749812096185638,
+            1.6625022995086847
+          ],
+          "samples": 1179,
+          "first_stamp": 3.1,
+          "last_stamp": 120.9,
+          "covered_seconds": 117.80000000000001,
+          "position_rmse_m": 8.213960757944987,
+          "xyz_rmse_m": [
+            3.9498554446031946,
+            7.17434443857311,
+            0.6297421508155603
+          ],
+          "maximum_position_error_m": 18.057691090995558,
+          "attitude_rmse_deg": 0.5573530032616978,
+          "rpe": {
+            "1.0": {
+              "samples": 1169,
+              "translation_rmse_m": 1.3336102629846804,
+              "rotation_rmse_deg": 0.01806569453642914
+            },
+            "10.0": {
+              "samples": 1079,
+              "translation_rmse_m": 4.038803738668462,
+              "rotation_rmse_deg": 0.10414836663879778
+            }
+          },
+          "route_frame": {
+            "definition": "horizontal truth travel tangent, left horizontal normal, world vertical; no alignment or estimator input",
+            "stationary_direction": "nearest moving truth sample in time; ties choose earlier; speed threshold 1e-6 m/s",
+            "along_cross_height_rmse_m": [
+              3.742711387479744,
+              7.284551298918543,
+              0.6297421508155603
+            ]
+          },
+          "velocity_rmse_mps": 0.32214590806415205
+        },
+        "candidate_branch_diagnostic.json": {
+          "scope": "logged candidate comparison only; no truth or localization acceptance",
+          "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T224427Z_941",
+          "gate_m": 0.5,
+          "convergence_scope": "finite candidates are numerical outputs, not proven stationary solutions; iteration limit may coincide with another stopping criterion",
+          "configured_iteration_limit": 30,
+          "candidate_termination_flags": {
+            "4": 72
+          },
+          "domain_work": {
+            "scope": "completed logged candidates only; excludes unfinished/expired candidates and graph linearization/waiting",
+            "available": true,
+            "logged_candidates": 72,
+            "successful_solve_calls": 1908,
+            "total_solve_ms": 3300.762582,
+            "maximum_candidate_solve_ms": 87.558506
+          },
+          "incomplete_tail_ignored": false,
+          "counts": {
+            "RELATIVE_BRANCH_REMAINS": 6
+          }
+        }
+      },
+      "candidate_details": "export/analysis/candidate_branch_diagnostic.json"
+    },
+    "L_TA_ONLY_120": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T224645Z_631",
+      "source_commit": "eb29842",
+      "algorithm_commit": "7b58726",
+      "input_run": "20261027T134947Z_968",
+      "stage_acceptance": "NOT_ASSESSED",
+      "pair_audit": {
+        "result": "PASS_MATCHED_INPUT_AND_AA_ABLATION",
+        "scope": "same sensor input and every decoded static field/multiplicity, only AA switch differs, actual graph/ledger use; not statistical causal or localization acceptance",
+        "static_comparison": "all decoded fields including headers; CDR alignment padding excluded",
+        "runs": [
+          "/home/dev/ws_iap/.runtime/0/liuo/20261027T224427Z_941",
+          "/home/dev/ws_iap/.runtime/0/liuo/20261027T224645Z_631"
+        ],
+        "raw_sha256": "05095c59adad36e908bfb802978e1ecc3ec3b63686755a03c081cb5d40b13005",
+        "seconds": 120.0,
+        "static_records_each": 234,
+        "full_fused_aa": 94,
+        "ta_only_fused_aa": 0,
+        "accepted_ta": [
+          1427,
+          1572
+        ],
+        "initialized_anchors": [
+          [
+            3,
+            16
+          ],
+          [
+            3,
+            7
+          ]
+        ],
+        "position_rmse_m": [
+          8.213960757944987,
+          8.17667477640266
+        ],
+        "maximum_position_error_m": [
+          18.057691090995558,
+          17.603288105717258
+        ],
+        "attitude_rmse_deg": [
+          0.5573530032616978,
+          0.5434315954643048
+        ],
+        "velocity_rmse_mps": [
+          0.32214590806415205,
+          0.29532940476336766
+        ]
+      }
     }
   },
   "limitations": [

@@ -1143,6 +1143,9 @@ private:
       }
       log(batch.id,"CANDIDATE_ITERATIONS",batch.optimizer->iterations(),cost);
       log(batch.id,"CANDIDATE_TERMINATION",batch.optimizer->termination_flags(),batch.optimizer->last_absolute_error_change());
+      // A zero cost change can follow a rejected step at the damping ceiling.
+      // Expose that numerical outcome without changing branch acceptance.
+      log(batch.id,"CANDIDATE_DAMPING",batch.optimizer->lambda(),batch.optimizer->params().lambdaUpperBound);
       log(batch.id,"CANDIDATE_DOMAIN_SOLVE_WORK",batch.optimizer->domain_solve_calls(),batch.optimizer->domain_solve_ms());
       if (batch.relative_reference) {
         const auto relative=AnchorRelativeCandidate::from_joint(*batch.relative_reference,batch.optimizer->values().at<gtsam::Pose3>(*batch.relative_reference),solution).point;

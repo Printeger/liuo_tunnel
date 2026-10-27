@@ -552,3 +552,16 @@ S110 TA-only `20261027T223351Z_555`绑定c39faaf，实际算法同为7b58726，�
 data-run -- python3 tools/analyze_road_diagnostic.py --run /home/dev/ws_iap/.runtime/0/liuo/20261027T223351Z_555 --truth-run /home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933 --truth-format straight_csv
 data-run -- bash tools/compare_ta_ablation.sh --full /home/dev/ws_iap/.runtime/0/liuo/20261027T222131Z_969 --ta-only /home/dev/ws_iap/.runtime/0/liuo/20261027T223351Z_555
 ```
+
+### 受影响L120 rolling检查
+
+`20261027T224427Z_941`绑定eb29842、实际算法7b58726，冻结CAL输入134947、road_local_static_diagnostic配置及原合法偏距，GPU1×120秒结束。1200云/24001IMU/6786UWB/30787clock，1179输出3.1–120.9秒，墙钟120.001240秒；原生rolling输入检查通过。A3于57.1秒、A16于80.4秒联合初始化；234条独立交付AA中94融合、140pending、1边。120.0秒地图94叶，最早采集1.012秒，最小协方差特征值2.015325713e−5。独立原始交付→回调→账本审计通过，满足有限TA-only比较组有真实AA入图的条件。
+
+固定首输出规范位置RMSE8.213961m（XYZ3.949855/7.174344/0.629742m），最大18.057691m，姿态0.557353deg、速度0.322146m/s，RPE1秒1.333610m/10秒4.038804m；沿线/横向/高度3.742711/7.284551/0.629742m。72个完成候选均以绝对cost变化停止，1908次成功域求解总3300.763ms、单候选最大87.559ms，仍有6批相对分支拒绝。输入与实际融合检查不等于完整L或有效复用验收。配对TA-only224645已完成，结果如下。
+
+
+L120 TA-only `20261027T224645Z_631`同样绑定eb29842、实际算法7b58726，GPU1×完整结束，墙钟120.000965秒；与224427的二进制/共享库、原始输入语义/数量、安装资料和234条静态消息全部解码字段/重复数核对一致，配置只差use_aa。配对审计通过，TA-only所有AA图计数与地图账本为零、无继承地图prior；两者实际接纳TA为1427/1572，初始化站点分别[3,16]/[3,7]。固定首输出位置RMSE8.213961/8.176675m、最大18.057691/17.603288m，姿态0.557353/0.543432deg、速度0.322146/0.295329m/s。这组有限实验没有显示AA精度收益，候选初始化路径也不同；不能据此断言统计因果或完成有效复用。
+
+复现配对：`data-run -- bash tools/compare_ta_ablation.sh --full /home/dev/ws_iap/.runtime/0/liuo/20261027T224427Z_941 --ta-only /home/dev/ws_iap/.runtime/0/liuo/20261027T224645Z_631`。报告与轨迹图在两run/export/analysis，配对JSON在TA-only run内。S/L预声明有限AA开关检查均已执行，完整有效CAL→独立REUSE、S STATIC-PAIR及生产故障/负载要求仍未完成。
+
+为区分数值代价停止与阻尼重试耗尽，新增候选终止lambda/原上限日志，不改变任何求解或接受策略。`data-run -- env PYTHONDONTWRITEBYTECODE=1 python3 tools/test_candidate_damping.py`三项检查通过（旧日志不可推断、上限单独计数、非法值拒绝）；生产节点目标构建通过。以上L配对仍使用7b58726原二进制，不冒称已含新日志。新诊断尚待实际运行验证。

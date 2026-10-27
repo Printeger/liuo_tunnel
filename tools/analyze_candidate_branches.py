@@ -17,7 +17,7 @@ def analyze(run):
     incomplete_tail=not content.endswith('\n')
     if incomplete_tail:
         content=content.rsplit('\n',1)[0]+'\n'
-    batches={}; rejected=[]; terminations=Counter(); domain_work=[]
+    batches={}; rejected=[]; terminations=Counter(); domain_work=[]; damping=[]
     for row in csv.DictReader(io.StringIO(content)):
         key=(row['session'],row['anchor']);event=row['event']
         if event=='CANDIDATES_STARTED':
@@ -40,6 +40,13 @@ def analyze(run):
                 raise ValueError('invalid candidate domain work')
             current['domain_solve_calls'], current['domain_solve_ms'] = calls, milliseconds
             domain_work.append((calls,milliseconds))
+        elif event=='CANDIDATE_DAMPING':
+            value, upper = float(row['value_a']), float(row['value_b'])
+            if not math.isfinite(value) or not math.isfinite(upper) or value < 0 or upper <= 0:
+                raise ValueError('invalid candidate damping')
+            current['final_lambda'], current['lambda_upper_bound'] = value, upper
+            current['damping_limit_reached'] = value >= upper
+            damping.append(current['damping_limit_reached'])
         elif event=='CANDIDATE_COMMON_REFERENCE':
             current['reference']=int(float(row['value_a']))
         elif event=='CANDIDATE_RELATIVE_XY':
@@ -74,6 +81,9 @@ def analyze(run):
     result=dict(scope='logged candidate comparison only; no truth or localization acceptance',run=str(run),gate_m=.5,
                 convergence_scope='finite candidates are numerical outputs, not proven stationary solutions; iteration limit may coincide with another stopping criterion',
                 configured_iteration_limit=iteration_limit,
+                damping_diagnostic=dict(available=bool(damping), logged_candidates=len(damping),
+                                        at_or_above_upper_bound=sum(damping),
+                                        scope='terminal damping only; neither a stationarity test nor a change to acceptance'),
                 candidate_termination_flags=dict(terminations),
                 domain_work=dict(scope='completed logged candidates only; excludes unfinished/expired candidates and graph linearization/waiting',
                                  available=bool(domain_work),logged_candidates=len(domain_work),
