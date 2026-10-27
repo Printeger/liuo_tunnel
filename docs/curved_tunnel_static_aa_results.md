@@ -381,3 +381,12 @@ S200427离线bias/速度记录显示首个Anchor前预测纵向速度已反向�
 按全部18个注册站计，物理完整输入图和实际交付完整输入图均11边、7个连通分量，真值条件单位距离Jacobian秩11；检查点实际融合图3边、15个分量、秩3。移除公共刚体6维规范后的剩余零方向维数分别37/37/45。该秩只描述真值条件的距离几何，不是联合估计信息，也不要求AA子图独立刚性。最大联合地图协方差特征值403.381194m²，完整特征值及最大模式方向按Anchor顺序保留。
 
 新增两项解析测试通过：公共平移相关项在站间距离中抵消且旋转等变；三角形加孤点正确报告连通分量、距离秩及规范。另新增独立FAST-LIO输入检查器，重新流式读取冻结包核对原始LiDAR/IMU语义摘要、适配订阅端摘要和1×时段；可用--liuo-run进一步核对配对。5个负例覆盖改原始样本、额外云、订阅丢IMU/改云及clock缺失。当前完整FAST-LIO仍在运行，尚无本次终态报告。
+
+
+### 完整S独立输入的FAST-LIO2对照
+
+`20261027T202832Z_457`绑定42fdde9，命令 `data-run -- tools/baselines/run.sh fastlio --source /home/dev/ws_iap/.runtime/0/liuo/20261027T191449Z_257 --scan-model snapshot --duration 540`。完整5400云/108000IMU/108000clock，5397输出1.3–540.899999999秒，发布墙钟539.995710秒，进程正常结束。独立重新读取冻结包的shared_input_audit.json通过，原始语义与适配订阅端数量/摘要完整；未提供配对LIUO运行，paired_liuo_verified=false，不能冒称完整OFF配对已完成。
+
+固定首输出yaw/translation规范位置RMSE3277.206273m（XYZ3277.182477/8.059927/9.539821m），最大4913.915287m，姿态0.489650deg；1s/10s相对平移10.794105/108.820231m。没有速度字段，未编造速度指标。真实第三方定位失败和完整输入有效性分别记录，不据此声称LIUO有效。命令及图/JSON保留于该run的export/analysis。
+
+新增straight_matched_lio_only.json和road_matched_lio_only.json，分别严格继承对应anchor_map_reuse配置的传感器和odometry；仅将UWB设record_only/use_aa=false并移除local_installation/static_edges，不加载地图或安装资料。旧road_rolling_lio.json前端设置不同，不用于当前成对OFF。尚待实际完整运行与共同输入核对。

@@ -1211,6 +1211,102 @@
       "first_negative_motion_stamp": 93.0,
       "stage_acceptance": "FAILED_NO_ANCHOR_MAP",
       "limitation": "Orientation convention now survives estimated velocity reversal; candidate instability and real relative branches remain."
+    },
+    "S_FULL_FASTLIO_INDEPENDENT": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T202832Z_457",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T191449Z_257",
+      "source_commit": "42fdde9",
+      "command": "data-run -- tools/baselines/run.sh fastlio --source /home/dev/ws_iap/.runtime/0/liuo/20261027T191449Z_257 --scan-model snapshot --duration 540",
+      "input_audit": {
+        "scope": "original published sensors and independent adapted subscriber; not algorithm-internal consumption or localization acceptance",
+        "result": "PASS",
+        "baseline_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T202832Z_457",
+        "source_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T191449Z_257",
+        "liuo_run": null,
+        "paired_liuo_verified": false,
+        "counts": {
+          "imu": 108000,
+          "cloud": 5400,
+          "clock": 108000
+        },
+        "raw_sha256": {
+          "imu": "2993f8d98a09e91dbdddc0343840980dc7de9f8ea9f2050723c65c4e27af6347",
+          "cloud": "95b79f97beac269aa4fee792801ceba33591e6c1c71b9c7d76355c31dd6cea04"
+        },
+        "source_capture_sha256": {
+          "raw_0.mcap": "1621fe02e414c14a788f5f1d8c73fb6d9779e4be41a48201a30f59c80e48e329"
+        },
+        "baseline_failure": null,
+        "estimated_poses": 5397
+      },
+      "diagnostic": {
+        "scope": "offline diagnostic only, not stage acceptance",
+        "truth_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T191449Z_257",
+        "truth_format": "straight_csv",
+        "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T202832Z_457",
+        "gauge": "first_output_yaw_and_translation_only_no_route_fit",
+        "reference_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T202832Z_457",
+        "total_output_samples": 5397,
+        "pre_map_output_samples": 0,
+        "reference_stamp": 1.3,
+        "yaw_rotation_matrix": [
+          [
+            -2.106829636827623e-05,
+            -0.9999999997780635,
+            0.0
+          ],
+          [
+            0.9999999997780635,
+            -2.106829636827623e-05,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "translation": [
+          0.011176229613947724,
+          0.2004013952250863,
+          1.5969633786377198
+        ],
+        "samples": 5397,
+        "first_stamp": 1.3,
+        "last_stamp": 540.899999999,
+        "covered_seconds": 539.599999999,
+        "position_rmse_m": 3277.2062731319047,
+        "xyz_rmse_m": [
+          3277.18247676814,
+          8.059927178944362,
+          9.539821423022966
+        ],
+        "maximum_position_error_m": 4913.915286651953,
+        "attitude_rmse_deg": 0.4896497997196852,
+        "rpe": {
+          "1.0": {
+            "samples": 5387,
+            "translation_rmse_m": 10.79410477655111,
+            "rotation_rmse_deg": 0.013412940479624151
+          },
+          "10.0": {
+            "samples": 5297,
+            "translation_rmse_m": 108.82023149519611,
+            "rotation_rmse_deg": 0.07249619548939033
+          }
+        },
+        "route_frame": {
+          "definition": "horizontal truth travel tangent, left horizontal normal, world vertical; no alignment or estimator input",
+          "stationary_direction": "nearest moving truth sample in time; ties choose earlier; speed threshold 1e-6 m/s",
+          "along_cross_height_rmse_m": [
+            3277.18247676814,
+            8.059927178944362,
+            9.539821423022966
+          ]
+        }
+      },
+      "result": "COMPLETE_INPUT_VALID_LOCALIZATION_FAILED",
+      "stage_acceptance": "INCOMPLETE"
     }
   },
   "limitations": [
