@@ -478,3 +478,10 @@ L204511失败前160.1秒已开始移交A9，但尚未写JOINTLY_INITIALIZED，�
 按spec预声明替换对称可见性要求：保留零点两侧有支持的连续双墙分量，使用两侧实际沿向min/max交集并裁到原±10m；不跨缺口，不增加地面覆盖或缩小sigma。17项局部几何/候选测试通过，包括新增入口、单侧缺口、中心缺口，旧强曲率拒绝、地面支持及Jacobian继续通过；4项成组线性化/流形边缘先验回归仍通过。日志cropped_local_patch_tests.log、cropped_patch_marginal_tests.log位于/home/dev/ws_iap/liuo_observation/log。
 
 同一S211614的9秒真实点夹具，旧探针REJECTED保留；新探针OBSERVED、墙面域[−1.0435268,10]m、sigma0.127669m，地面区间没有改变。新报告snapshot_patch_9p000000_probe_cropped.json独立保存；它只验证生产几何函数在该夹具的行为，不等价独立几何验收或生产初始化通过。
+
+
+### 入口裁剪生产结果与地面域一致性修复
+
+S110 `20261027T213914Z_053`绑定2f678ad、算法31e7ef0，使用普通CAL冻结输入190229。完整输入1100云/22000IMU/7080UWB/22000clock，1079输出3.1–110.9秒。入口墙面从9秒可用，但A0仍未初始化；A1在98.2秒由192条TA初始化，350条交付AA全部pending、没有融合。固定首输出规范位置RMSE35.309685m、最大162.758636m、姿态0.304815deg、速度1.315255m/s；仍非有效主线验收。报告保留在该run的export/analysis。
+
+A0正高度候选约−1.042m落在墙面域内却超出同侧地面支持约−1.030m；旧日志CANDIDATE_OUTSIDE_OBSERVED_HEIGHT实际上也涵盖地面沿向越界。最小反例将地面截到±6m而墙面仍支持8m，旧因子在8m错误返回有限代价并允许线性化（floor_domain_before.log两断言失败）。修复将因子的沿向域同时限制在安装侧实际地面覆盖，不扩张支持、不增加高度先验。18项局部测试及4项边缘先验回归通过（floor_domain_after.log、floor_domain_marginal.log）；加入单侧地面裁剪不影响对侧的反例。日志位于/home/dev/ws_iap/liuo_observation/log。正式重放尚待新二进制完成；单元通过不证明A0初始化或整体有效性。

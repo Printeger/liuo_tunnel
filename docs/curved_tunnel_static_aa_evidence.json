@@ -2236,6 +2236,86 @@
       },
       "resources": "export/analysis/full_route_resources.json",
       "result": "COMPLETE_INPUT_VALID_LOCALIZATION_FAILED"
+    },
+    "s110_portal_wall_crop_213914": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T213914Z_053",
+      "source_commit": "2f678ad",
+      "algorithm_commit": "31e7ef0",
+      "scope": "110s diagnostic; not full S acceptance",
+      "initialized_anchors": [
+        1
+      ],
+      "first_initialization_stamp": 98.2,
+      "aa_fused": 0,
+      "aa_pending": 350,
+      "diagnostic": {
+        "scope": "offline diagnostic only, not stage acceptance",
+        "truth_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933",
+        "truth_format": "straight_csv",
+        "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T213914Z_053",
+        "gauge": "first_output_yaw_and_translation_only_no_route_fit",
+        "reference_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T213914Z_053",
+        "total_output_samples": 1079,
+        "pre_map_output_samples": 0,
+        "reference_stamp": 3.1,
+        "yaw_rotation_matrix": [
+          [
+            0.9999999996778381,
+            -2.538353088180778e-05,
+            0.0
+          ],
+          [
+            2.538353088180778e-05,
+            0.9999999996778381,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "translation": [
+          9.658074449150029e-06,
+          -4.518893326719477e-06,
+          1.200132744117866
+        ],
+        "samples": 1079,
+        "first_stamp": 3.1,
+        "last_stamp": 110.9,
+        "covered_seconds": 107.80000000000001,
+        "position_rmse_m": 35.309684724973216,
+        "xyz_rmse_m": [
+          35.29442597786855,
+          0.4579567389653953,
+          0.9314536461896873
+        ],
+        "maximum_position_error_m": 162.7586361843055,
+        "attitude_rmse_deg": 0.3048149231482695,
+        "rpe": {
+          "1.0": {
+            "samples": 1069,
+            "translation_rmse_m": 15.220134233114479,
+            "rotation_rmse_deg": 0.031103296636458846
+          },
+          "10.0": {
+            "samples": 979,
+            "translation_rmse_m": 36.339429657658116,
+            "rotation_rmse_deg": 0.09837274393009526
+          }
+        },
+        "route_frame": {
+          "definition": "horizontal truth travel tangent, left horizontal normal, world vertical; no alignment or estimator input",
+          "stationary_direction": "nearest moving truth sample in time; ties choose earlier; speed threshold 1e-6 m/s",
+          "along_cross_height_rmse_m": [
+            35.29442597786855,
+            0.4579567389653953,
+            0.9314536461896873
+          ]
+        },
+        "velocity_rmse_mps": 1.3152551708182474
+      },
+      "result": "INCOMPLETE_MAIN_PATH_A0_NOT_INITIALIZED"
     }
   },
   "limitations": [
@@ -2308,6 +2388,21 @@
       "tests": 1,
       "negative_cases": 5,
       "state": "UNIT_CHECKED_FULL_BASELINE_PENDING"
+    },
+    "installation_floor_longitudinal_domain": {
+      "scope": "finite factor uses measured installation-side floor support as final association does; no expanded domain or new height residual",
+      "red_log": "/home/dev/ws_iap/liuo_observation/log/floor_domain_before.log",
+      "local_tests": {
+        "count": 18,
+        "result": "PASS",
+        "log": "/home/dev/ws_iap/liuo_observation/log/floor_domain_after.log"
+      },
+      "marginal_tests": {
+        "count": 4,
+        "result": "PASS",
+        "log": "/home/dev/ws_iap/liuo_observation/log/floor_domain_marginal.log"
+      },
+      "production_validation": "PENDING"
     }
   },
   "inputs": {

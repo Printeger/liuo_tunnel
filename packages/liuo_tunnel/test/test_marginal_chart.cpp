@@ -56,6 +56,11 @@ TEST(MarginalChart, NewFiniteFactorUsesConsistentExistingPoseAndNewAnchorChart) 
   patch.up = Vector3::UnitZ();
   patch.width = 6;
   patch.sigma = .02;
+  for (auto& floor : patch.floors) {
+    floor.longitudinal_axis = patch.tangent;
+    floor.minimum_longitudinal = -10;
+    floor.maximum_longitudinal = 10;
+  }
   NonlinearFactorGraph factors;
   factors.emplace_shared<RelativePoint>(x, a, local);
   factors.emplace_shared<liuo_tunnel::LocalInstallationFactor>(x, a, patch, 2.8);
@@ -83,6 +88,11 @@ TEST(MarginalChart, FiniteFactorEndpointsRelinearizeTogetherAtSupportBoundary) {
   patch.up = Vector3::UnitZ();
   patch.width = 6;
   patch.sigma = .02;
+  for (auto& floor : patch.floors) {
+    floor.longitudinal_axis = patch.tangent;
+    floor.minimum_longitudinal = -10;
+    floor.maximum_longitudinal = 10;
+  }
   NonlinearFactorGraph graph;
   graph.emplace_shared<PriorFactor<Pose3>>(x, Pose3(), noiseModel::Isotropic::Sigma(6, 100));
   graph.emplace_shared<RelativePoint>(x, a, local);
@@ -136,6 +146,11 @@ TEST(MarginalChart, FinitePatchSurvivesCommonMotionAfterAnchorMarginalization) {
   patch.up = Vector3::UnitZ();
   patch.width = 6;
   patch.sigma = .02;
+  for (auto& floor : patch.floors) {
+    floor.longitudinal_axis = patch.tangent;
+    floor.minimum_longitudinal = -10;
+    floor.maximum_longitudinal = 10;
+  }
   next.emplace_shared<liuo_tunnel::LocalInstallationFactor>(x2, a, patch, 2.8);
   Values new_values;
   new_values.insert(x2, Pose3());

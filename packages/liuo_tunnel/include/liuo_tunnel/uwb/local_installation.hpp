@@ -110,7 +110,7 @@ public:
     // A finite-domain observation has infinite trial cost outside its support.
     // Dogleg/LM may then reject the trial; no plane residual is extrapolated.
     // Invalid linearization states still fail explicitly in evaluateError.
-    if (local.allFinite() && !observed_.supports_longitudinal(local)) return std::numeric_limits<double>::infinity();
+    if (local.allFinite() && !supports_longitudinal(local)) return std::numeric_limits<double>::infinity();
     return gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Point3>::error(values);
   }
   gtsam::Vector evaluateError(const gtsam::Pose3& pose, const gtsam::Point3& anchor, gtsam::OptionalMatrixType Hx = nullptr, gtsam::OptionalMatrixType Ha = nullptr)
@@ -118,7 +118,7 @@ public:
     gtsam::Matrix36 Px;
     gtsam::Matrix33 Pa;
     const auto local = pose.transformTo(anchor, Px, Pa);
-    if (!observed_.supports_longitudinal(local))
+    if (!supports_longitudinal(local))
       throw std::domain_error(
         "LOCAL_INSTALLATION_OUTSIDE_OBSERVED_PATCH;linearization=" + std::to_string(bool(Hx) || bool(Ha)) + ";along=" + std::to_string(observed_.tangent.dot(local)));
     if (Hx) *Hx = observed_.normal.transpose() * Px;
@@ -128,6 +128,12 @@ public:
   gtsam::NonlinearFactor::shared_ptr clone() const override { return gtsam::make_shared<LocalInstallationFactor>(*this); }
 
 private:
+  bool supports_longitudinal(const gtsam::Point3& local) const {
+    // The known signed installation offset selects the measured floor band.
+    // Its observed extent is also required by final candidate association;
+    // never optimize against an extrapolated floor beyond that extent.
+    return observed_.supports_longitudinal(local) && observed_.floors[offset_ >= 0 ? 1 : 0].covers(local);
+  }
   LocalInstallationObservation observed_;
   double offset_;
 };

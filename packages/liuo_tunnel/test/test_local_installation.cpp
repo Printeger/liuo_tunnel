@@ -277,4 +277,39 @@ TEST(LocalInstallation, GroundAssociationUsesActualSupportAndCannotExtendToWallS
   EXPECT_FALSE(observed.supports(body.transformTo(gtsam::Point3(-8, 5.52, 3.5))));
   EXPECT_NEAR(observed.floors[1].minimum_longitudinal, -6, 1e-8);
   EXPECT_NEAR(observed.floors[1].maximum_longitudinal, 6, 1e-8);
+  // The optimizer must not seek a solution outside the very floor support
+  // that will be required by the final candidate association check.
+  LocalInstallationFactor factor(0, 1, observed, 5.52);
+  gtsam::Values outside;
+  outside.insert(0, body);
+  outside.insert(1, gtsam::Point3(8, 5.52, 3.5));
+  EXPECT_TRUE(std::isinf(factor.error(outside)));
+  EXPECT_THROW(factor.linearize(outside), std::domain_error);
+}
+
+TEST(LocalInstallation, FloorDomainUsesInstalledSideWithoutClippingOppositeSide) {
+  const gtsam::Pose3 body(gtsam::Rot3(), {0, -1.875, 1.66});
+  auto points = walls(body);
+  points.erase(
+    std::remove_if(
+      points.begin(),
+      points.end(),
+      [&](const auto& point) {
+        const auto world = body.transformFrom(point);
+        return std::abs(world.z()) < 1e-8 && world.y() > 0 && std::abs(world.x()) > 6;
+      }),
+    points.end());
+  const auto observed = local_installation_observation(points, body.rotation(), {10, 0, 0}, .02);
+  for (const double sign : {-1., 1.}) {
+    LocalInstallationFactor factor(0, 1, observed, sign * 5.52);
+    gtsam::Values values;
+    values.insert(0, body);
+    values.insert(1, gtsam::Point3(8, sign * 5.52, 3.5));
+    EXPECT_EQ(observed.supports(body.transformTo(values.at<gtsam::Point3>(1))), sign < 0);
+    EXPECT_EQ(std::isfinite(factor.error(values)), sign < 0);
+    if (sign < 0)
+      EXPECT_NO_THROW(factor.linearize(values));
+    else
+      EXPECT_THROW(factor.linearize(values), std::domain_error);
+  }
 }
