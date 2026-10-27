@@ -17,6 +17,18 @@ def rows(run, name):
         return list(csv.DictReader(stream))
 
 
+def static_messages(callbacks):
+    # CDR alignment padding is not message data and need not be deterministic.
+    # Compare every decoded field (including delivery/acquisition time), without
+    # dropping identities, headers, payload fields or duplicate multiplicity.
+    from rclpy.serialization import deserialize_message
+    from rosidl_runtime_py.convert import message_to_ordereddict
+    from liuo_tunnel_msgs.msg import StaticAnchorRecord
+    return Counter(json.dumps(message_to_ordereddict(
+        deserialize_message(bytes.fromhex(row['cdr_hex']), StaticAnchorRecord)),
+        sort_keys=True, allow_nan=False) for row in callbacks)
+
+
 def compare(full, ta_only):
     runs = [full, ta_only]
     identities = [read(run, 'metadata/manifests/input_identity.json') for run in runs]
@@ -44,7 +56,7 @@ def compare(full, ta_only):
     assert callbacks[0] and callbacks[1], 'no real static delivery'
     assert all(row['reason'] == 'QUEUED' for row in callbacks[0])
     assert all(row['reason'] == 'AA_ABLATION_DISABLED' for row in callbacks[1])
-    assert Counter(row['cdr_hex'] for row in callbacks[0]) == Counter(row['cdr_hex'] for row in callbacks[1]), 'static wire inputs differ'
+    assert static_messages(callbacks[0]) == static_messages(callbacks[1]), 'decoded static inputs differ'
     audit = read(full, 'export/analysis/road_static_audit.json')
     assert audit['result'] == 'PASS' and audit['final_fused_leaves'] > 0, 'comparator has no actual AA fusion'
     models = [read(run, 'export/map/calibrated_map.json') for run in runs]
@@ -58,7 +70,8 @@ def compare(full, ta_only):
     diagnostics = [read(run, 'export/analysis/road_fixed_start_diagnostic.json') for run in runs]
     assert all(d['gauge'] == 'first_output_yaw_and_translation_only_no_route_fit' for d in diagnostics)
     result = dict(result='PASS_MATCHED_INPUT_AND_AA_ABLATION',
-                  scope='same sensor and static wire input, only AA switch differs, actual graph/ledger use; not statistical causal or localization acceptance',
+                  scope='same sensor input and every decoded static field/multiplicity, only AA switch differs, actual graph/ledger use; not statistical causal or localization acceptance',
+                  static_comparison='all decoded fields including headers; CDR alignment padding excluded',
                   runs=[str(run) for run in runs], raw_sha256=identities[0]['raw_sha256'], seconds=identities[0]['seconds'],
                   static_records_each=len(callbacks[0]), full_fused_aa=audit['final_fused_leaves'], ta_only_fused_aa=0,
                   accepted_ta=accepted_ta, initialized_anchors=[[a['id'] for a in model['anchors']] for model in models],

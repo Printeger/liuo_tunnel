@@ -3550,6 +3550,431 @@
         "rejected_batches": []
       },
       "result": "COMPLETE_WITH_A0_A1_AND_NONTRIVIAL_AA_FUSION"
+    },
+    "S_FULL_NONLINEAR_DOMAIN_CAL": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T222403Z_836",
+      "source_commit": "ff12ad5",
+      "algorithm_commit": "7b58726",
+      "input_run": "20261027T190229Z_933",
+      "seconds": 540,
+      "stage_acceptance": "FAILED_EFFECTIVENESS",
+      "initialized_anchor_ids": [
+        0,
+        1,
+        5
+      ],
+      "static_fused_leaves_final": 185,
+      "static_pending_leaves_final": 1620,
+      "reports": {
+        "road_fixed_start_diagnostic.json": {
+          "scope": "offline diagnostic only, not stage acceptance",
+          "truth_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933",
+          "truth_format": "straight_csv",
+          "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T222403Z_836",
+          "gauge": "first_output_yaw_and_translation_only_no_route_fit",
+          "reference_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T222403Z_836",
+          "total_output_samples": 5379,
+          "pre_map_output_samples": 0,
+          "reference_stamp": 3.1,
+          "yaw_rotation_matrix": [
+            [
+              0.9999999996778386,
+              -2.5383514481850423e-05,
+              0.0
+            ],
+            [
+              2.5383514481850423e-05,
+              0.9999999996778386,
+              0.0
+            ],
+            [
+              0.0,
+              0.0,
+              1.0
+            ]
+          ],
+          "translation": [
+            9.6580743623746e-06,
+            -4.519753307968469e-06,
+            1.200132744158743
+          ],
+          "samples": 5379,
+          "first_stamp": 3.1,
+          "last_stamp": 540.9,
+          "covered_seconds": 537.8,
+          "position_rmse_m": 612.9306719805287,
+          "xyz_rmse_m": [
+            612.8430753781001,
+            9.360951832874646,
+            4.443669249259901
+          ],
+          "maximum_position_error_m": 2290.642399303174,
+          "attitude_rmse_deg": 1.3965186274582708,
+          "rpe": {
+            "1.0": {
+              "samples": 5369,
+              "translation_rmse_m": 20.14391963189524,
+              "rotation_rmse_deg": 0.46594608253365616
+            },
+            "10.0": {
+              "samples": 5279,
+              "translation_rmse_m": 85.27820324382802,
+              "rotation_rmse_deg": 1.3598628211300279
+            }
+          },
+          "route_frame": {
+            "definition": "horizontal truth travel tangent, left horizontal normal, world vertical; no alignment or estimator input",
+            "stationary_direction": "nearest moving truth sample in time; ties choose earlier; speed threshold 1e-6 m/s",
+            "along_cross_height_rmse_m": [
+              612.8430753781001,
+              9.360951832874646,
+              4.443669249259901
+            ]
+          },
+          "velocity_rmse_mps": 5.218821725355504
+        },
+        "road_static_audit.json": {
+          "scope": "delivered raw AA to callback and map ledger; not localization/reuse acceptance",
+          "result": "PASS",
+          "raw_records": 1805,
+          "unique_physical_leaves": 1805,
+          "received_records": 1805,
+          "map_absorbed_leaves": 185,
+          "final_fused_leaves": 185,
+          "final_pending_leaves": 1620,
+          "explicit_edges": 1,
+          "first_fused_stamp": 96.8,
+          "oldest_absorbed_acquisition": 1.012,
+          "map_stamp": 540.0,
+          "anchor_ids": [
+            0,
+            1,
+            5
+          ],
+          "minimum_map_eigenvalue": 5.987122318248283e-06,
+          "raw_sha256": "8de5439e8e35ae747ee42842aa505b8ec5290548a70b4386b47c71df82ccdd7a"
+        },
+        "full_route_resources.json": {
+          "scope": "recorded extrema, temporal trends and output coverage only; no localization, leak or load-test acceptance",
+          "states_samples": {
+            "DEGRADED": 4419,
+            "LOST": 960
+          },
+          "output_samples": 5379,
+          "first_output_stamp": 3.1,
+          "last_output_stamp": 540.9,
+          "max_retained_vehicle_states": 101.0,
+          "max_factors": 785.0,
+          "max_rss_mib": 358.48828125,
+          "max_device_mib": 1190.0,
+          "device_memory_scope": "entire CUDA device, not exclusive process allocation",
+          "max_imu_queue": 402.0,
+          "max_cloud_queue": 0.0,
+          "max_uwb_queue": 7.0,
+          "maximum_optimization_ms": 123.363,
+          "max_retained_cloud_frames": 101.0,
+          "max_keyframes": 1.0,
+          "temporal_trends": {
+            "rss_mib": {
+              "1": {
+                "samples": 538,
+                "first_stamp": 3.0,
+                "last_stamp": 540.0,
+                "first": 157.82421875,
+                "last": 349.578125,
+                "change": 191.75390625,
+                "least_squares_change_per_second": 0.09569862873327449,
+                "time_quartiles": [
+                  {
+                    "begin_stamp": 3.0,
+                    "end_stamp": 137.25,
+                    "samples": 135,
+                    "median": 300.79296875,
+                    "maximum": 314.36328125
+                  },
+                  {
+                    "begin_stamp": 137.25,
+                    "end_stamp": 271.5,
+                    "samples": 134,
+                    "median": 322.30859375,
+                    "maximum": 334.05859375
+                  },
+                  {
+                    "begin_stamp": 271.5,
+                    "end_stamp": 405.75,
+                    "samples": 134,
+                    "median": 326.818359375,
+                    "maximum": 358.48828125
+                  },
+                  {
+                    "begin_stamp": 405.75,
+                    "end_stamp": 540.0,
+                    "samples": 135,
+                    "median": 334.703125,
+                    "maximum": 355.7734375
+                  }
+                ]
+              }
+            },
+            "device_mib": {
+              "1": {
+                "samples": 538,
+                "first_stamp": 3.0,
+                "last_stamp": 540.0,
+                "first": 1087.25,
+                "last": 1154.625,
+                "change": 67.375,
+                "least_squares_change_per_second": -0.012167216389350925,
+                "time_quartiles": [
+                  {
+                    "begin_stamp": 3.0,
+                    "end_stamp": 137.25,
+                    "samples": 135,
+                    "median": 1154.5625,
+                    "maximum": 1188.25
+                  },
+                  {
+                    "begin_stamp": 137.25,
+                    "end_stamp": 271.5,
+                    "samples": 134,
+                    "median": 1185.75,
+                    "maximum": 1190.0
+                  },
+                  {
+                    "begin_stamp": 271.5,
+                    "end_stamp": 405.75,
+                    "samples": 134,
+                    "median": 1184.4375,
+                    "maximum": 1189.3125
+                  },
+                  {
+                    "begin_stamp": 405.75,
+                    "end_stamp": 540.0,
+                    "samples": 135,
+                    "median": 1154.8125,
+                    "maximum": 1159.0625
+                  }
+                ]
+              }
+            },
+            "vehicle_states": {
+              "1": {
+                "samples": 5380,
+                "first_stamp": 3.0,
+                "last_stamp": 540.9,
+                "first": 1.0,
+                "last": 101.0,
+                "change": 100.0,
+                "least_squares_change_per_second": 0.01045325109814753,
+                "time_quartiles": [
+                  {
+                    "begin_stamp": 3.0,
+                    "end_stamp": 137.475,
+                    "samples": 1345,
+                    "median": 101.0,
+                    "maximum": 101.0
+                  },
+                  {
+                    "begin_stamp": 137.475,
+                    "end_stamp": 271.95,
+                    "samples": 1345,
+                    "median": 101.0,
+                    "maximum": 101.0
+                  },
+                  {
+                    "begin_stamp": 271.95,
+                    "end_stamp": 406.42499999999995,
+                    "samples": 1345,
+                    "median": 101.0,
+                    "maximum": 101.0
+                  },
+                  {
+                    "begin_stamp": 406.42499999999995,
+                    "end_stamp": 540.9,
+                    "samples": 1345,
+                    "median": 101.0,
+                    "maximum": 101.0
+                  }
+                ]
+              }
+            },
+            "total_factors": {
+              "1": {
+                "samples": 5380,
+                "first_stamp": 3.0,
+                "last_stamp": 540.9,
+                "first": 3.0,
+                "last": 518.0,
+                "change": 515.0,
+                "least_squares_change_per_second": -0.36686254090408943,
+                "time_quartiles": [
+                  {
+                    "begin_stamp": 3.0,
+                    "end_stamp": 137.475,
+                    "samples": 1345,
+                    "median": 571.0,
+                    "maximum": 779.0
+                  },
+                  {
+                    "begin_stamp": 137.475,
+                    "end_stamp": 271.95,
+                    "samples": 1345,
+                    "median": 573.0,
+                    "maximum": 785.0
+                  },
+                  {
+                    "begin_stamp": 271.95,
+                    "end_stamp": 406.42499999999995,
+                    "samples": 1345,
+                    "median": 383.0,
+                    "maximum": 539.0
+                  },
+                  {
+                    "begin_stamp": 406.42499999999995,
+                    "end_stamp": 540.9,
+                    "samples": 1345,
+                    "median": 569.0,
+                    "maximum": 593.0
+                  }
+                ]
+              }
+            },
+            "anchors": {
+              "1": {
+                "samples": 5380,
+                "first_stamp": 3.0,
+                "last_stamp": 540.9,
+                "first": 0.0,
+                "last": 3.0,
+                "change": 3.0,
+                "least_squares_change_per_second": 0.0032071613190974677,
+                "time_quartiles": [
+                  {
+                    "begin_stamp": 3.0,
+                    "end_stamp": 137.475,
+                    "samples": 1345,
+                    "median": 1.0,
+                    "maximum": 2.0
+                  },
+                  {
+                    "begin_stamp": 137.475,
+                    "end_stamp": 271.95,
+                    "samples": 1345,
+                    "median": 2.0,
+                    "maximum": 2.0
+                  },
+                  {
+                    "begin_stamp": 271.95,
+                    "end_stamp": 406.42499999999995,
+                    "samples": 1345,
+                    "median": 2.0,
+                    "maximum": 2.0
+                  },
+                  {
+                    "begin_stamp": 406.42499999999995,
+                    "end_stamp": 540.9,
+                    "samples": 1345,
+                    "median": 3.0,
+                    "maximum": 3.0
+                  }
+                ]
+              }
+            },
+            "optimization_ms": {
+              "1": {
+                "samples": 5380,
+                "first_stamp": 3.0,
+                "last_stamp": 540.9,
+                "first": 2.25954,
+                "last": 40.9047,
+                "change": 38.64516,
+                "least_squares_change_per_second": 0.009773278760459548,
+                "time_quartiles": [
+                  {
+                    "begin_stamp": 3.0,
+                    "end_stamp": 137.475,
+                    "samples": 1345,
+                    "median": 18.8756,
+                    "maximum": 54.2124
+                  },
+                  {
+                    "begin_stamp": 137.475,
+                    "end_stamp": 271.95,
+                    "samples": 1345,
+                    "median": 20.0104,
+                    "maximum": 69.3836
+                  },
+                  {
+                    "begin_stamp": 271.95,
+                    "end_stamp": 406.42499999999995,
+                    "samples": 1345,
+                    "median": 22.5538,
+                    "maximum": 123.363
+                  },
+                  {
+                    "begin_stamp": 406.42499999999995,
+                    "end_stamp": 540.9,
+                    "samples": 1345,
+                    "median": 20.5751,
+                    "maximum": 63.4224
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "S_TA_ONLY_110": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T223351Z_555",
+      "source_commit": "c39faaf",
+      "algorithm_commit": "7b58726",
+      "input_run": "20261027T190229Z_933",
+      "stage_acceptance": "NOT_ASSESSED",
+      "pair_audit": {
+        "result": "PASS_MATCHED_INPUT_AND_AA_ABLATION",
+        "scope": "same sensor input and every decoded static field/multiplicity, only AA switch differs, actual graph/ledger use; not statistical causal or localization acceptance",
+        "static_comparison": "all decoded fields including headers; CDR alignment padding excluded",
+        "runs": [
+          "/home/dev/ws_iap/.runtime/0/liuo/20261027T222131Z_969",
+          "/home/dev/ws_iap/.runtime/0/liuo/20261027T223351Z_555"
+        ],
+        "raw_sha256": "8de5439e8e35ae747ee42842aa505b8ec5290548a70b4386b47c71df82ccdd7a",
+        "seconds": 110.0,
+        "static_records_each": 350,
+        "full_fused_aa": 110,
+        "ta_only_fused_aa": 0,
+        "accepted_ta": [
+          2526,
+          2557
+        ],
+        "initialized_anchors": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "position_rmse_m": [
+          0.4594732178845212,
+          0.4589193367944354
+        ],
+        "maximum_position_error_m": [
+          0.9171505840528014,
+          0.9071674346689025
+        ],
+        "attitude_rmse_deg": [
+          0.11964693591128202,
+          0.1192457323415749
+        ],
+        "velocity_rmse_mps": [
+          0.01562880527275612,
+          0.015194617048523899
+        ]
+      }
     }
   },
   "limitations": [
