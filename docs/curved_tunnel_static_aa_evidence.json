@@ -1102,7 +1102,8 @@
         "max_keyframes": 1.0,
         "temporal_report": "export/analysis/full_route_resources.json"
       },
-      "stage_acceptance": "FAILED_LOCALIZATION_WITH_ACTUAL_STATIC_AA_MAP"
+      "stage_acceptance": "FAILED_LOCALIZATION_WITH_ACTUAL_STATIC_AA_MAP",
+      "map_diagnostic": "export/analysis/anchor_map_diagnostic.json"
     },
     "S_ORIENTATION_110_FAILED": {
       "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T202541Z_963",
@@ -1272,6 +1273,16 @@
       "fix": "Transport only orientation convention through retained joint poses; do not use old cached poses as exact observations.",
       "expired_reference": "Explicit pending until session reset; no velocity-based reassignment.",
       "limitation": "Initial motion must match deployment side convention; not a universal reverse-entry orientation estimator."
+    },
+    "offline_map_diagnostic": {
+      "tests": 2,
+      "scope": "Fixed CAL gauge, full pair cross covariance, truth-conditioned physical/delivery/fused graph ranks; no estimator input",
+      "production_report": "/home/dev/ws_iap/.runtime/0/liuo/20261027T201351Z_374/export/analysis/anchor_map_diagnostic.json"
+    },
+    "baseline_shared_input_audit": {
+      "tests": 1,
+      "negative_cases": 5,
+      "state": "UNIT_CHECKED_FULL_BASELINE_PENDING"
     }
   },
   "inputs": {
