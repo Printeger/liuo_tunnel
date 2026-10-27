@@ -89,6 +89,7 @@ def inspect(run, seed, start):
     ranges = {kind: {(r['a'],r['b'],r['sample_index']):float(r['range'])-float(r['true_range'])
                      for r in physical if r['a_type']==kind} for kind in ('0','1')}
     return dict(run=str(run),seed=seed,raw_sha256=raw_hashes,semantic_sha256=audit['raw_sha256'],
+                simulation_binary_sha256=identity['binaries']['simulation']['sha256'],
                 counts=audit['counts'],start=p[0].tolist(),end=p[-1].tolist(),last_truth_stamp=float(t[-1])), residual, ranges
 
 
@@ -102,6 +103,13 @@ def main():
     destination=args.first
     if args.second:
         second,noise_b,ranges_b=inspect(args.second,1,[0,.2,1.6,np.pi/2])
+        assert json.loads((args.first/'metadata/config/phase1.json').read_text()) == json.loads((args.second/'metadata/config/phase1.json').read_text())
+        scenario_a=json.loads((args.first/'metadata/config/scenario.json').read_text())
+        scenario_b=json.loads((args.second/'metadata/config/scenario.json').read_text())
+        for field in ('seed','simulation_start_xyz_yaw'):
+            scenario_a.pop(field); scenario_b.pop(field)
+        assert scenario_a == scenario_b
+        assert first['simulation_binary_sha256'] == second['simulation_binary_sha256']
         assert set(first['raw_sha256'].values()).isdisjoint(second['raw_sha256'].values())
         for kind in ('cloud','imu','uwb'):
             assert first['semantic_sha256'][kind] != second['semantic_sha256'][kind]

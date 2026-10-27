@@ -520,6 +520,15 @@
         "velocity_rmse_mps": 0.4560974021902039
       },
       "stage_acceptance": "NOT_PASSED"
+    },
+    "S_NATIVE_SNAPSHOT_SEAM_20": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T191331Z_091",
+      "source_commit": "2b6c560",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933",
+      "report": "export/analysis/snapshot_smoke.json",
+      "input_result": "PASS",
+      "initialized_anchors": 0,
+      "stage_acceptance": "NOT_ASSESSED"
     }
   },
   "limitations": [
@@ -552,6 +561,57 @@
       "raw_sha256": "d146412b1e3e7a93939ff0809c44dd1baf31184070f7fcccf5de5ab678fffcfa",
       "independence_check": "export/analysis/independent_input.json",
       "scene_result": "PASS",
+      "algorithm_acceptance": "NOT_ASSESSED"
+    },
+    "S_CAL_FULL": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933",
+      "source_commit": "f58b40067ea6df71f534077897abc7daf15bb1c4",
+      "capture": {
+        "result": "PASS_FULL_S_CAPTURE",
+        "scope": "ordinary S raw input only; no localization acceptance",
+        "first": {
+          "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933",
+          "seed": 0,
+          "raw_sha256": {
+            "export/capture/raw/raw_0.mcap": "8de5439e8e35ae747ee42842aa505b8ec5290548a70b4386b47c71df82ccdd7a"
+          },
+          "semantic_sha256": {
+            "imu": "b2320e602c000db59955473036e2b623ed8bfb98aa3bb88ede665572c2d7f532",
+            "cloud": "bb9a65a0a1cb806284f020d901d4c6b902e6f1ca1cfbde2e457ddf3d8866543e",
+            "uwb": "413ad19563426759f0bd295f00183e7e052618f3492716885ba2fcf762a5dd3c",
+            "clock": "66bb6e3bbcede3084b00aef9efb71b0c58e449ac23c54467980a2049572e79d1"
+          },
+          "simulation_binary_sha256": "de4b6a007f10e75b2e5687a75cd6f824270bfec55e5c226bfa6b483e272490a8",
+          "counts": {
+            "imu": 108000,
+            "cloud": 5400,
+            "uwb": 39960,
+            "clock": 108000
+          },
+          "start": [
+            0.0,
+            0.0,
+            1.2
+          ],
+          "end": [
+            2350.0,
+            0.0,
+            1.2
+          ],
+          "last_truth_stamp": 540.9
+        }
+      },
+      "delivery": {
+        "scope": "S ordinary reporter delivery and physical budget only",
+        "result": "PASS",
+        "physical_samples": 41395,
+        "physical_aa": 3240,
+        "aa_delivered": 1805,
+        "aa_blocked": 1435,
+        "max_physical_exchanges_per_second": 84,
+        "maximum_independent_reporter_distance_error_m": 2.0119614418945275e-08,
+        "bag_delivered_samples": 39960
+      },
       "algorithm_acceptance": "NOT_ASSESSED"
     }
   }

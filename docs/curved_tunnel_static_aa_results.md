@@ -265,3 +265,14 @@ run `20261027T185849Z_530`，启动提交1daa642，独立L输入182209，完整C
 
 
 完整REUSE184325的资源附加核查：`data-run -- env PYTHONDONTWRITEBYTECODE=1 python3 tools/summarize_estimator_resources.py <run>`，报告 `full_route_resources.json`。3905输出中INITIALIZING1340、LOST1200、DEGRADED1365；车辆最多101组、因子862、RSS429.95MiB、整CUDA设备1191MiB、IMU/云/UWB队列421/0/8、优化最大71.2194ms、保留点云101帧/keyframe1。资源未无限增长不代表定位有效，也不替代规定的60秒故障/慢订阅实验。
+
+
+### 完整普通S首轮输入与snapshot接入
+
+首轮输入run `20261027T190229Z_933`，干净生成提交f58b400，seed0、起点[0,0,1.2,0]，capture-only540秒。5400cloud/108000IMU/39960UWB/108000clock，真实x=0→2350m，末真值stamp540.9，首尾静止；原始MCAP SHA256 `8de5439e8e35ae747ee42842aa505b8ec5290548a70b4386b47c71df82ccdd7a`。原有S包包含单独truth topic，回放存储过滤排除，不改写原包；此处不冒称S包是L那种纯四话题包。
+
+`check_straight_inputs.py --first <run>` 全程/原始及接收摘要/IMU合成残差检查通过。`check_straight_reporter_delivery.py <run>`独立检查通过：41395物理交换，其中3240AA、1805AA实际交付、1435报告不可达；总39960条交付，最大84交换/s，报告者距离独立误差2.012e−8m。检查器在data-run及ROS/shared msg环境执行，没有向算法提供全局物理日志。此为新完整输入，旧360秒数据保持。第二轮独立输入仍需生成和交叉检查。
+
+S接入失败191153：旧包额外truth topic被新严格白名单拒绝，输入发布前结束；修复为S特有已知truth话题的存储级排除，其他额外话题仍拒绝。失败191231：20秒包含边界201帧却没有其后续IMU，末帧消费检查失败；改为S片段半开区间，未放宽检查。成功run `20261027T191331Z_091`（2b6c560）：200cloud/4000IMU/1215UWB/4000clock逐字段hash一致，179输出3.1–20.9秒，GPU1×约19.9954秒。`sensor_access_boundary.json`明确排除真值。
+
+此短段只证明新A-only入口的S原生消息接通，尚无Anchor初始化/地图。A0在洞口，最初运动时缺少两侧连续墙面，14秒起OBSERVED时已驶过其可关联范围；没有改变局部跨度或容差强行接入。完整路线须继续检查后续站点，不能将20秒接入PASS当成S-CAL完成。
