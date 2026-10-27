@@ -79,12 +79,17 @@ def cases():
         ('driver_unknown_time', dict(time_basis=0, time_uncertainty_s=float('nan'), pair_measurement_freshness_verified=False), 'MEASUREMENT_TIME_UNKNOWN'),
         ('receive_only', dict(time_basis=3), 'MEASUREMENT_TIME_UNKNOWN'),
         ('nan_uncertainty', dict(time_uncertainty_s=float('nan')), 'TIME_UNCERTAINTY_UNSUPPORTED'),
+        ('driver_mapped_unknown_uncertainty', dict(time_uncertainty_s=float('nan'), pair_measurement_freshness_verified=False), 'TIME_UNCERTAINTY_UNSUPPORTED'),
         ('excess_uncertainty', dict(time_uncertainty_s=10.), 'TIME_UNCERTAINTY_UNSUPPORTED'),
         ('unverified_freshness', dict(pair_measurement_freshness_verified=False), 'INDEPENDENCE_UNVERIFIED'),
         ('system_mapped', dict(time_basis=2), 'ACCEPT'),
     ]
     for name, changes, reason in mutations:
-        add(name + '_mixed_with_legal_peer', [observation(**changes), observation(node_b=2)], [reason, 'ACCEPT'])
+        bad = observation(**changes)
+        if changes.get('time_basis') in (0, 3):
+            bad.source_frame_stamp.sec = 0
+            bad.source_frame_stamp.nanosec = 0
+        add(name + '_mixed_with_legal_peer', [bad, observation(node_b=2)], [reason, 'ACCEPT'])
     for name, sec, ns in [('negative_time', -1, 0), ('zero_time', 0, 0), ('illegal_nanosecond', 1, 1000000000)]:
         bad = observation(); bad.source_frame_stamp.sec = sec; bad.source_frame_stamp.nanosec = ns
         add(name, [bad, observation(node_b=2)], ['INVALID_SOURCE_TIME', 'ACCEPT'])
