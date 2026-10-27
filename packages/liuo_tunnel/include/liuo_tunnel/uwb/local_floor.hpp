@@ -9,6 +9,12 @@ namespace liuo_tunnel {
 struct LocalFloorPatch {
   gtsam::Vector3 normal, center, along, across;
   double variance, along_spread, across_spread;
+  gtsam::Vector3 longitudinal_axis;
+  double minimum_longitudinal, maximum_longitudinal;
+  bool covers(const gtsam::Point3& point) const {
+    const double position = longitudinal_axis.dot(point);
+    return point.allFinite() && position >= minimum_longitudinal && position <= maximum_longitudinal;
+  }
   double signed_height(const gtsam::Point3& point) const { return normal.dot(point - center); }
   double margin(const gtsam::Point3& point) const {
     const auto delta = (point - center).eval();
@@ -62,10 +68,13 @@ inline LocalFloorPatch local_floor_patch(
   }
   Eigen::SelfAdjointEigenSolver<gtsam::Matrix3> eig(scatter / best.size());
   if (eig.info() != Eigen::Success) throw std::invalid_argument("LOCAL_FLOOR_EIGENSOLVER_FAILED");
-  if (eig.eigenvalues()[1] < .005 || eig.eigenvalues()[0] > .04 * .04 || lo > -10 || hi < 10 || right - left < .3)
+  if (eig.eigenvalues()[1] < .005 || eig.eigenvalues()[0] > .04 * .04 || right - left < .3)
     throw std::invalid_argument(
       "LOCAL_FLOOR_SUPPORT_OR_PLANARITY;side=" + std::to_string(side) + ";inliers=" + std::to_string(best.size()) + ";lambda_min=" + std::to_string(eig.eigenvalues()[0]) +
       ";lambda_mid=" + std::to_string(eig.eigenvalues()[1]) + ";lo=" + std::to_string(lo) + ";hi=" + std::to_string(hi) + ";width=" + std::to_string(right - left));
+  result.longitudinal_axis = tangent;
+  result.minimum_longitudinal = lo;
+  result.maximum_longitudinal = hi;
   result.normal = eig.eigenvectors().col(0);
   if (result.normal.dot(up) < 0) result.normal *= -1;
   if (result.normal.dot(up) < .95 || result.normal.dot(result.center) >= 0) throw std::invalid_argument("LOCAL_FLOOR_ORIENTATION");

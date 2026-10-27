@@ -172,3 +172,5 @@ data-run -- python3 tools/check_straight_reporter_delivery.py /home/dev/ws_iap/.
 data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968 --config packages/liuo_tunnel/config/road_local_anchor_diagnostic.json --installation /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968/metadata/config/installation_metadata.json --seconds 120
 data-run -- python3 tools/analyze_road_diagnostic.py --run /home/dev/ws_iap/.runtime/0/liuo/20261027T171841Z_743 --truth-run /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968
 ```
+
+地面判据日志 run `20261027T172502Z_879`（4b09cb3）完成同一 120 s 输入合同：1179 输出，A3 于 56.2 s 实际入图。后半段失败可归因于固定纵向端点要求：例如 t=115 s 内点184、λ_min=0.000195 m²、λ_mid=0.060364 m²、横向0.831915 m，实际纵向 −9.193472…12.162657 m，只有 −10 m 端点不满足。修订为每侧地面实测域内关联，保留所有残差/散布/数量判据和墙面域，新增短地面域的正反例解析测试；下一步仍用同一 120 s 输入验证，不通过改原输入掩盖问题。

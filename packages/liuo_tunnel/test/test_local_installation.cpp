@@ -115,3 +115,23 @@ TEST(AnchorRelativeCandidate, MainGraphInitialGuessUsesSameObservedVehicleRefere
   EXPECT_NEAR((main_pose.transformTo(transferred) - local.point).norm(), 0, 1e-12);
   EXPECT_THROW(local.in_reference(491, main_pose), std::invalid_argument);
 }
+
+TEST(LocalInstallation, GroundAssociationUsesActualSupportAndCannotExtendToWallSpan) {
+  const gtsam::Pose3 body(gtsam::Rot3(), {0, -1.875, 1.66});
+  auto points = walls(body);
+  points.erase(
+    std::remove_if(
+      points.begin(),
+      points.end(),
+      [&](const auto& point) {
+        const auto world = body.transformFrom(point);
+        return std::abs(world.z()) < 1e-8 && std::abs(world.x()) > 6;
+      }),
+    points.end());
+  const auto observed = local_installation_observation(points, body.rotation(), {10, 0, 0}, .02);
+  EXPECT_TRUE(observed.supports(body.transformTo(gtsam::Point3(5, 5.52, 3.5))));
+  EXPECT_FALSE(observed.supports(body.transformTo(gtsam::Point3(8, 5.52, 3.5))));
+  EXPECT_FALSE(observed.supports(body.transformTo(gtsam::Point3(-8, 5.52, 3.5))));
+  EXPECT_NEAR(observed.floors[1].minimum_longitudinal, -6, 1e-8);
+  EXPECT_NEAR(observed.floors[1].maximum_longitudinal, 6, 1e-8);
+}

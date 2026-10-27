@@ -1532,13 +1532,13 @@ private:
       try {
         const auto observed=local_installation_observation(wall_points,state.pose().rotation(),state.pose().rotation().unrotate(state.velocity()),cfg.at("sensors").at("sigma_lidar_range"));
         std::ofstream floor_audit(RunLogManager::instance().profiling_path("local_floor_patches.csv"), std::ios::app);
-        if (floor_audit.tellp() == 0) floor_audit << "stamp,pose,side,nx,ny,nz,cx,cy,cz,variance,along_spread,across_spread,center_margin\n";
+        if (floor_audit.tellp() == 0) floor_audit << "stamp,pose,side,nx,ny,nz,cx,cy,cz,variance,along_spread,across_spread,center_margin,minimum_longitudinal,maximum_longitudinal\n";
         for (size_t side = 0; side < 2; ++side) {
           const auto& floor = observed.floors[side];
           floor_audit << std::setprecision(16) << t << ',' << count << ',' << side;
           for (int j = 0; j < 3; ++j) floor_audit << ',' << floor.normal[j];
           for (int j = 0; j < 3; ++j) floor_audit << ',' << floor.center[j];
-          floor_audit << ',' << floor.variance << ',' << floor.along_spread << ',' << floor.across_spread << ',' << floor.margin(floor.center) << '\n';
+          floor_audit << ',' << floor.variance << ',' << floor.along_spread << ',' << floor.across_spread << ',' << floor.margin(floor.center) << ',' << floor.minimum_longitudinal << ',' << floor.maximum_longitudinal << '\n';
         }
         local_patches.insert_or_assign(X(count),std::make_pair(t,observed));
         for (auto it=local_patches.begin();it!=local_patches.end();) {

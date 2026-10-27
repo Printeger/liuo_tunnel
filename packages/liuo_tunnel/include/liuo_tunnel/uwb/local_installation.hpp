@@ -16,7 +16,7 @@ struct LocalInstallationObservation {
   static constexpr double span = 10.;
   bool supports(const gtsam::Point3& p) const {
     const auto& floor = floors[normal.dot(p) >= center_offset ? 1 : 0];
-    return p.allFinite() && std::abs(tangent.dot(p)) <= span && up.dot(p) <= maximum_height + .25 && floor.signed_height(p) >= -floor.margin(p);
+    return p.allFinite() && std::abs(tangent.dot(p)) <= span && up.dot(p) <= maximum_height + .25 && floor.covers(p) && floor.signed_height(p) >= -floor.margin(p);
   }
 };
 inline LocalInstallationObservation
