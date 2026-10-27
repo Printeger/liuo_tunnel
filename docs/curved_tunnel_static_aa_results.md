@@ -369,3 +369,6 @@ S200427附加`bias_diagnostic.json`以独立合成噪声重建仅离线检查bia
 S200427离线bias/速度记录显示首个Anchor前预测纵向速度已反向。旧观测函数每次取up×velocity选择正法向，固定synthetic偏距因而可能被解释到另一墙面。最小几何测试用完全相同的点云、姿态和偏距，仅将速度+5变为−5，旧选择确实翻转法向；修复采用最近成功局部观测的法向，经两个仍在联合窗口内X的相对旋转仅传递符号约定。当前速度零或反向不改变固定侧别。未改变墙面拟合、floor误差、±10m支持、候选分支门限或任何权重。
 
 首次仍需有效运动建立侧别；参考过期/关联不明确时pending，不能把缓存位姿当已知量或读取道路真值补足。只保存一个key并在reset清除。新增local_orientation.csv记录参考key、速度及当前法向与motion-left的关系，供生产审计。节点构建/安装通过，14项局部几何/相对候选测试通过，日志local_orientation_build.log、local_orientation_tests.log、local_orientation_install.log均位于/home/dev/ws_iap/liuo_observation/log。生产验证仍待进行，不把历史失败追认为通过。
+
+
+侧别修复生产运行`20261027T202541Z_963`（bbe9c5d）完成110秒，1100云/22000IMU/7080UWB/22000clock、1079输出，墙钟109.995496秒。local_orientation.csv有18个观测与当前motion-left反向，首个发生于93秒，仍传递原侧别；未因速度反向交换墙面。A1的89.5/95.4秒候选等待稳定，100.5秒有真实共同参考分支8.621910m，最终0A、无地图、350AA全pending。输入PASS不覆盖初始化；静态审计返回INCOMPLETE_NO_EXPORTED_MAP并exit1。固定坐标RMSE97.093279m，最大273.142308m，姿态0.368954deg、速度2.923048m/s；侧别语义修复成立，但不能声称已修复主定位问题。保留原门限，下一步执行独立输入的完整FAST-LIO2对照并继续定位候选/纯LIO失效原因。

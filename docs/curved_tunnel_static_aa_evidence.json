@@ -1103,6 +1103,113 @@
         "temporal_report": "export/analysis/full_route_resources.json"
       },
       "stage_acceptance": "FAILED_LOCALIZATION_WITH_ACTUAL_STATIC_AA_MAP"
+    },
+    "S_ORIENTATION_110_FAILED": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T202541Z_963",
+      "source_commit": "bbe9c5d",
+      "input_contract": {
+        "first_output": 3.1,
+        "last_output": 110.9,
+        "output_count": 1079,
+        "publish_wall_s": 109.99549557699356,
+        "raw_counts": {
+          "clock": 22000,
+          "cloud": 1100,
+          "imu": 22000,
+          "uwb": 7080
+        },
+        "raw_sha256": {
+          "clock": "25cd1be5f22181829cc51b4648587f92d8e559bd47321b67d12c23ad132609a3",
+          "cloud": "7ea13faa66c0831abdb1652586c46c051a8ca13784fa3e697e963ff3f8acb452",
+          "imu": "9666f7801ae7d058adac32470970cd9571a980805fd58d18c98fccd3553e04f6",
+          "uwb": "a3064047b789aef73ad366bfc0db9bb2d3db764b21fbbfe3166d43a9b27c8c78"
+        },
+        "real_time_factor": 1.0000409509769723,
+        "result": "PASS",
+        "scope": "native snapshot GPU input/output contract, not localization or map acceptance",
+        "source_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933"
+      },
+      "static_audit": {
+        "result": "INCOMPLETE_NO_EXPORTED_MAP",
+        "scope": "delivered raw AA and callback verified; no anchor initialization or fused AA; not acceptance",
+        "raw_records": 350,
+        "received_records": 350,
+        "unique_new_leaves": 350,
+        "final_fused_leaves": 0,
+        "final_pending_leaves": 350,
+        "raw_sha256": "8de5439e8e35ae747ee42842aa505b8ec5290548a70b4386b47c71df82ccdd7a"
+      },
+      "diagnostic": {
+        "scope": "offline diagnostic only, not stage acceptance",
+        "truth_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933",
+        "truth_format": "straight_csv",
+        "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T202541Z_963",
+        "gauge": "first_output_yaw_and_translation_only_no_route_fit",
+        "reference_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T202541Z_963",
+        "total_output_samples": 1079,
+        "pre_map_output_samples": 0,
+        "reference_stamp": 3.1,
+        "yaw_rotation_matrix": [
+          [
+            0.999999999677838,
+            -2.5383539705060263e-05,
+            0.0
+          ],
+          [
+            2.5383539705060263e-05,
+            0.999999999677838,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "translation": [
+          9.658074429680202e-06,
+          -4.518883378778878e-06,
+          1.2001327441306162
+        ],
+        "samples": 1079,
+        "first_stamp": 3.1,
+        "last_stamp": 110.9,
+        "covered_seconds": 107.80000000000001,
+        "position_rmse_m": 97.09327923879206,
+        "xyz_rmse_m": [
+          97.09004035023801,
+          0.25432884600451455,
+          0.7511690683810841
+        ],
+        "maximum_position_error_m": 273.1423082386079,
+        "attitude_rmse_deg": 0.3689538599797839,
+        "rpe": {
+          "1.0": {
+            "samples": 1069,
+            "translation_rmse_m": 4.619174703641777,
+            "rotation_rmse_deg": 0.020177555167853002
+          },
+          "10.0": {
+            "samples": 979,
+            "translation_rmse_m": 40.26374108647788,
+            "rotation_rmse_deg": 0.10524062179570623
+          }
+        },
+        "route_frame": {
+          "definition": "horizontal truth travel tangent, left horizontal normal, world vertical; no alignment or estimator input",
+          "stationary_direction": "nearest moving truth sample in time; ties choose earlier; speed threshold 1e-6 m/s",
+          "along_cross_height_rmse_m": [
+            97.09004035023801,
+            0.25432884600451455,
+            0.7511690683810841
+          ]
+        },
+        "velocity_rmse_mps": 2.9230481982097234
+      },
+      "orientation_negative_motion_samples": 18,
+      "first_negative_motion_stamp": 93.0,
+      "stage_acceptance": "FAILED_NO_ANCHOR_MAP",
+      "limitation": "Orientation convention now survives estimated velocity reversal; candidate instability and real relative branches remain."
     }
   },
   "limitations": [
@@ -1158,7 +1265,7 @@
       "production_build": "PASS"
     },
     "local_orientation_continuity": {
-      "state": "UNIT_CHECKED_PRODUCTION_PENDING",
+      "state": "UNIT_AND_S_PRODUCTION_SIGN_CHECKED_INITIALIZATION_STILL_FAILED",
       "tests": 14,
       "log": "/home/dev/ws_iap/liuo_observation/log/local_orientation_tests.log",
       "reproduction": "Identical walls and pose with reversed estimated velocity reverse the old normal and installation-side interpretation.",
