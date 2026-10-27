@@ -8,6 +8,25 @@ import numpy as np
 from scipy.spatial.transform import Rotation, Slerp
 
 
+def route_error_components(t, error, truth_t, truth_v):
+    """Offline horizontal travel tangent/left normal/world vertical, no fit."""
+    velocity = np.column_stack([np.interp(t, truth_t, truth_v[:, j]) for j in range(2)])
+    moving = np.linalg.norm(truth_v[:, :2], axis=1) > 1e-6
+    if not np.any(moving):
+        raise ValueError('no moving truth sample defines a route direction')
+    times, directions = truth_t[moving], truth_v[moving, :2]
+    stopped = np.linalg.norm(velocity, axis=1) <= 1e-6
+    for index in np.flatnonzero(stopped):
+        right = min(int(np.searchsorted(times, t[index])), len(times)-1)
+        left = max(0, right-1)
+        nearest = left if abs(times[left]-t[index]) <= abs(times[right]-t[index]) else right
+        velocity[index] = directions[nearest]
+    tangent = velocity / np.linalg.norm(velocity, axis=1)[:, None]
+    normal = np.column_stack([-tangent[:, 1], tangent[:, 0]])
+    return np.column_stack([np.sum(error[:, :2]*tangent, axis=1),
+                            np.sum(error[:, :2]*normal, axis=1), error[:, 2]])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--run', type=Path, required=True)
@@ -61,6 +80,7 @@ def main():
     aligned_positions = transform.apply(positions) + translation
     aligned_rotations = transform * rotations
     error = aligned_positions - target_positions
+    route_error = route_error_components(t, error, truth['t'], truth['v'])
     attitude = (target_rotations.inv() * aligned_rotations).magnitude()
     result = dict(scope='offline diagnostic only, not stage acceptance', truth_run=str(args.truth_run), truth_format=args.truth_format,
         run=str(args.run), gauge='inherited_CAL_gauge_no_REUSE_alignment' if gauge_reference else 'first_output_yaw_and_translation_only_no_route_fit',
@@ -71,6 +91,10 @@ def main():
         covered_seconds=float(t[-1]-t[0]), position_rmse_m=float(np.sqrt(np.mean(np.sum(error**2, axis=1)))),
         xyz_rmse_m=np.sqrt(np.mean(error**2, axis=0)).tolist(), maximum_position_error_m=float(np.max(np.linalg.norm(error, axis=1))),
         attitude_rmse_deg=float(np.rad2deg(np.sqrt(np.mean(attitude**2)))), rpe={})
+    result['route_frame'] = dict(
+        definition='horizontal truth travel tangent, left horizontal normal, world vertical; no alignment or estimator input',
+        stationary_direction='nearest moving truth sample in time; ties choose earlier; speed threshold 1e-6 m/s',
+        along_cross_height_rmse_m=np.sqrt(np.mean(route_error**2, axis=0)).tolist())
     # Relative pose increments at exact interpolated 1 and 10 second intervals.
     for interval in [1., 10.]:
         mask = t + interval <= t[-1]
@@ -105,6 +129,12 @@ def main():
     axes[-1].set_xlabel('ROS stamp (s)')
     fig.suptitle('Inherited CAL gauge — no REUSE alignment' if gauge_reference else 'Offline fixed-start yaw/translation diagnostic — no route fitting')
     fig.tight_layout(); fig.savefig(output / (prefix+'.png'), dpi=150); plt.close(fig)
+    fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+    for i, label in enumerate(['horizontal along-route error (m)', 'left cross-route error (m)', 'world height error (m)']):
+        axes[i].plot(t+1, route_error[:, i]); axes[i].set_ylabel(label); axes[i].grid(True)
+    axes[-1].set_xlabel('ROS stamp (s)')
+    fig.suptitle('Same fixed gauge; truth route frame used only for offline error components')
+    fig.tight_layout(); fig.savefig(output / (prefix+'_route.png'), dpi=150); plt.close(fig)
     print(json.dumps(result, indent=2))
 
 
