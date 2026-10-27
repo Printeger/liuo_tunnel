@@ -388,3 +388,12 @@ data-run -- env PYTHONDONTWRITEBYTECODE=1 python3 tools/check_straight_inputs.py
 ```
 
 `--scene straight`保留S的snapshot、旧话题和非单位外参，与L的rolling合同分开核验。S配置显式要求将原始包SHA绑定到本run的static配置；不会替换已写死的旧SHA。±2.8m安装资料是明确的synthetic精确关系，不是现场标定协方差，不含坐标/高度/顺序。地图导出与静态审计仍使用同一工具。离线固定坐标评价增加 `tools/analyze_road_diagnostic.py --truth-format straight_csv --run <run> --truth-run <S-input>`；REUSE必须加 `--map-reference-run <S-CAL-run>`，不按第二轮起点配准。报告沿用 `road_fixed_{start,map}_diagnostic` 文件名以保持地图坐标来源兼容，内容注明truth_format。
+
+当前成对 LIO-only 配置为 `straight_matched_lio_only.json` / `road_matched_lio_only.json`，分别保持对应 REUSE 的全部传感器与前端设置，只禁用 UWB 融合、地图和安装观测。完整运行命令（必须使用已冻结的独立第二轮输入）：
+
+```bash
+data-run -- tools/road_estimator.sh --scene straight --source-run /home/dev/ws_iap/.runtime/0/liuo/20261027T191449Z_257 --config packages/liuo_tunnel/config/straight_matched_lio_only.json --seconds 540
+data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414 --config packages/liuo_tunnel/config/road_matched_lio_only.json --seconds 392.6
+```
+
+独立 FAST-LIO 输入检查：经 `data-run -- bash -c` 加载 `/opt/ros/jazzy/setup.bash` 后执行 `python3 tools/check_baseline_shared_input.py <FAST-run> --liuo-run <相同输入的LIUO-run>`，重新读取冻结包核对原始传感器语义及适配发布/订阅摘要；不提供 `--liuo-run` 时只证明 FAST 自身输入，不宣称配对。完整 S FAST 已结束并记录严重定位失败，见新版结果；完整 S/L 主方法有效性仍未验收。
