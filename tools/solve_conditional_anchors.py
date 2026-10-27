@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import csv
+import time
 from pathlib import Path
 import numpy as np
 from scipy.optimize import minimize
@@ -102,14 +103,16 @@ def main():
     results = []
     constraints = [dict(type='ineq', fun=problem.domain)] if patches else []
     for number, start in enumerate(starts):
+        started = time.monotonic()
         fit = minimize(problem.objective, start, jac=True, method='SLSQP', constraints=constraints,
                        options=dict(maxiter=300, ftol=1e-9))
         residual, jacobian = problem.residual_jacobian(fit.x)
-        eigenvalues, eigenvectors = np.linalg.eigh(jacobian.T@jacobian)
+        information = jacobian.T@jacobian
+        eigenvalues, eigenvectors = np.linalg.eigh(information)
         margins = problem.domain(fit.x)
         feasible = np.all(np.isfinite(fit.x)) and (not len(margins) or min(margins) >= -1e-7)
         result = dict(start=number, success=bool(fit.success), status=int(fit.status), message=str(fit.message),
-                      iterations=int(fit.nit), feasible=bool(feasible), cost=float(residual@residual/2),
+                      iterations=int(fit.nit), wall_seconds=time.monotonic()-started, feasible=bool(feasible), cost=float(residual@residual/2),
                       gradient_norm=float(np.linalg.norm(jacobian.T@residual)),
                       minimum_domain_margin=float(min(margins)) if len(margins) else None,
                       anchors=fit.x.reshape(-1,3).tolist(), information_eigenvalues=eigenvalues.tolist(),
@@ -117,6 +120,18 @@ def main():
                       ta_cost=float(residual[:len(ta)]@residual[:len(ta)]/2),
                       aa_cost=float(residual[len(ta):len(ta)+len(aa)]@residual[len(ta):len(ta)+len(aa)]/2),
                       installation_cost=float(residual[len(ta)+len(aa):]@residual[len(ta)+len(aa):]/2))
+        result['ta_by_anchor'] = {}
+        for index, anchor in enumerate(ids):
+            values = residual[:len(ta)][problem.ta_index == index]
+            result['ta_by_anchor'][anchor] = dict(count=len(values), whitened_cost=float(values@values/2),
+                whitened_rmse=float(np.sqrt(np.mean(values**2))) if len(values) else None,
+                information_eigenvalues_other_anchors_fixed=np.linalg.eigvalsh(information[3*index:3*index+3,3*index:3*index+3]).tolist())
+        result['aa_by_edge'] = {}
+        for first, second in sorted({(r['first'],r['second']) for r in aa}):
+            mask = (problem.aa_first == ids.index(first)) & (problem.aa_second == ids.index(second))
+            values = residual[len(ta):len(ta)+len(aa)][mask]
+            result['aa_by_edge'][f'{first}-{second}'] = dict(count=len(values), whitened_cost=float(values@values/2),
+                whitened_rmse=float(np.sqrt(np.mean(values**2))))
         results.append(result)
         (args.output/f'candidate_{number:02d}.json').write_text(json.dumps(result, indent=2)+'\n')
     valid = sorted([r for r in results if r['feasible'] and r['success']], key=lambda r:r['cost'])
