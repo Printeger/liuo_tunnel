@@ -1,7 +1,7 @@
 {
   "schema": "curved_tunnel_static_aa_development_evidence_v1",
   "completion": "INCOMPLETE",
-  "scope": "Development evidence: full S first input, native S/L seams and failed full L calibration/reuse; full effective matrix incomplete",
+  "scope": "Development evidence: complete independent S/L inputs, failed full calibration/reuse, marginal-chart fix; effective full matrix incomplete",
   "runs": {
     "S_LEGACY_CAL_STATIC": {
       "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T152225Z_083",
@@ -827,6 +827,140 @@
       "initialization_stamp": 99.4,
       "accepted_initial_TA": 192,
       "stage_acceptance": "INCOMPLETE_SINGLE_ANCHOR_NO_AA_FUSION_POOR_LOCALIZATION"
+    },
+    "S_FULL_MANIFOLD_CAL_FAILED": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T200427Z_951",
+      "source_commit": "71e3075",
+      "algorithm_change_commit": "1ff22c1",
+      "input_contract": {
+        "first_output": 3.1,
+        "last_output": 540.9,
+        "output_count": 5379,
+        "publish_wall_s": 539.9957809370026,
+        "raw_counts": {
+          "clock": 108000,
+          "cloud": 5400,
+          "imu": 108000,
+          "uwb": 39960
+        },
+        "raw_sha256": {
+          "clock": "66bb6e3bbcede3084b00aef9efb71b0c58e449ac23c54467980a2049572e79d1",
+          "cloud": "bb9a65a0a1cb806284f020d901d4c6b902e6f1ca1cfbde2e457ddf3d8866543e",
+          "imu": "b2320e602c000db59955473036e2b623ed8bfb98aa3bb88ede665572c2d7f532",
+          "uwb": "413ad19563426759f0bd295f00183e7e052618f3492716885ba2fcf762a5dd3c"
+        },
+        "real_time_factor": 1.0000078131406696,
+        "result": "PASS",
+        "scope": "native snapshot GPU input/output contract, not localization or map acceptance",
+        "source_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933"
+      },
+      "static_audit": {
+        "scope": "delivered raw AA to callback and map ledger; not localization/reuse acceptance",
+        "result": "PASS",
+        "raw_records": 1805,
+        "unique_physical_leaves": 1805,
+        "received_records": 1805,
+        "map_absorbed_leaves": 0,
+        "final_fused_leaves": 0,
+        "final_pending_leaves": 1805,
+        "explicit_edges": 0,
+        "first_fused_stamp": null,
+        "oldest_absorbed_acquisition": null,
+        "map_stamp": 540.0,
+        "anchor_ids": [
+          2,
+          4
+        ],
+        "minimum_map_eigenvalue": 8.401324266787967e-05,
+        "raw_sha256": "8de5439e8e35ae747ee42842aa505b8ec5290548a70b4386b47c71df82ccdd7a"
+      },
+      "diagnostic": {
+        "scope": "offline diagnostic only, not stage acceptance",
+        "truth_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933",
+        "truth_format": "straight_csv",
+        "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T200427Z_951",
+        "gauge": "first_output_yaw_and_translation_only_no_route_fit",
+        "reference_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T200427Z_951",
+        "total_output_samples": 5379,
+        "pre_map_output_samples": 0,
+        "reference_stamp": 3.1,
+        "yaw_rotation_matrix": [
+          [
+            0.9999999996778398,
+            -2.5383469774840133e-05,
+            0.0
+          ],
+          [
+            2.5383469774840133e-05,
+            0.9999999996778398,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "translation": [
+          9.658074428546572e-06,
+          -4.520164236828882e-06,
+          1.2001327441284084
+        ],
+        "samples": 5379,
+        "first_stamp": 3.1,
+        "last_stamp": 540.9,
+        "covered_seconds": 537.8,
+        "position_rmse_m": 1819.5139116343025,
+        "xyz_rmse_m": [
+          1818.778341373313,
+          29.535220736772448,
+          42.472229964189125
+        ],
+        "maximum_position_error_m": 3433.275958626929,
+        "attitude_rmse_deg": 5.424448380722221,
+        "rpe": {
+          "1.0": {
+            "samples": 5369,
+            "translation_rmse_m": 31.317287810298254,
+            "rotation_rmse_deg": 1.0173122109682589
+          },
+          "10.0": {
+            "samples": 5279,
+            "translation_rmse_m": 126.70438388945351,
+            "rotation_rmse_deg": 2.4333474804781434
+          }
+        },
+        "velocity_rmse_mps": 8.676367733173043
+      },
+      "resources": {
+        "scope": "recorded extrema, temporal trends and output coverage only; no localization, leak or load-test acceptance",
+        "states_samples": {
+          "DEGRADED": 2316,
+          "LOST": 3063
+        },
+        "output_samples": 5379,
+        "first_output_stamp": 3.1,
+        "last_output_stamp": 540.9,
+        "max_retained_vehicle_states": 101.0,
+        "max_factors": 695.0,
+        "max_rss_mib": 335.1640625,
+        "max_device_mib": 1175.875,
+        "device_memory_scope": "entire CUDA device, not exclusive process allocation",
+        "max_imu_queue": 402.0,
+        "max_cloud_queue": 0.0,
+        "max_uwb_queue": 2.0,
+        "maximum_optimization_ms": 59.9996,
+        "max_retained_cloud_frames": 101.0,
+        "max_keyframes": 1.0,
+        "temporal_report": "export/analysis/full_route_resources.json"
+      },
+      "initializations": {
+        "2": 191.9,
+        "4": 364.4
+      },
+      "branch_report": "export/analysis/candidate_branch_diagnostic.json",
+      "stage_acceptance": "FAILED_LOCALIZATION_NO_AA_FUSION",
+      "limitation": "Complete input/output and finite-domain crash fix do not establish effectiveness. A1 missed after a genuine relative branch; A3/A5 height/seed gates remain unresolved."
     }
   },
   "limitations": [

@@ -1,6 +1,6 @@
 # 曲线与静态 AA 开发记录
 
-状态：**开发中，C01–C16 尚未完成，不是算法验收报告**。
+状态：**开发中，C01–C16 尚未完成，不是算法验收报告**。最近完整S运行200427已完成全部输入/输出，但定位RMSE1819.51m且无AA融合，仍属失败；详见文末流形先验修复后的完整S结果。
 
 ### 首次完整 L 独立复用：有实际接入，定位仍退化
 
@@ -340,3 +340,14 @@ run `20261027T192427Z_824`（2c29438）完整540秒结束，GPU1×墙时539.9959
 资源检查器新增按session分别统计的首末值、变化量、最小二乘变化率及四个等时长窗口的样本数/中位数/最大值，覆盖RSS、整卡显存、车辆状态、因子、Anchor和优化时间。已用独立线性序列、不规则采样、session重置和逆序拒绝用例检查，并对S110运行200157生成实际报告。趋势是描述性证据，不自动判定无泄漏，也不代替60秒生产负载。
 
 FAST-LIO外部入口在首条read_next之前设置仅LiDAR/IMU/clock的StorageFilter，静止启动单独仅选择IMU；legacy S真值/UWB原始payload不进入读取循环。snapshot时段为左闭右开，与原生LIUO一致；rolling保留既有包含末时刻合同。选择/排除topic及端点语义记录在baseline_input manifest。3项适配/过滤顺序测试通过（baseline_input_boundary_tests.log）；真实冻结S-CAL前20秒的过滤后4000IMU/200云计数和原始语义hash，与生产191331输出完全相等（baseline_s20_filtered_input.json）。上述日志均在/home/dev/ws_iap/liuo_observation/log。此次未启动第三方算法，完整对照仍待运行。
+
+
+### 流形先验修复后完整S：异常消失，定位与AA主线仍失败
+
+run `20261027T200427Z_951`，启动提交71e3075，实际算法改动1ff22c1，输入为190229，配置straight_local_static.json和straight_local_offsets.json，`data-run -- tools/road_estimator.sh --scene straight --source-run /home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933 --config packages/liuo_tunnel/config/straight_local_static.json --installation packages/liuo_tunnel/config/straight_local_offsets.json --seconds 540`。5400云/108000IMU/39960UWB/108000clock严格核对，5379输出3.1–540.9秒，墙钟539.995781秒；无原有限补丁线性化异常。
+
+A2在191.9秒、A4在364.4秒各以192原始TA初始化。540.0秒真实地图只有[2,4]，协方差最小特征值8.40132e−5；1805交付AA全部pending，0融合、0边。静态审计PASS仅证明交付身份/数量和空融合账本一致，不满足静态AA有效性。A1在94.7秒出现真实共同参考分支5.252725m，99.3秒只有首次稳定候选，未在窗口内再次确认；A3/A5多次不满足观测高度/后续无有效sphere seed。完整运行与S110首次A1成功不同，不能把单次短片段宣称为稳定初始化。
+
+固定首输出yaw/translation规范RMSE1819.513912m（XYZ1818.778341/29.535221/42.472230），最大3433.275959m，姿态5.424448deg，速度8.676368m/s；RPE1s31.317288m、10s126.704384m。DEGRADED2316/LOST3063。仍为严重定位失败，不能因较旧8144.88m结果小而称有效。
+
+资源最大101车辆状态、695因子、RSS335.164MiB、整卡1175.875MiB，IMU/云/UWB队列402/0/2，优化最大60.000ms。四等时窗RSS中位数298.184/316.645/327.977/330.961MiB，因子中位数380/567/569/568，车辆中位数均101；只作本次趋势描述，不声称长时无泄漏。原始包、两个Anchor地图、全部失败输出和分析图/JSON保留。后续需解决首个近距离候选的稳定确认与高度/几何关联，不放宽物理条件或几何判据。
