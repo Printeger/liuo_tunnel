@@ -355,7 +355,7 @@ def main():
             if digest(core_path) != core_identity["sha256"]:
                 raise RuntimeError("retained legacy core library identity changed")
             env["LD_LIBRARY_PATH"] = str(legacy_lib) + ":" + env.get("LD_LIBRARY_PATH", "")
-            legacy_reference = dict(scope="OLD_INTERFACE_REFERENCE_ONLY; not new production integration", evidence_run=str(reference_run), source=reference_manifest["source"], binary_sha256=digest(legacy_binary), conversion="one original synthetic event to historical typed endpoints; pre-float32 CSV distance; same source stamp and variance; no truth pose prior", precision="physical CSV retained at 16 significant digits; not bitwise double reconstruction")
+            legacy_reference = dict(historical_build_caches=reference_identity.get("build_caches", {}), core_library=core_identity, scope="OLD_INTERFACE_REFERENCE_ONLY; not new production integration", evidence_run=str(reference_run), source=reference_manifest["source"], binary_sha256=digest(legacy_binary), conversion="one original synthetic event to historical typed endpoints; pre-float32 CSV distance; same source stamp and variance; no truth pose prior", precision="physical CSV retained at 16 significant digits; not bitwise double reconstruction")
         if args.capture_only:
             binaries.pop("odometry")
         identity = {
