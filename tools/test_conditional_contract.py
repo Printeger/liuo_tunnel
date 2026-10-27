@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import copy
 import unittest
-from conditional_contract import validate_oracle_map, vehicle_condition_config
+from conditional_contract import validate_oracle_map, vehicle_condition_config, initial_output_budget
 
 
 class ConditionalContractTest(unittest.TestCase):
@@ -42,6 +42,12 @@ class ConditionalContractTest(unittest.TestCase):
         self.base['uwb']['bootstrap_s'] = 30.
         derived = vehicle_condition_config(self.base)
         self.assertEqual(derived['uwb']['bootstrap_s'], 30.)
+        self.assertEqual(initial_output_budget(derived), 35.)
+        derived['uwb']['bootstrap_s'] = 8.
+        self.assertEqual(initial_output_budget(derived), 30.)
+        derived['uwb']['bootstrap_s'] = 61.
+        with self.assertRaises(ValueError):
+            initial_output_budget(derived)
 
 
 if __name__ == '__main__':

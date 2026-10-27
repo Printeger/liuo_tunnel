@@ -2,6 +2,13 @@
 import copy
 
 
+def initial_output_budget(config):
+    duration = float(config['uwb']['bootstrap_s'])
+    if not 0 < duration <= 60:
+        raise ValueError('conditional bootstrap collection must be bounded by 60 seconds')
+    return max(30., duration+5.)
+
+
 def vehicle_condition_config(original):
     if original['uwb']['mode'] != 'self_calibrate_free':
         raise ValueError('D2 requires the frozen unknown-anchor CAL configuration')

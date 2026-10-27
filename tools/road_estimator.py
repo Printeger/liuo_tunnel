@@ -250,7 +250,11 @@ def main(*, conditional_oracle=False):
             while time.monotonic() < deadline:
                 rclpy.spin_once(node, timeout_sec=min(.005, max(0., deadline-time.monotonic())))
             if any(c.poll() is not None for c in children): raise RuntimeError('owned child exited during replay')
-            if time.monotonic() - started > args.seconds + 30 or time.monotonic() - progress[0] > 30:
+            progress_budget = 30.
+            if conditional_oracle and progress[1] is None:
+                from conditional_contract import initial_output_budget
+                progress_budget = initial_output_budget(config)
+            if time.monotonic() - started > args.seconds + 30 or time.monotonic() - progress[0] > progress_budget:
                 raise TimeoutError('road replay wall/no-odometry-progress limit')
             if shutil.disk_usage(run).free < 8 * 1024**3: raise RuntimeError('disk reserve')
             message = deserialize_message(data, types[topic])
