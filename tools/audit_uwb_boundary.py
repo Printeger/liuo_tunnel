@@ -30,6 +30,7 @@ def audit(run):
     expired_rows=[r for r in consumed if (r['driver_session'],r['session'],r['sequence'])==(expired['driver_session'],expired['source_session'],expired['sequence'])]
     check(any(r['reason']=='WINDOW_EXPIRED' for r in expired_rows),'expired input not rejected at estimator association')
     check(max(int(r['queue_size']) for r in decisions)==4096,'queue peak must hit declared bound exactly')
+    check(all(int(r['queue_size'])==4096 for r in decisions if r['reason']=='QUEUE_LIMIT'), 'capacity rejection without full production queue')
     post=[r for r in trajectory if int(r['session'])==2]
     check(len(post)>=20 and float(post[-1]['stamp'])-float(post[0]['stamp'])>=2,'no sustained second-session localization')
     new_driver=str(int(expired['driver_session'])+1000000000)

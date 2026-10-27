@@ -5,7 +5,7 @@
   "delay_cycle_ms": [25, 50, 0],
   "duplicate_every": 17,
   "duplicate_delay_ms": 1,
-  "outages": [[22, 22.2]],
+  "outages": [[22, 23]],
   "anchor_outages": [{"anchor_id": 0, "begin_s": 25, "end_s": 30}],
   "nlos_bias": {
     "anchor_id": 1,
