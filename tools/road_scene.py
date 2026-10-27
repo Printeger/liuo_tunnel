@@ -63,6 +63,9 @@ def main():
     import subprocess
     dependencies = {name: importlib.metadata.version(name) for name in ['numpy', 'scipy', 'trimesh', 'embreex', 'matplotlib']}
     dependencies['python'] = platform.python_version()
+    source_paths = sorted(p for p in MODEL.rglob('*') if p.is_file()) + [Path(__file__), ROOT / 'tools/road_scene_io.py']
+    source_hashes = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in source_paths}
+    dependencies['scene_source_sha256'] = source_hashes
     shared = ROOT.parent / 'nlink_parser_uwb/packages/liuo_uwb_msgs/msg'
     dependencies['shared_msg_sha256'] = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in shared.glob('*.msg')}
     dependencies['driver_commit'] = subprocess.check_output(['git', '-C', str(ROOT.parent / 'nlink_parser_uwb'), 'rev-parse', 'HEAD'], text=True).strip()
@@ -86,6 +89,8 @@ def main():
       plots(run)
       from road_scene_io import replay
       replay(run / 'export/capture/raw', run / 'export/analysis/wire_check.json', min(2., args.seconds or 2.), Path('/home/dev/ws_iap/road_scene_build/road_scene_wire_check'))
+      if any(hashlib.sha256((ROOT / name).read_bytes()).hexdigest() != digest for name, digest in source_hashes.items()):
+        raise RuntimeError('scene source changed during generation')
       artifacts = {}
       for path in sorted(run.rglob('*')):
         if not path.is_file() or path == manifest or '/runtime/' in str(path):
@@ -96,7 +101,7 @@ def main():
             digest.update(chunk)
         artifacts[str(path.relative_to(run))] = dict(bytes=path.stat().st_size, sha256=digest.hexdigest(), retention='keep; scene experiment input/evidence')
       rd.write_subordinate_manifest(run, 'scene_artifacts',
-                                    dict(files=artifacts, full_route=args.seconds is None, source_commit=rd._git_value('rev-parse', 'HEAD'), seed=cfg['seed']))
+                                    dict(files=artifacts, full_route=args.seconds is None, source_commit=json.loads(manifest.read_text())['source']['git_commit'], seed=cfg['seed']))
     value = json.loads(manifest.read_text())
     value['acceptance'] = 'pass' if not args.check else 'not_evaluated'
     value['scene_checks'] = 'pass'
