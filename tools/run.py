@@ -53,6 +53,7 @@ def main():
     p.add_argument("--uwb-boundary-fixture", action="store_true", help="public queue capacity, expiry and clock-reset recovery test")
     p.add_argument("--uwb-load-fixture", action="store_true", help="60s synthetic 50Hz/5Hz protocol load with independent slow subscriber")
     p.add_argument("--uwb-contract-fixture", action="store_true", help="predeclared software callback fixture on frozen IMU/LiDAR/clock")
+    p.add_argument("--replay-declared-contract", action="store_true", help="replay a captured negative contract case after its case audit passes")
     p.add_argument("--legacy-reference-run", type=Path, help="reference-only retained old binary; never unified-interface acceptance")
     p.add_argument("--capture-derived", action="store_true", help="write transformed replay into a new run-owned dataset; never overwrite source bag")
     p.add_argument("--capture-only", action="store_true", help="live raw capture and observer only; no estimator or localization acceptance")
@@ -137,6 +138,8 @@ def main():
         p.error("load fixture requires replay without other input transformations")
     if args.uwb_contract_fixture and (not args.replay or args.delivery_profile):
         p.error("contract fixture requires replay without delivery profile")
+    if args.replay_declared_contract and (not args.replay or args.uwb_contract_fixture or args.uwb_load_fixture or args.uwb_boundary_fixture or args.delivery_profile or args.legacy_reference_run):
+        p.error("declared contract replay cannot be combined with input transformations")
     if args.legacy_reference_run and (not args.replay or args.uwb_contract_fixture or args.uwb_load_fixture or args.uwb_boundary_fixture or args.delivery_profile or args.capture_derived):
         p.error("legacy reference requires unmodified physical frozen input")
     if args.capture_derived and not args.replay:
@@ -207,10 +210,18 @@ def main():
                 (source / "metadata/manifests/observation_audit.json").read_text()
             )
             source_runtime = json.loads((source / "export/simulation/runtime.json").read_text())
+            declared_contract = False
+            if args.replay_declared_contract:
+                case_audit = json.loads((source / "export/analysis/uwb_contract_audit.json").read_text())
+                plan = source / "metadata/config/uwb_contract_expected.json"
+                if case_audit["result"] != "PASS" or case_audit["plan_sha256"] != digest(plan):
+                    raise RuntimeError("contract source audit/plan mismatch")
+                shutil.copyfile(plan, run / "metadata/config/uwb_contract_expected.json")
+                rd.register_config_snapshot(run, run / "metadata/config/uwb_contract_expected.json")
+                declared_contract = True
             if (
                 source_manifest["lifecycle"] != "completed"
-                or source_audit["violations"]
-                or source_audit.get("duplicate_uwb")
+                or ((source_audit["violations"] or source_audit.get("duplicate_uwb")) and not declared_contract)
             ):
                 raise RuntimeError("FROZEN_SOURCE_INVALID: incomplete lifecycle or raw violations")
             if source_audit["counts"] != source_runtime["published_counts"]:
@@ -504,6 +515,8 @@ def main():
             if args.capture_derived:
                 commands["simulation"] += ["--capture-derived"]
                 identity["derived_capture"] = dict(source_run=frozen["source_run"], source_sha256=frozen["capture_sha256"], semantics="new dataset of actually delivered messages and monotonic delivery times")
+            if args.replay_declared_contract:
+                commands["simulation"] += ["--replay-declared-contract"]
             if args.legacy_reference_run:
                 commands["simulation"] += ["--legacy-reference"]
             identity["frozen_input"] = frozen

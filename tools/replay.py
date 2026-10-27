@@ -21,6 +21,7 @@ import rosbag2_py
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--replay-declared-contract", action="store_true")
     parser.add_argument("--legacy-reference", action="store_true")
     parser.add_argument("--capture-derived", action="store_true")
     parser.add_argument("--uwb-boundary-fixture", action="store_true")
@@ -109,7 +110,7 @@ def main():
     if not reader.has_next():
         raise RuntimeError("empty frozen input")
     hashes = {k: hashlib.sha256() for k in counts}
-    duplicates = []
+    duplicates = json.loads((source / "metadata/manifests/observation_audit.json").read_text())["duplicate_uwb"] if args.replay_declared_contract else []
 
     def records():
         while reader.has_next():
