@@ -132,3 +132,5 @@ free 模式每秒及 A 集合改变时，从实际图导出 `export/map/calibrat
 使用现有 `straight_reachable_capture.json`、snapshot、原有非单位外参、报告者到车可达性开启；通过 `tools/run.sh --formal --capture-only --duration 540 --config packages/liuo_tunnel/config/straight_reachable_capture.json` 独立录制。CAL为seed0、`--sim-start 0 0 1.2 0`；REUSE为seed1、`--sim-start 0 0.2 1.6 1.5707963267948966`。两者普通outbound沿世界x从0至2350m，最高5m/s，约530秒结束，保留尾部静止；不启用calibration-route/local-calibration/return-trip。S允许体朝向与轨道速度不同，这是原有运动学场景，不冒充公路汽车。
 
 场景参数仅在生成器和离线检查端使用，不作为估计器初值或高度观测。分别保存新owner/raw/真值/源版本与摘要，保留旧360秒包为历史回归。正式生成维持1×和原计时，不与GPU正式估计回放重叠。接收/录包完整性按现有capture-only合同检查；另独立核对全程起止、运动覆盖、三类传感器摘要和seed/随机流及报告者可达性。噪声独立检查在各自真值/姿态/偏置扣除后，跨轮白噪声相关绝对值门限0.05；不能因不同起点/朝向造成的信号差异直接宣布噪声独立。此声明不表示普通S未知Anchor初始化或地图复用已经通过。
+
+离线 `check_straight_inputs.py` 不导入模拟器：以保存的p/v做Hermite插值求加速度，独立Python计数器重建声明的bias随机游走，再从实际接收IMU扣除。对重建白噪声与声明计数器样本核对，插值加速度误差门限0.002m/s²、角速度误差1e−10rad/s；这项是合成源语义检查，不是独立物理模型证明。随后对实际残差计算两轮相关。UWB按端点/物理样本序号匹配共同样本，分别检查TA与AA（各>1000样本），不以交付session不同证明独立。原始包和接收CSV摘要全部重算；该程序不能替代单独报告者LOS检查。
