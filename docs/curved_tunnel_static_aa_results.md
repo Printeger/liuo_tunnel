@@ -91,3 +91,9 @@ data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liu
 - `20261027T155126Z_709`：180 s 片段失败。节点在 measurement_stamp=175.2 报 `OPTIMIZATION_FAILED`，GTSAM Cholesky 在 x1712 附近检测到欠约束系统。80 km/h 从场景 t≈161.315 开始，失败之前已进入该区间，但 180 s 未完成，不能判 PASS。保留失败和原始噪声模型。下一项为同一因子/输入仅改 QR 的数值求解诊断，结果未预判。
 
 这些入口检查均为 GPU、1×、原始 rolling LIO-only；没有完成 L 未知站点自标定，也未证明定位有效。代码、配置与小闭环验收不能替代 C01–C16 的完整矩阵。
+
+### L 起步发散诊断（预声明）
+
+进一步检查失败 run `20261027T155126Z_709`：t=20 时 vx=-4.70058 m/s，t=175 时 vz=-58598.84 m/s。问题远早于最终 Cholesky 异常，不能只归因为求解器数值失败。t=15→20 的估计加计 bias x 从 0.0294 增至 0.9399 m/s²；输入合同 PASS 不证明这些轨迹有效。
+
+已有 S 生产配置使用观测法向弱平移投影，初始 L 配置继承 phase1 默认而未开启。下一项先用 `road_rolling_lio_projected.json` 进行 30 s 起步对照；与原始 L 配置逐键仅 `project_weak_lidar_translation=true` 不同。保留已有法向谱最大值 1% 阈值、原始 GPU/IMU 因子、噪声和关键帧数量，不加载几何或位置真值。检查逐 topic 原始输入一致性以及 t=10/20/30 位置、速度、bias 和投影秩；这是归因诊断，没有新增精度通过阈值。QR 诊断暂缓，因为首先要解释早期反向漂移。
