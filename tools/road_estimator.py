@@ -29,6 +29,7 @@ def main():
     parser.add_argument('--config', type=Path, required=True)
     parser.add_argument('--seconds', type=float, default=20.)
     parser.add_argument('--scene', choices=['road', 'straight'], default='road', help='explicit frozen input contract; no scan-model conversion')
+    parser.add_argument('--static-delivery-strategy', choices=['same_time', 'cache_sync', 'continuous_report'], default='same_time')
     parser.add_argument('--map', type=Path, help='previous independent run A-only joint map')
     parser.add_argument('--installation', type=Path, help='coordinate-free synthetic local offsets; never a coordinate map')
     args = parser.parse_args()
@@ -55,6 +56,11 @@ def main():
         config_path = run / 'metadata/config/phase1.json'
         shutil.copyfile(args.config, config_path)
         config = json.loads(config_path.read_text())
+        if args.static_delivery_strategy != 'same_time':
+            if not config['uwb'].get('static_edges'):
+                raise ValueError('static delivery strategy requires explicit static channel')
+            config['uwb']['static_edges']['delivery_strategy'] = args.static_delivery_strategy
+            config_path.write_text(json.dumps(config, indent=2)+'\n')
         if config['odometry']['backend'] != 'gpu' or config['uwb']['mode'] not in {'record_only', 'self_calibrate_free', 'reuse_anchor_map'}:
             raise ValueError('road diagnostic requires GPU record_only, self_calibrate_free or reuse_anchor_map')
         scan_model = 'rolling' if args.scene == 'road' else 'snapshot'

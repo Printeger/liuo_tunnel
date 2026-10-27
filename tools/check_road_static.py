@@ -172,9 +172,18 @@ def check(run):
         assert leaf.variance_m2 == .01
         received[leaf.physical_id] = expected_leaf
         received_count += 1
-    assert received == expected and received_count == raw_records
+    assert received == expected
     published = json.loads((run / 'export/simulation/static_delivery.json').read_text())
-    assert published['records'] == raw_records and set(published['unique_physical_ids']) == set(expected)
+    assert published['records'] == received_count and set(published['unique_physical_ids']) == set(expected)
+    strategy = config['uwb']['static_edges'].get('delivery_strategy', 'same_time')
+    if strategy == 'same_time':
+        assert received_count == raw_records
+    elif strategy == 'cache_sync':
+        assert received_count == len(expected)
+    elif strategy == 'continuous_report':
+        assert received_count >= raw_records
+    else:
+        raise ValueError('unsupported static delivery strategy')
     if config['uwb']['mode'] == 'reuse_anchor_map':
         return check_reuse_seam(run, expected, audit, digest, raw_records, received_count)
     model = json.loads((run / 'export/map/calibrated_map.json').read_text())

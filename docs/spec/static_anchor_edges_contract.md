@@ -64,3 +64,13 @@
 
 
 生产 A-only 复用现已调用延迟移交接口；接入前旧叶由单独不可变账本隔离，接入成功才交换owner。`without_map_prior` 用于丢弃含G的图后的重建：只恢复本轮history为pending，不保留旧prior的已吸收声明。对应测试检查fresh/next两叶恢复、旧叶仅随新prior恢复。真实回调/时钟重置回放证据仍待完成，早期“生产协调器未完成”为上述基础提交时的状态。
+
+## 冻结原始块的两种生产交付策略
+
+`road_estimator.sh --static-delivery-strategy cache_sync|continuous_report` 在同一冻结S/L原始输入上，仅改变项目内StaticAnchorRecord交付；默认same_time保留既有行为。原始LiDAR/IMU/UWB/clock原样回放，物理测距计划和噪声不变。两种策略首次发现物理ID时都立即交付当前叶；cache_sync随后不重发相同块，continuous_report在同一报告者的每次实际原始AA成功交付事件重发该报告者最近最多32个旧块（加当前新块每机会最多33条）。从未抵达过车辆的全局物理块不会加入缓存。
+
+实际AA报告到达本身是该报告者当时可达的证据；不根据另一报告者、跨时间插值或全局physical_uwb日志推断可达。连续策略只在这些已证实机会发送，实际频率由输入决定，不冒称恒定5Hz或RF/MAC带宽仿真。两种策略新增软件传输延迟为零，共用原始包中已有的有限交付延迟。重复记录只更新发布header，physical_id/revision/covered_blocks/源采集时间/距离/方差不变；同身份payload变化立即拒绝。唯一ID总表仍受8192等配置上限约束，报告者缓存32条；永久图信息由估计器账本持有，发送缓存退休不会撤销prior或丢掉已接收物理信息。
+
+这是固定revision1原始叶的发现/去重同步最小策略，不能替代累计摘要版本更新、部署重置与故障恢复验收。实际传输次数、重复次数、机会数、CDR payload字节数、缓存上限单独记录，字节数不含DDS/RF开销。
+
+STATIC-PAIR预声明：相同原始包、已发布四话题语义hash/数量、实际节点二进制和依赖、地图输入、除交付策略外的配置必须精确相等；独立回调/图/后验账本审计通过后，两个检查点stamp相同、已吸收物理叶payload集合完全相同，逐边count/weight/weighted_range/weighted_squared_range完全相同。cache_sync无重复、continuous_report必须实际有重复且传输次数/字节更高；不要求非线性轨迹逐点相同，也不以相同计数替代身份。`compare_static_delivery.py`只给这些信息/通信结论，非定位或RF/MAC通过。先L独立REUSE前180秒（固定完整CAL图）走一对，再S具备实际地图后选相应片段。

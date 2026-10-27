@@ -5,6 +5,8 @@ physical/global UWB log, anchor coordinates, or vehicle truth.
 """
 import hashlib
 import json
+import copy
+from collections import OrderedDict
 from pathlib import Path
 
 from liuo_tunnel_msgs.msg import StaticAnchorRecord, StaticRangeLeaf
@@ -29,6 +31,15 @@ class StaticReplayPublisher:
             QoSProfile(depth=100, reliability=ReliabilityPolicy.RELIABLE))
         self.count = 0
         self.identities = set()
+        self.fingerprints = {}
+        self.reporter_cache = {}
+        self.strategy = config.get('delivery_strategy', 'same_time')
+        if self.strategy not in {'same_time', 'cache_sync', 'continuous_report'}:
+            raise ValueError('unsupported static delivery strategy')
+        self.repeated = 0
+        self.opportunities = 0
+        self.bytes = 0
+        self.cache_limit = 32
         self.run = run
         (run / "metadata/manifests/static_source.json").write_text(json.dumps({
             "source_model": config["source_model"], "raw_sha256": digest,
@@ -81,15 +92,49 @@ class StaticReplayPublisher:
             record.valid = True
             record.covered_blocks = [identity]
             record.leaves = [leaf]
-            self.publisher.publish(record)
-            self.count += 1
+            fingerprint = (first, second, physical_source, leaf.range_m, leaf.variance_m2,
+                           leaf.acquisition_stamp.sec, leaf.acquisition_stamp.nanosec, leaf.time_basis)
+            if identity in self.fingerprints and self.fingerprints[identity] != fingerprint:
+                raise ValueError('same physical identity changed payload')
+            is_new = identity not in self.identities
+            self.fingerprints[identity] = fingerprint
             self.identities.add(identity)
             if len(self.identities) > self.config.get("max_leaves", 8192):
                 raise RuntimeError("static replay physical identity capacity")
+            # A successfully delivered raw AA event proves an opportunity for
+            # this reporter at this delivery instant. No global LOS/truth log
+            # is used, and another reporter's cache is never transmitted here.
+            self.opportunities += 1
+            reporter = int(observation.reporter_id)
+            cached = self.reporter_cache.setdefault(reporter, OrderedDict())
+            outgoing = [record] if (self.strategy == 'same_time' or is_new) else []
+            if self.strategy == 'continuous_report':
+                outgoing.extend(old for key, old in cached.items() if key != identity)
+                if not is_new:
+                    outgoing.insert(0, record)
+            from rclpy.serialization import serialize_message
+            for item in outgoing:
+                delivered = copy.deepcopy(item)
+                delivered.header.stamp = batch.header.stamp
+                self.publisher.publish(delivered)
+                self.count += 1
+                self.bytes += len(serialize_message(delivered))
+                self.repeated += int(delivered.record_id != identity or not is_new)
+            cached[identity] = record
+            cached.move_to_end(identity)
+            while len(cached) > self.cache_limit:
+                cached.popitem(last=False)
 
     def close(self):
         (self.run / "export/simulation").mkdir(parents=True, exist_ok=True)
         (self.run / "export/simulation/static_delivery.json").write_text(json.dumps({
             "records": self.count, "unique_physical_ids": sorted(self.identities),
-            "strategy": "same-time derivation from delivered raw AA only",
+            "strategy": self.strategy,
+            "reachability": "same reporter's actual delivered raw AA event only; no interpolation or global LOS data",
+            "reporter_cache_limit": self.cache_limit,
+            "reporter_cache_peak": max((len(cache) for cache in self.reporter_cache.values()), default=0),
+            "delivery_opportunities": self.opportunities,
+            "repeated_records": self.repeated,
+            "serialized_payload_bytes": self.bytes,
+            "physical_sampling": "unchanged frozen raw input; software transmission accounting, not RF/MAC simulation",
         }, indent=2) + "\n")
