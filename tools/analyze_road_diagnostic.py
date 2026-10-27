@@ -149,15 +149,16 @@ def main():
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
+    plot_selection = focus if args.focus_start is not None else np.ones(len(t), dtype=bool)
     fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
     for i, label in enumerate(['world x error (m)', 'world y error (m)', 'world z error (m)']):
-        axes[i].plot(t+1, error[:,i]); axes[i].set_ylabel(label); axes[i].grid(True)
+        axes[i].plot(t[plot_selection]+1, error[plot_selection,i]); axes[i].set_ylabel(label); axes[i].grid(True)
     axes[-1].set_xlabel('ROS stamp (s)')
     fig.suptitle('ORACLE Anchor diagnostic — world frame, no truth alignment' if args.oracle_world else ('Inherited CAL gauge — no REUSE alignment' if gauge_reference else 'Offline fixed-start yaw/translation diagnostic — no route fitting'))
     fig.tight_layout(); fig.savefig(output / (prefix+'.png'), dpi=150); plt.close(fig)
     fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
     for i, label in enumerate(['horizontal along-route error (m)', 'left cross-route error (m)', 'world height error (m)']):
-        axes[i].plot(t+1, route_error[:, i]); axes[i].set_ylabel(label); axes[i].grid(True)
+        axes[i].plot(t[plot_selection]+1, route_error[plot_selection, i]); axes[i].set_ylabel(label); axes[i].grid(True)
     axes[-1].set_xlabel('ROS stamp (s)')
     fig.suptitle('Same fixed gauge; truth route frame used only for offline error components')
     fig.tight_layout(); fig.savefig(output / (prefix+'_route.png'), dpi=150); plt.close(fig)
