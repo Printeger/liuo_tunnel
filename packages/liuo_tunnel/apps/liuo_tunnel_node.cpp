@@ -1947,6 +1947,13 @@ private:
     if (fuse && cfg.at("odometry").value("early_five_extra_updates", false) && t <= 13.0) {
       for (int iteration = 0; iteration < 5; ++iteration) smoother->update();
     }
+    if (local_installation && !map.ids.empty()) {
+      const auto estimate = smoother->calculateEstimate();
+      for (const auto& factor : smoother->getFactors()) {
+        const auto* local = dynamic_cast<const LocalInstallationFactor*>(factor.get());
+        if (local && !std::isfinite(local->error(estimate))) throw std::runtime_error("LOCAL_INSTALLATION_ACCEPTED_STATE_OUTSIDE_PATCH");
+      }
+    }
     // Opt-in common-translation invariant probe before vehicle marginalization.
     // Relative GPU factors are not relinearized; their caches remain untouched.
     const bool yaw_probe = cfg.at("odometry").value("yaw_information_probe", false);

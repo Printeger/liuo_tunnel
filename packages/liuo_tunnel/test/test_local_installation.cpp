@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 #include <liuo_tunnel/uwb/local_installation.hpp>
+#include <gtsam/nonlinear/DoglegOptimizer.h>
+#include <gtsam/slam/PriorFactor.h>
 
 using namespace liuo_tunnel;
 namespace {
@@ -52,6 +54,42 @@ TEST(LocalInstallation, FactorUsesJointPoseAndAnchorAndRightRetractJacobian) {
     EXPECT_NEAR(Ha(0, i), (factor.evaluateError(pose, anchor + delta)[0] - factor.evaluateError(pose, anchor - delta)[0]) / 2e-5, 1e-7);
   }
   EXPECT_THROW(factor.evaluateError(pose, pose.transformFrom(body.transformTo(gtsam::Point3(30, 5.52, 3.5)))), std::domain_error);
+}
+
+TEST(LocalInstallation, DoglegRejectsOutsideTrialsWithoutExtendingFinitePatch) {
+  struct CountingFactor : LocalInstallationFactor {
+    using LocalInstallationFactor::LocalInstallationFactor;
+    mutable size_t rejected_trials = 0;
+    double error(const gtsam::Values& values) const override {
+      const double value = LocalInstallationFactor::error(values);
+      if (std::isinf(value)) ++rejected_trials;
+      return value;
+    }
+  };
+  const gtsam::Pose3 sensor(gtsam::Rot3(), {0, 0, 1.6});
+  const auto measured = local_installation_observation(walls(sensor), sensor.rotation(), {5, 0, 0}, .02);
+  const auto bounded = gtsam::make_shared<CountingFactor>(0, 1, measured, 5.52);
+  gtsam::Values initial;
+  initial.insert(0, gtsam::Pose3());
+  initial.insert(1, gtsam::Point3(0, 5.52, 2));
+  auto outside = initial;
+  outside.update(1, gtsam::Point3(30, 5.52, 2));
+  EXPECT_TRUE(std::isinf(bounded->error(outside)));
+  EXPECT_THROW(bounded->linearize(outside), std::domain_error);
+  bounded->rejected_trials = 0;
+  gtsam::NonlinearFactorGraph graph;
+  graph.add(bounded);
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Pose3>>(0, gtsam::Pose3(), gtsam::noiseModel::Isotropic::Sigma(6, 1e-4));
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(1, gtsam::Point3(30, 5.52, 2), gtsam::noiseModel::Isotropic::Sigma(3, 1));
+  gtsam::DoglegParams parameters;
+  parameters.setDeltaInitial(100);
+  parameters.setMaxIterations(100);
+  const auto result = gtsam::DoglegOptimizer(graph, initial, parameters).optimize();
+  const auto local = result.at<gtsam::Pose3>(0).transformTo(result.at<gtsam::Point3>(1));
+  EXPECT_GT(bounded->rejected_trials, 0u);
+  EXPECT_LE(std::abs(measured.tangent.dot(local)), LocalInstallationObservation::span);
+  EXPECT_TRUE(std::isfinite(graph.error(result)));
+  EXPECT_LT(graph.error(result), graph.error(initial));
 }
 
 #include <liuo_tunnel/uwb/local_offset_input.hpp>

@@ -74,12 +74,22 @@ public:
     offset_(signed_offset) {
     if (!std::isfinite(offset_) || std::abs(offset_) > observed.width / 2 + .25) throw std::invalid_argument("LOCAL_OFFSET_OUTSIDE_OBSERVED_WALL_BAND");
   }
+  double error(const gtsam::Values& values) const override {
+    const auto local = values.at<gtsam::Pose3>(key1()).transformTo(values.at<gtsam::Point3>(key2()));
+    // A finite-domain observation has infinite trial cost outside its support.
+    // Dogleg/LM may then reject the trial; no plane residual is extrapolated.
+    // Invalid linearization states still fail explicitly in evaluateError.
+    if (local.allFinite() && std::abs(observed_.tangent.dot(local)) > LocalInstallationObservation::span) return std::numeric_limits<double>::infinity();
+    return gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Point3>::error(values);
+  }
   gtsam::Vector evaluateError(const gtsam::Pose3& pose, const gtsam::Point3& anchor, gtsam::OptionalMatrixType Hx = nullptr, gtsam::OptionalMatrixType Ha = nullptr)
     const override {
     gtsam::Matrix36 Px;
     gtsam::Matrix33 Pa;
     const auto local = pose.transformTo(anchor, Px, Pa);
-    if (!local.allFinite() || std::abs(observed_.tangent.dot(local)) > LocalInstallationObservation::span) throw std::domain_error("LOCAL_INSTALLATION_OUTSIDE_OBSERVED_PATCH");
+    if (!local.allFinite() || std::abs(observed_.tangent.dot(local)) > LocalInstallationObservation::span)
+      throw std::domain_error(
+        "LOCAL_INSTALLATION_OUTSIDE_OBSERVED_PATCH;linearization=" + std::to_string(bool(Hx) || bool(Ha)) + ";along=" + std::to_string(observed_.tangent.dot(local)));
     if (Hx) *Hx = observed_.normal.transpose() * Px;
     if (Ha) *Ha = observed_.normal.transpose() * Pa;
     return gtsam::Vector1(observed_.normal.dot(local) - observed_.center_offset - offset_);

@@ -647,6 +647,25 @@
         "max_keyframes": 1.0
       },
       "branch_diagnostic": "export/analysis/candidate_branch_diagnostic.json"
+    },
+    "S_RELATIVE_BRANCH_110_FAILED": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T193517Z_889",
+      "source_commit": "a55a4c9",
+      "requested_seconds": 110,
+      "stage_acceptance": "FAILED_FINITE_PATCH_DOMAIN",
+      "initialized_anchor_ids": [
+        1
+      ],
+      "initialization_stamp": 98.7,
+      "accepted_initial_TA": 192,
+      "failure": {
+        "detail": "LOCAL_INSTALLATION_OUTSIDE_OBSERVED_PATCH",
+        "measurement_stamp": 98.905,
+        "reason": "OPTIMIZATION_FAILED",
+        "session": 1,
+        "state": "LOST"
+      },
+      "limitation": "This replay finite candidates also had small world separation; initialization alone is not a controlled causal proof of the common-frame gate change."
     }
   },
   "limitations": [
