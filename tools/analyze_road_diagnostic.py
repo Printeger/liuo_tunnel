@@ -21,7 +21,7 @@ def main():
     gauge_reference = None
     if args.map_reference_run:
         prior = json.loads((args.run / 'metadata/config/reuse_map.json').read_text())
-        if Path(prior['source_run']).resolve() != args.map_reference_run.resolve():
+        if Path(prior.get('coordinate_gauge_source_run', prior['source_run'])).resolve() != args.map_reference_run.resolve():
             raise ValueError('reference CAL run does not own loaded map')
         rows = [r for r in rows if r['map_id'] == prior['map_id']]
         if not rows: raise ValueError('map frame was never attached; no fixed-map output to evaluate')

@@ -155,7 +155,8 @@ public:
     }
     logger = create_module_logger("odometry");
     logger->info("UWB AA fusion enabled={} (TA unchanged); inherited map UWB information={}", use_aa,
-      calibrated_map ? calibrated_map->document.value("uwb_information", nlohmann::json::object()).dump() : "NO_INHERITED_MAP");
+      calibrated_map ? calibrated_map->document.value("uwb_information", nlohmann::json::object()).dump() :
+      (frame_map ? frame_map->document.value("uwb_information", nlohmann::json::object()).dump() : "NO_INHERITED_MAP"));
     auto& logs = RunLogManager::instance();
     status_log.open(logs.export_path("odometry/status.csv"));
     status_log << std::setprecision(16) << "session,stamp,state,reason,rejected_total,last_rejection,uwb_recovery_until\n";
@@ -789,13 +790,23 @@ private:
   }
 
   void export_calibrated_map(double stamp) {
-    if (reuse_anchor_map || (!self_calibrate && !free_calibrate) || !bootstrapped || map.ids.empty()) return;
+    if ((reuse_anchor_map && !map_frame_attached) || (!self_calibrate && !free_calibrate) || !bootstrapped || map.ids.empty()) return;
     const auto values = smoother->calculateEstimate();
     gtsam::KeyVector keys;
     nlohmann::json anchors = nlohmann::json::array(), missing = nlohmann::json::array();
+    gtsam::Pose3 export_frame;
+    gtsam::Vector4 frame_coordinates=gtsam::Vector4::Zero();
+    std::vector<gtsam::Point3> local_anchors;
+    if (reuse_anchor_map) {
+      keys.push_back(gtsam::Symbol('g',0));
+      frame_coordinates=values.at<gtsam::Vector4>(keys.back());
+      export_frame=gravity_frame_pose(frame_coordinates);
+    }
     for (auto id : map.ids) {
       keys.push_back(A(id));
-      const auto a = values.at<gtsam::Point3>(A(id));
+      const auto local = values.at<gtsam::Point3>(A(id));
+      local_anchors.push_back(local);
+      const auto a = export_frame.transformFrom(local);
       anchors.push_back({{"id", id}, {"mean_m", {a.x(), a.y(), a.z()}}});
     }
     gtsam::Vector2 line = gtsam::Vector2::Zero();
@@ -803,14 +814,18 @@ private:
       keys.push_back(gtsam::Symbol('l', 0));
       line = values.at<gtsam::Vector2>(keys.back());
     }
-    const auto covariance = selected_covariance(smoother->getISAM2(), keys);
+    gtsam::Matrix covariance = selected_covariance(smoother->getISAM2(), keys);
+    if (reuse_anchor_map) {
+      const auto H=map_frame_anchor_jacobian(frame_coordinates,local_anchors);
+      covariance=(H*covariance*H.transpose()).eval();
+    }
     std::vector<std::vector<double>> matrix(covariance.rows(), std::vector<double>(covariance.cols()));
     for (int i = 0; i < covariance.rows(); ++i)
       for (int j = 0; j < covariance.cols(); ++j) matrix[i][j] = covariance(i,j);
     gtsam::Point3 lower = gtsam::Point3::Constant(std::numeric_limits<double>::infinity());
     gtsam::Point3 upper = -lower;
     for (auto key : values.keys()) if (gtsam::Symbol(key).chr() == 'x') {
-      const auto p = values.at<gtsam::Pose3>(key).translation();
+      const auto p = export_frame.transformFrom(values.at<gtsam::Pose3>(key).translation());
       lower = lower.cwiseMin(p); upper = upper.cwiseMax(p);
     }
     const std::vector<uint32_t> registry = free_calibrate ? std::vector<uint32_t>(free_anchor_ids.begin(),free_anchor_ids.end()) : installation_input->ids;
@@ -823,11 +838,12 @@ private:
     const auto identity = nlohmann::json::parse(identity_file);
     // First export precedes the first published estimate, including after a
     // session reset. Use the same identity for trajectory rows and map bytes.
-    map.id = logs.run_dir().filename().string()+"_session_"+std::to_string(session);
+    const auto checkpoint_id = logs.run_dir().filename().string()+"_session_"+std::to_string(session);
+    if (!reuse_anchor_map) map.id=checkpoint_id; // Published coordinates retain the inherited map identity.
     nlohmann::json document = {
       {"schema_version", "liuo_joint_map_v1"}, {"frame", "map"}, {"anchor_units", "m"},
       {"reference_units", {"mrad", "m"}}, {"reference_origin_m", {0,0,0}},
-      {"map_id", map.id},
+      {"map_id", checkpoint_id},
       {"coordinate_gauge", "first IMU gravity alignment; initial translation zero; yaw is coordinate convention"},
       {"status", "PROVISIONAL_INITIALIZED"}, {"deployment_validated", false},
       {"unresolved_branches", nlohmann::json::array()},
@@ -855,6 +871,15 @@ private:
       document.erase("reference_units"); document.erase("reference_origin_m"); document.erase("reference_mean");
       document["approximation"] = "Joint A-only Gaussian marginal of the actual fixed-lag Bayes tree; all cross terms retained; local linearization and selected-basin approximation; no global axis; statistical consistency and reuse observability not certified";
       document["reuse_status"] = "PROVISIONAL_JOINT_FRAME_ENTRY_NOT_YET_VALIDATED";
+    }
+    if (reuse_anchor_map) {
+      document["parent_map_id"]=frame_map->document.at("map_id");
+      document["coordinate_gauge"]=frame_map->document.at("coordinate_gauge");
+      document["coordinate_gauge_source_run"]=frame_map->document.value("coordinate_gauge_source_run",frame_map->document.at("source_run").get<std::string>());
+      document["output_coordinate_map_id"]=map.id;
+      document["approximation"]="Joint inherited-frame A marginal propagated from full G/A covariance, including all cross terms; nonlinear first-order Gaussian approximation; statistical consistency not certified";
+      document["absorbed_information"]="loaded correlated map prior plus all accepted current-session raw factors up to measurement_stamp; old and new AA identities in the same atomic ledger";
+      document["uwb_information"]["inherited_aa_measurements"]=frame_map->document.contains("static_edge_ledger") ? frame_map->document.at("static_edge_ledger").at("leaves").size() : 0;
     }
     CalibratedMap::parse(document, cfg.at("sensors")).save_atomic(logs.export_path("map/calibrated_map.json"));
     map_export_session = session;

@@ -38,6 +38,22 @@ inline Eigen::Matrix<double, 9, 13> map_frame_navigation_jacobian(const gtsam::V
   return H;
 }
 
+// Jacobian for exporting all A in the inherited map frame. Column order is
+// G then local A in the exact order used by selected_covariance. Do not drop
+// G/A cross terms: map translation uncertainty is shared by every anchor.
+inline gtsam::Matrix map_frame_anchor_jacobian(const gtsam::Vector4& frame, const std::vector<gtsam::Point3>& anchors) {
+  if (anchors.empty() || anchors.size() > 18) throw std::invalid_argument("MAP_FRAME_EXPORT_ANCHOR_COUNT");
+  const auto rotation = gravity_frame_pose(frame).rotation().matrix();
+  gtsam::Matrix H = gtsam::Matrix::Zero(3 * anchors.size(), 4 + 3 * anchors.size());
+  for (size_t i = 0; i < anchors.size(); ++i) {
+    if (!anchors[i].allFinite()) throw std::invalid_argument("MAP_FRAME_EXPORT_NONFINITE_ANCHOR");
+    H.block<3, 1>(3 * i, 0) = .001 * rotation * gtsam::Vector3::UnitZ().cross(anchors[i]);
+    H.block<3, 3>(3 * i, 1).setIdentity();
+    H.block<3, 3>(3 * i, 4 + 3 * i) = rotation;
+  }
+  return H;
+}
+
 // Correspondences provide a numerical starting point only. This routine never
 // creates a pose observation or claims that the alignment is observable.
 inline gtsam::Vector4 gravity_frame_seed(const std::vector<gtsam::Point3>& local, const std::vector<gtsam::Point3>& map) {

@@ -11,6 +11,7 @@ import rosbag2_py
 from rclpy.serialization import deserialize_message
 from liuo_uwb_msgs.msg import UwbObservationBatch
 from liuo_tunnel_msgs.msg import StaticAnchorRecord
+from checkpoint_ledger_audit import check_checkpoint
 
 
 def check_reuse_seam(run, expected, audit, digest, raw_records, received_count):
@@ -45,6 +46,14 @@ def check_reuse_seam(run, expected, audit, digest, raw_records, received_count):
     trajectory = list(csv.DictReader((run/'export/odometry/trajectory.csv').open()))
     for row in trajectory:
         assert (row['map_id'] == model['map_id']) == (float(row['stamp']) >= stamp)
+    wire=list(csv.DictReader((run/'export/capture/odometry.csv').open()))
+    wire_frame_checked=bool(wire and 'frame_id' in wire[0])
+    if wire_frame_checked:
+        assert len(wire) == len(trajectory)
+        for observed,published in zip(wire,trajectory):
+            assert abs(float(observed['stamp'])-float(published['stamp'])) < 1e-8
+            assert observed['frame_id'] == ('map' if float(observed['stamp']) >= stamp else 'odom')
+            assert observed['child_frame_id'] == 'imu'
     by_edge = {f'{a}-{b}':sum(value['pair'] == [a,b] for value in eligible.values()) for a,b in edges}
     report = dict(result='PASS_INPUT_AND_GRAPH_COUNTS', scope='independent delivered records, prior lifecycle and graph counts; not exact posterior checkpoint or localization acceptance',
                   raw_sha256=digest, raw_records=raw_records, received_records=received_count,
@@ -52,8 +61,45 @@ def check_reuse_seam(run, expected, audit, digest, raw_records, received_count):
                   attachment_stamp=stamp, known_anchor_ids=sorted(known), final_fused_new_leaves=len(eligible),
                   final_pending_leaves=final['pending'], explicit_edges=len(edges), eligible_new_leaves_by_edge=by_edge,
                   map_frame_output_samples=sum(float(r['stamp']) >= stamp for r in trajectory),
+                  wire_frame_transition_checked=wire_frame_checked,
                   exact_reuse_posterior_ledger_exported=False,
                   limitation='final leaf membership inferred from ready endpoints and validated counts; reuse posterior ledger export remains pending')
+    posterior_path=run/'export/map/calibrated_map.json'
+    if posterior_path.exists():
+        posterior=json.loads(posterior_path.read_text())
+        assert posterior['parent_map_id'] == model['map_id']
+        assert posterior['output_coordinate_map_id'] == model['map_id']
+        assert posterior['source_identity']['inherited_map_sha256'] == identity['sha256']
+        ancestors=set(model['source_identity']['frozen_raw_sha256'].values())
+        assert ancestors | {digest} == set(posterior['source_identity']['frozen_raw_sha256'].values())
+        leaves={x['physical_id']:x for x in posterior['static_edge_ledger']['leaves']}
+        assert len(leaves) == len(posterior['static_edge_ledger']['leaves'])
+        for leaf in model['static_edge_ledger']['leaves']:
+            assert leaves[leaf['physical_id']] == leaf
+        new_ids=set(leaves)-old_ids
+        checkpoint_stamp = posterior['measurement_stamp']
+        assert checkpoint_stamp >= stamp
+        checkpoint_known = {int(a['id']) for a in model['anchors']}
+        checkpoint_known.update(int(r['anchor']) for r in initialized
+                                if r['event'] == 'JOINTLY_INITIALIZED' and float(r['stamp']) <= checkpoint_stamp)
+        def decode_input(row):
+            message = deserialize_message(bytes.fromhex(row['cdr_hex']), StaticAnchorRecord)
+            return [(leaf.physical_id, (message.first, message.second)) for leaf in message.leaves]
+        check_checkpoint(audit, checkpoint_stamp, checkpoint_known, old_ids, new_ids, decode_input)
+        for key in new_ids:
+            leaf=leaves[key]; original=expected[key]
+            assert [leaf['first'],leaf['second']] == original['pair']
+            assert leaf['range_m'] == original['range'] and leaf['variance_m2'] == .01
+        covariance=np.asarray(posterior['joint_covariance'])
+        assert covariance.shape == (3*len(posterior['anchors']),)*2
+        assert np.allclose(covariance,covariance.T,rtol=0,atol=1e-10)
+        assert np.linalg.eigvalsh(covariance).min() > 0
+        assert {a['id'] for a in posterior['anchors']} == checkpoint_known
+        report.update(result='PASS_INPUT_GRAPH_AND_EXACT_POSTERIOR_LEDGER',
+                      exact_reuse_posterior_ledger_exported=True, posterior_stamp=posterior['measurement_stamp'],
+                      posterior_absorbed_old_leaves=len(old_ids),posterior_absorbed_new_leaves=len(new_ids),
+                      posterior_minimum_eigenvalue=float(np.linalg.eigvalsh(covariance).min()),
+                      limitation='Gaussian joint posterior and exact physical ledger checked; global initialization, accuracy and consistency not certified')
     (run/'export/analysis/road_reuse_seam_audit.json').write_text(json.dumps(report,indent=2)+'\n')
     return report
 

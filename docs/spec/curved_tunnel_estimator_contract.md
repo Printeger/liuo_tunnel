@@ -96,7 +96,7 @@ free 模式每秒及 A 集合改变时，从实际图导出 `export/map/calibrat
 
 `uwb.mode=reuse_anchor_map` 与旧 `reuse_map` 分开；前者接受 v3 A-only 图，旧入口仍要求 A/L 图。新入口在本轮重力局部世界运行原有未知 Anchor 有界联合初始化。至少两个同 ID Anchor 经原始观测候选检查后，生成 G 数值初值；仅添加一次完整 `MapFramePrior`，其他旧图 Anchor 由变换后的均值作数值初值并由同一旧图先验约束。没有 G 独立先验，没有把本轮 A 点估计另作观测。该门槛不是全局可观性证明，输出只标 `PROVISIONAL_JOINT_FRAME`/DEGRADED。
 
-等待阶段 Odometry 为 odom、状态 INITIALIZING/MAP_FRAME_PENDING_LOCAL_ANCHORS；接入后输出旧 map 坐标，保留 G/X/V 全部交叉项，世界速度同步旋转；body twist仍来自本轮相邻姿态，不把坐标切换当瞬时车辆运动。可视点云和 Anchor 同步变换。G、A持久保留，车辆仍按10秒lag淘汰。当前复用入口暂不再导出链式新地图，避免把局部协方差冒充旧图坐标的地图后验。
+等待阶段 Odometry 为 odom、状态 INITIALIZING/MAP_FRAME_PENDING_LOCAL_ANCHORS；接入后输出旧 map 坐标，保留 G/X/V 全部交叉项，世界速度同步旋转；body twist仍来自本轮相邻姿态，不把坐标切换当瞬时车辆运动。可视点云和 Anchor 同步变换。G、A持久保留，车辆仍按10秒lag淘汰。首次生产入口没有导出链式新地图；后续实现见下文“复用后精确后验检查点”，使用完整G/A协方差传播。
 
 原始旧AA块在prior接入前由独立只读旧账本校验并隔离；prior更新成功才移交图账本。当前图已融合旧块则拒绝，禁止用删除显式因子掩盖稠密信息重复。时钟重置丢弃G及当前图，将本轮新物理叶恢复pending；旧叶仍由不可变旧账本隔离，等待新一轮原始初始化后再加载prior。
 
@@ -115,3 +115,14 @@ free 模式每秒及 A 集合改变时，从实际图导出 `export/map/calibrat
 首个A-only生产复用检查预声明使用既有静态CAL180秒图 `20261027T174621Z_416/export/map/calibrated_map.json`，载入4个A[3,16,14,5]及94个已吸收AA叶。新seed完整输入run为 `20261027T182209Z_414`，MCAP SHA256 `d146412b1e3e7a93939ff0809c44dd1baf31184070f7fcccf5de5ab678fffcfa`。首次回放180秒、GPU、1×，不承诺所有A初始化或参考精度达标；必须实际加载一次prior、输出旧map坐标、有非零新TA/AA入图，重复旧块不能增权，完整原始输入观察检查不变。
 
 离线评价 `analyze_road_diagnostic.py --map-reference-run <CAL-run>`只使用CAL既有first-output yaw/translation变换，将复用输出转到真值坐标。第二轮真值仅用于误差计算，不能重新确定变换；接入前局部odom输出明确计数，不混入旧map轨迹指标。一个带15m已知起点偏差的独立fixture必须保留15m RMSE（1e-7数值容差），不能被起点对齐消掉。待全路CAL后重复完整REUSE才构成主线证据。
+
+
+## 复用后精确后验检查点
+
+复用入口此前缺少最终叶身份直接证据，计数审计不能替代精确后验账本。新导出将实际图中G与全部A的完整联合边际通过 `a_map=R(G)*a_local+t(G)` Jacobian传播，保留G/A及A/A全部交叉项，再与同次图状态的静态账本原子保存为v3 A-only。不存在新A/车辆点估计伪观测，导出本身不更新图。接入前不导出，接入后沿用每秒或A集合变化时导出；全图旧叶和本轮新叶只计一次。
+
+文件map_id是新后验身份；输出轨迹仍使用已加载的旧map_id作为坐标身份，分别记录parent_map_id/output_coordinate_map_id。coordinate_gauge及其原始CAL来源继承，不按本轮真值再配准。来源身份保留旧图文件SHA和全部祖先原始包SHA，使以后复用入口仍能拒绝任何已吸收训练包。旧图的安装观测不会再次加载为独立测量；当前精确synthetic常数与新观测局部点云的来源继续独立记录。
+
+预声明：导出Jacobian有限差分误差<1e-8，映射均值/全联合协方差解析往返误差<1e-12；人工删除G/A交叉项的反例必须产生非零差异。真实生产审计逐叶核对旧账本保留、新叶来源/值/方差、同stamp图侧fused数量、协方差正定和坐标来源。当前运行的旧二进制不会被追认为已具备此输出。
+
+精确账本审计按单线程回调/图更新日志顺序确定交付集合：必须找到唯一同stamp（误差<1e-8）的graph_update，并取该行之前QUEUED输入中、该检查点端点已就绪的全部新物理叶，与后验新叶集合严格相等。不能用全程eligible集合或相邻时刻的计数替代。接收时钟可能晚于扫描状态时刻，故不以receive_stamp≤measurement_stamp裁剪。负例覆盖等数量未来同边叶替换、不存在/重复检查点及拒绝输入。

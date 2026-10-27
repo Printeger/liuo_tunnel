@@ -54,7 +54,7 @@ class Observer(Node):
         self.odom_log = open(Path(os.environ["LIUO_RUN_DIR"]) / "export/capture/odometry.csv", "w")
         self.odom_csv = csv.writer(self.odom_log)
         self.odom_csv.writerow(
-            ["stamp", "wx", "wy", "wz"] + [f"twist_{i}_{j}" for i in range(6) for j in range(6)]
+            ["stamp", "wx", "wy", "wz"] + [f"twist_{i}_{j}" for i in range(6) for j in range(6)] + ["frame_id", "child_frame_id"]
         )
         self.create_subscription(Odometry, "/liuo/odom", self.odometry, 100)
         self.create_timer(1, self.graph)
@@ -84,7 +84,7 @@ class Observer(Node):
             ):
                 self.reject("nonpositive or asymmetric " + label + " covariance")
         stamp = m.header.stamp.sec + m.header.stamp.nanosec * 1e-9
-        self.odom_csv.writerow([stamp] + angular + list(m.twist.covariance))
+        self.odom_csv.writerow([stamp] + angular + list(m.twist.covariance) + [m.header.frame_id, m.child_frame_id])
 
     def imu(self, m):
         self.hash_message("imu", m)

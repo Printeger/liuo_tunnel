@@ -103,6 +103,10 @@ def main():
             prior_hashes = prior['source_identity'].get('frozen_raw_sha256', {})
             if not prior_hashes or sha in prior_hashes.values():
                 raise ValueError('reuse requires a distinct raw input; cannot fuse the map training bag again')
+            source_identity = json.loads((run / 'metadata/manifests/map_source_identity.json').read_text())
+            source_identity['inherited_map_sha256'] = digest(map_input)
+            source_identity['frozen_raw_sha256'].update({'ancestor_'+value: value for value in prior_hashes.values()})
+            rd.write_subordinate_manifest(run, 'map_source_identity', source_identity)
             rd.write_subordinate_manifest(run, 'reuse_map_input', dict(source=str(args.map), sha256=digest(map_input),
                 prior_source_run=prior['source_run'], prior_map_id=prior['map_id'],
                 independence_scope='distinct input bytes checked; generator seed/noise independence requires separate evidence'))

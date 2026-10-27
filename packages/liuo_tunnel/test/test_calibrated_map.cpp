@@ -316,3 +316,42 @@ TEST(MapFramePrior, ThirdMappedAnchorPendingRawTAIsTransferredOnce) {
   EXPECT_TRUE(repeat.factors.empty());
   EXPECT_TRUE(repeat.accepted.empty());
 }
+
+TEST(MapFramePrior, ExportedAnchorMarginalRetainsSharedFrameAndCrossInformation) {
+  const gtsam::Vector4 frame(700, 12, -3, 4);
+  const std::vector<gtsam::Point3> local{{2, 3, 4}, {6, -1, 8}, {-10, 2, 1}};
+  const auto H = map_frame_anchor_jacobian(frame, local);
+  auto transformed = [&](const gtsam::Vector& delta) {
+    const auto pose = gravity_frame_pose(gtsam::Vector4(frame + delta.head<4>()));
+    gtsam::Vector result(9);
+    for (size_t i = 0; i < 3; ++i) result.segment<3>(3 * i) = pose.transformFrom(gtsam::Point3(local[i] + delta.segment<3>(4 + 3 * i)));
+    return result;
+  };
+  for (int column = 0; column < 13; ++column) {
+    gtsam::Vector step = gtsam::Vector::Zero(13);
+    step[column] = 1e-4;
+    EXPECT_LT(((transformed(step) - transformed(-step)) / (2e-4) - H.col(column)).norm(), 1e-8);
+  }
+  gtsam::Matrix joint = gtsam::Matrix::Identity(13, 13);
+  joint(1, 4) = joint(4, 1) = .4;
+  joint(2, 8) = joint(8, 2) = -.3;
+  const gtsam::Matrix covariance = H * joint * H.transpose();
+  auto incomplete = joint;
+  incomplete.topRightCorner(4, 9).setZero();
+  incomplete.bottomLeftCorner(9, 4).setZero();
+  EXPECT_GT((covariance - H * incomplete * H.transpose()).norm(), .5);
+  auto document = anchor_only_sample();
+  document["source_identity"]["inherited_map_sha256"] = std::string(64, 'a');
+  const auto means = transformed(gtsam::Vector::Zero(13));
+  for (int i = 0; i < 3; ++i) {
+    document["anchors"][i]["id"] = 10 + i;
+    document["anchors"][i]["mean_m"] = {means[3 * i], means[3 * i + 1], means[3 * i + 2]};
+    for (int row = 3 * i; row < 3 * i + 3; ++row)
+      for (int column = 0; column < 9; ++column) document["joint_covariance"][row][column] = covariance(row, column);
+  }
+  const auto exported = CalibratedMap::parse(document, {{"test", 1}});
+  EXPECT_LT((exported.mean_vector() - means).norm(), 1e-12);
+  EXPECT_LT((exported.covariance - covariance).norm(), 1e-12);
+  EXPECT_GT(exported.covariance.block(0, 3, 3, 3).norm(), 1.);
+  EXPECT_THROW(map_frame_anchor_jacobian(frame, {}), std::invalid_argument);
+}
