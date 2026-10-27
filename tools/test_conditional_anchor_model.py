@@ -31,6 +31,21 @@ class ConditionalAnchorModelTest(unittest.TestCase):
             self.assertLess(np.linalg.eigvalsh(jacobian.T@jacobian)[0], 1e-10)
         self.assertEqual(problem.range_seeds(1).shape, (8, 3))
 
+    def test_measured_patch_domain_and_plane_do_not_add_height_residual(self):
+        floor = dict(normal=[0,0,1], center=[0,0,-1], along=[1,0,0], across=[0,1,0],
+                     longitudinal_axis=[1,0,0], variance=.0001, along_spread=10., across_spread=10.,
+                     minimum_longitudinal=-2., maximum_longitudinal=2.)
+        geometry = dict(normal=[0,1,0], tangent=[1,0,0], up=[0,0,1], center_offset=0., sigma=.1,
+                        minimum_longitudinal=-3., maximum_longitudinal=3., maximum_height=4., floors=[floor,floor])
+        patch = dict(anchor=1, p=np.zeros(3), R=np.eye(3), offset=2., geometry=geometry)
+        problem = AnchorProblem([1], [], [], [patch])
+        for point in ([0,2,0], [0,2,3]):
+            self.assertEqual(problem.objective(point)[0], 0.)
+            self.assertGreaterEqual(min(problem.domain(point)), 0.)
+        self.assertLess(min(problem.domain([2.1,2,0])), 0.)  # inside wall, outside actual floor support
+        self.assertLess(min(problem.domain([0,2,-2])), 0.)
+        self.assertLess(min(problem.domain([0,2,4.3])), 0.)
+
 
 if __name__ == '__main__':
     unittest.main()
