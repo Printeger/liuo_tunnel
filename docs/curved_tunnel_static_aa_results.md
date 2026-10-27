@@ -526,3 +526,10 @@ S离线地图评价现已接通，固定使用CAL坐标规范，无地图拟合�
 真实FiniteDomainSolver最小联合旋转/Anchor反例复现：线性预测沿向≤10，实际retract后10.801449257m，LocalInstallationFactor返回Inf；日志nonlinear_domain_before.log两个断言失败。新增试探恢复只处理实际越域Anchor的局部沿向，其余试探状态/横向/高度不变，并重新验证返回delta的实际retract路径。原非线性图决定步接受，不增加观测或prior，不改支持边界/候选门限。
 
 30候选、20局部、4边缘回归全部通过，包含原反例、二阶修正缩放、域内原样、全局变换、重复域明确拒绝。日志nonlinear_domain_candidates.log、nonlinear_domain_local.log、nonlinear_domain_marginal.log位于/home/dev/ws_iap/liuo_observation/log。新增CANDIDATE_DOMAIN_SOLVE_WORK及分析汇总，只覆盖已完成并记录的候选；旧日志标available=false，未完成/过期候选与图线性化等待不冒充已测耗时。生产是否改善仍待新运行。
+
+
+### 非线性试探恢复后的S110
+
+`20261027T222131Z_969`绑定7b58726，同输入190229及straight_local_static/straight_local_offsets，GPU1×110秒完整结束：1100云/22000IMU/7080UWB/22000clock、1079输出3.1–110.9秒、墙钟109.995665秒。A0于12.4秒由181条TA、A1于97.4秒由192条TA联合初始化；350独立AA中110融合、240pending、1条显式边。110.0秒地图109叶、最早采集1.012秒，最小协方差特征值1.76297830e−5；物理身份/回调/地图账本独立核对通过。
+
+固定首输出规范位置RMSE0.459473m（XYZ0.047726/0.363342/0.277165m），最大0.917151m、姿态0.119647deg、速度0.015629m/s；RPE1秒0.021479m、10秒0.043676m。18个已记录候选共784次成功求解、1866.226ms总求解时间，单候选最大145.543ms；13次绝对cost变化停止、5次预算停止，无分支拒绝或快照过期日志。两批A0正高度候选相对差约7微米、跨批差0.011649m，仍用既有0.5m门限；数值相近不等于统计一致性认证。结果支持扩展完整S540，不能替代全程独立复用或受影响L验收。

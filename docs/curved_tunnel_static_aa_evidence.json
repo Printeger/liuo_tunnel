@@ -3409,6 +3409,147 @@
         ]
       },
       "result": "A0_NOT_INITIALIZED_ZERO_AA_FUSED"
+    },
+    "s110_nonlinear_domain_222131": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T222131Z_969",
+      "source_commit": "7b58726",
+      "scope": "affected S110 diagnostic; not full-route/reuse acceptance",
+      "initialized_stamps": {
+        "0": 12.4,
+        "1": 97.4
+      },
+      "input": {
+        "first_output": 3.1,
+        "last_output": 110.9,
+        "output_count": 1079,
+        "publish_wall_s": 109.99566473400046,
+        "raw_counts": {
+          "clock": 22000,
+          "cloud": 1100,
+          "imu": 22000,
+          "uwb": 7080
+        },
+        "raw_sha256": {
+          "clock": "25cd1be5f22181829cc51b4648587f92d8e559bd47321b67d12c23ad132609a3",
+          "cloud": "7ea13faa66c0831abdb1652586c46c051a8ca13784fa3e697e963ff3f8acb452",
+          "imu": "9666f7801ae7d058adac32470970cd9571a980805fd58d18c98fccd3553e04f6",
+          "uwb": "a3064047b789aef73ad366bfc0db9bb2d3db764b21fbbfe3166d43a9b27c8c78"
+        },
+        "real_time_factor": 1.000039413062415,
+        "result": "PASS",
+        "scope": "native snapshot GPU input/output contract, not localization or map acceptance",
+        "source_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933"
+      },
+      "static": {
+        "scope": "delivered raw AA to callback and map ledger; not localization/reuse acceptance",
+        "result": "PASS",
+        "raw_records": 350,
+        "unique_physical_leaves": 350,
+        "received_records": 350,
+        "map_absorbed_leaves": 109,
+        "final_fused_leaves": 110,
+        "final_pending_leaves": 240,
+        "explicit_edges": 1,
+        "first_fused_stamp": 97.4,
+        "oldest_absorbed_acquisition": 1.012,
+        "map_stamp": 110.0,
+        "anchor_ids": [
+          0,
+          1
+        ],
+        "minimum_map_eigenvalue": 1.762978302439506e-05,
+        "raw_sha256": "8de5439e8e35ae747ee42842aa505b8ec5290548a70b4386b47c71df82ccdd7a"
+      },
+      "diagnostic": {
+        "scope": "offline diagnostic only, not stage acceptance",
+        "truth_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933",
+        "truth_format": "straight_csv",
+        "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T222131Z_969",
+        "gauge": "first_output_yaw_and_translation_only_no_route_fit",
+        "reference_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T222131Z_969",
+        "total_output_samples": 1079,
+        "pre_map_output_samples": 0,
+        "reference_stamp": 3.1,
+        "yaw_rotation_matrix": [
+          [
+            0.9999999996778386,
+            -2.5383514621225456e-05,
+            0.0
+          ],
+          [
+            2.5383514621225456e-05,
+            0.9999999996778386,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "translation": [
+          9.658073707570381e-06,
+          -4.519702439966674e-06,
+          1.200132744493314
+        ],
+        "samples": 1079,
+        "first_stamp": 3.1,
+        "last_stamp": 110.9,
+        "covered_seconds": 107.80000000000001,
+        "position_rmse_m": 0.4594732178845212,
+        "xyz_rmse_m": [
+          0.047726079402004774,
+          0.3633419082553949,
+          0.27716514391856434
+        ],
+        "maximum_position_error_m": 0.9171505840528014,
+        "attitude_rmse_deg": 0.11964693591128202,
+        "rpe": {
+          "1.0": {
+            "samples": 1069,
+            "translation_rmse_m": 0.021478731512794856,
+            "rotation_rmse_deg": 0.03597991169778111
+          },
+          "10.0": {
+            "samples": 979,
+            "translation_rmse_m": 0.04367553364217872,
+            "rotation_rmse_deg": 0.060761059760792366
+          }
+        },
+        "route_frame": {
+          "definition": "horizontal truth travel tangent, left horizontal normal, world vertical; no alignment or estimator input",
+          "stationary_direction": "nearest moving truth sample in time; ties choose earlier; speed threshold 1e-6 m/s",
+          "along_cross_height_rmse_m": [
+            0.047726079402004774,
+            0.3633419082553949,
+            0.27716514391856434
+          ]
+        },
+        "velocity_rmse_mps": 0.01562880527275612
+      },
+      "candidate": {
+        "scope": "logged candidate comparison only; no truth or localization acceptance",
+        "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T222131Z_969",
+        "gate_m": 0.5,
+        "convergence_scope": "finite candidates are numerical outputs, not proven stationary solutions; iteration limit may coincide with another stopping criterion",
+        "configured_iteration_limit": 30,
+        "candidate_termination_flags": {
+          "4": 13,
+          "1": 5
+        },
+        "domain_work": {
+          "scope": "completed logged candidates only; excludes unfinished/expired candidates and graph linearization/waiting",
+          "available": true,
+          "logged_candidates": 18,
+          "successful_solve_calls": 784,
+          "total_solve_ms": 1866.226374,
+          "maximum_candidate_solve_ms": 145.542944
+        },
+        "incomplete_tail_ignored": false,
+        "counts": {},
+        "rejected_batches": []
+      },
+      "result": "COMPLETE_WITH_A0_A1_AND_NONTRIVIAL_AA_FUSION"
     }
   },
   "limitations": [
@@ -3538,7 +3679,7 @@
         "result": "PASS",
         "log": "/home/dev/ws_iap/liuo_observation/log/nonlinear_domain_marginal.log"
       },
-      "production_validation": "PENDING",
+      "production_validation": "S110 222131 completed with A0/A1 and 110 fused AA; full S and affected L pending",
       "limitation": "one explicit finite installation domain per anchor; duplicate domains rejected"
     }
   },
