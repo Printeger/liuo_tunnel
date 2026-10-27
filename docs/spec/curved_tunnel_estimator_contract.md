@@ -110,3 +110,8 @@ free 模式每秒及 A 集合改变时，从实际图导出 `export/map/calibrat
 独立噪声seed预声明为20261028，首轮仍为20261027。`tools/road_scene.sh --seed 20261028`生成完整392.6秒第二轮，保留默认scene.json和旧原始包；seed只进入LiDAR噪声stream1、IMU bias/噪声stream10–13、UWB独立物理噪声stream30及声明的driver_session。道路/车辆连续运动/站点ID与几何/LOS/发射和物理交换计划均不变，未复制旧测量；新AA物理身份绑定新原始包SHA，仍用原部署epoch。独立生成用新owner与目录，真值仅给离线比较。
 
 独立输入检查预声明：除seed外配置完全相同；运动t/p/R/v/a/omega逐数组完全相同、Anchor/安装/设施清单相同；三类传感器语义摘要均不同，clock相同，消息数量及点数相同。对两轮IMU去除各自真值与bias后的白噪声逐轴相关绝对值<0.05；TA/AA物理噪声跨轮相关绝对值<0.05；这仅检查仿真随机流，不称真实传感器独立性认证。完整场景原有几何/时序/包审计继续执行。复用先用既有180秒CAL图检查生产接缝，再完成全路CAL图与全路独立REUSE；短图不能替代完整首轮。
+
+
+首个A-only生产复用检查预声明使用既有静态CAL180秒图 `20261027T174621Z_416/export/map/calibrated_map.json`，载入4个A[3,16,14,5]及94个已吸收AA叶。新seed完整输入run为 `20261027T182209Z_414`，MCAP SHA256 `d146412b1e3e7a93939ff0809c44dd1baf31184070f7fcccf5de5ab678fffcfa`。首次回放180秒、GPU、1×，不承诺所有A初始化或参考精度达标；必须实际加载一次prior、输出旧map坐标、有非零新TA/AA入图，重复旧块不能增权，完整原始输入观察检查不变。
+
+离线评价 `analyze_road_diagnostic.py --map-reference-run <CAL-run>`只使用CAL既有first-output yaw/translation变换，将复用输出转到真值坐标。第二轮真值仅用于误差计算，不能重新确定变换；接入前局部odom输出明确计数，不混入旧map轨迹指标。一个带15m已知起点偏差的独立fixture必须保留15m RMSE（1e-7数值容差），不能被起点对齐消掉。待全路CAL后重复完整REUSE才构成主线证据。

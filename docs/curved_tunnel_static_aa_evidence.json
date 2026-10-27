@@ -276,5 +276,17 @@
       "review": "standards and spec; duplicate pending TA and masked LOST fixed and rechecked",
       "independent_reuse_verified": false
     }
+  },
+  "inputs": {
+    "L_REUSE_INDEPENDENT": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414",
+      "source_commit": "89cb64ece1b7ac58ea3b5d4023e3d58754f107f7",
+      "seed": 20261028,
+      "duration_s": 392.6,
+      "raw_sha256": "d146412b1e3e7a93939ff0809c44dd1baf31184070f7fcccf5de5ab678fffcfa",
+      "independence_check": "export/analysis/independent_input.json",
+      "scene_result": "PASS",
+      "algorithm_acceptance": "NOT_ASSESSED"
+    }
   }
 }

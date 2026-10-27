@@ -165,7 +165,7 @@
     "static_edges": {
       "network": "liuo_road_simulation",
       "deployment_epoch": "road-tunnel-7km-v1-fixed-layout",
-      "source_identity": "sha256:05095c59adad36e908bfb802978e1ecc3ec3b63686755a03c081cb5d40b13005",
+      "source_identity": "sha256:d146412b1e3e7a93939ff0809c44dd1baf31184070f7fcccf5de5ab678fffcfa",
       "source_model": "road_sim_global_exchange_v1",
       "noise_evidence": "road_scene/uwb.py independent Gaussian physical exchange sigma=0.10m; frozen raw payload",
       "independence_evidence": "global physical source_frame_seq assigned before reporter delivery; repeat direction/driver does not create a sample",

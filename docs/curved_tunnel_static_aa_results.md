@@ -209,3 +209,12 @@ data-run -- tools/check_road_static.sh /home/dev/ws_iap/.runtime/0/liuo/20261027
 本次针对性检查：`data-run -- ... cmake --build ... --target test_calibrated_map test_static_edge_graph test_estimator_status -j2` 后分别执行三个二进制，12+5+13=30项通过；Python回放入口使用数据盘PYTHONPYCACHEPREFIX编译通过。首次测试编译发现gtest模板逗号宏括号问题，已修复；一次未设置缓存目录的py_compile被data-run拒绝在源码树写缓存，随后显式设置数据盘路径，未绕过隔离。
 
 按code-review技能做规则/需求两路只读审查，发现两个P1：接入地图后已有A的待定TA重复启动候选、复用状态覆盖LOST。均已修复并复核：真实待定TA与map prior同次加入，成功才消费队列并计入postfit；过期记录明确退休，未知A仍待定；状态保留原始故障与原因。新增对应回归。这里仍没有新的生产定位运行证据，不替代完整S/L验收。
+
+
+### 独立L第二轮完整输入
+
+生成提交89cb64e，run `/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414`，命令 `data-run -- tools/road_scene.sh --seed 20261028`。完整392.6秒、3926cloud/78521IMU/21860UWB/100381clock、77032491点；生成53.928秒（7.280×），含全包审计/图/接收检查的owner总耗时232.896秒，completed/pass仅指场景。原始SHA `d146412b1e3e7a93939ff0809c44dd1baf31184070f7fcccf5de5ab678fffcfa`，旧输入未改动。
+
+独立比较器 `tools/check_road_independence.py --first <旧L> --second <新L>`（data-run及ROS/shared消息环境）通过：除seed配置相同，全部运动数组精确相同，站点/设施/安装资料相同；clock同摘要、三类传感器异摘要、数量/点数相同。IMU白噪声跨轮相关最大绝对值0.004717；21130条TA噪声相关−0.003943、4323条AA噪声相关−0.015134，均满足预声明0.05。两轮bias不同。报告在新run `export/analysis/independent_input.json`。首次比较器因反复读取NPZ整数组被主动中断，改为一次物化后通过；未改数据或容差。
+
+固定CAL坐标评价加入 `--map-reference-run`，回归fixture保留预设15m起点误差，接入前样本单列。新reuse配置已绑定新L输入SHA，接下来的180秒运行仅检查新版生产复用接缝。
