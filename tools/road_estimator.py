@@ -23,7 +23,7 @@ def digest(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-def main():
+def main(*, conditional_oracle=False):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source-run', type=Path, required=True)
     parser.add_argument('--config', type=Path, required=True)
@@ -39,12 +39,15 @@ def main():
     if rd._git_value('status', '--porcelain'):
         raise RuntimeError('commit changes before production replay')
     source = args.source_run.resolve(strict=True)
-    run = rd.resolve_run_directory(entrypoint='road_estimator', scenario='road_tunnel_7km' if args.scene == 'road' else 'empty_tunnel_straight_v2')
+    run = rd.resolve_run_directory(entrypoint='conditional_oracle_diagnostic' if conditional_oracle else 'road_estimator', scenario='road_tunnel_7km' if args.scene == 'road' else 'empty_tunnel_straight_v2')
     print(run, flush=True)
     manifest = run / 'metadata/run_manifest.json'
     meta = json.loads(manifest.read_text())
     meta.update(run_class='validation', retention_class='protected', retained_input_run_ids=[source.name],
                 modules=['odometry', 'observer', 'road_sensor_replay'])
+    if conditional_oracle:
+        meta.update(run_class='diagnostic', diagnostic_role='D2_ORACLE_ANCHORS_NOT_DEPLOYABLE',
+                    acceptance='not_applicable_to_production_localization')
     rd._atomic_write_json(manifest, meta)
     children, handles = [], []
     node = None
@@ -56,12 +59,20 @@ def main():
         config_path = run / 'metadata/config/phase1.json'
         shutil.copyfile(args.config, config_path)
         config = json.loads(config_path.read_text())
+        if conditional_oracle:
+            from conditional_contract import vehicle_condition_config
+            if args.installation is not None or args.static_delivery_strategy != 'same_time':
+                raise ValueError('D2 forbids installation input and static delivery strategies')
+            shutil.copyfile(args.config, run/'metadata/config/joint_comparator.json')
+            config = vehicle_condition_config(config)
+            config_path.write_text(json.dumps(config, indent=2)+'\n')
         if args.static_delivery_strategy != 'same_time':
             if not config['uwb'].get('static_edges'):
                 raise ValueError('static delivery strategy requires explicit static channel')
             config['uwb']['static_edges']['delivery_strategy'] = args.static_delivery_strategy
             config_path.write_text(json.dumps(config, indent=2)+'\n')
-        if config['odometry']['backend'] != 'gpu' or config['uwb']['mode'] not in {'record_only', 'self_calibrate_free', 'reuse_anchor_map'}:
+        allowed_modes = {'fuse'} if conditional_oracle else {'record_only', 'self_calibrate_free', 'reuse_anchor_map'}
+        if config['odometry']['backend'] != 'gpu' or config['uwb']['mode'] not in allowed_modes:
             raise ValueError('road diagnostic requires GPU record_only, self_calibrate_free or reuse_anchor_map')
         scan_model = 'rolling' if args.scene == 'road' else 'snapshot'
         lidar_topic = '/sensors/lidar' if args.scene == 'road' else '/sensors/lidar/points'
@@ -121,7 +132,20 @@ def main():
             config_sha256=digest(config_path), binary_sha256={'odometry': digest(binary)},
             frozen_raw_sha256={'mcap': sha}, installation_sha256=digest(installation) if installation else None))
         map_input = None
-        if config['uwb']['mode'] == 'reuse_anchor_map':
+        if conditional_oracle:
+            from conditional_contract import validate_oracle_map
+            if args.map is None: raise ValueError('D2 requires an explicitly prepared oracle Anchor map')
+            map_input = run/'metadata/config/oracle_diagnostic_map.json'
+            shutil.copyfile(args.map, map_input)
+            validate_oracle_map(json.loads(map_input.read_text()), config, sha)
+            rd.write_subordinate_manifest(run, 'conditional_diagnostic', dict(
+                role='D2_ORACLE_ANCHORS_NOT_DEPLOYABLE', oracle_anchor_source=str(args.map),
+                oracle_anchor_sha256=digest(map_input), raw_sha256=sha,
+                vehicle_truth_access='NONE; evaluation is a separate process',
+                aa_vehicle_information='NONE; raw AA delivered but fusion disabled',
+                gauge='fixed oracle world frame; no vehicle truth alignment',
+                deployable_map_export='FORBIDDEN'))
+        elif config['uwb']['mode'] == 'reuse_anchor_map':
             if args.map is None: raise ValueError('reuse requires explicit previous A-only map')
             map_input = run / 'metadata/config/reuse_map.json'
             shutil.copyfile(args.map, map_input)
@@ -145,6 +169,7 @@ def main():
         commands = [[str(binary), '--ros-args', '-p', 'config_file:=' + str(config_path), '-p', 'use_sim_time:=true'],
                     [sys.executable, str(ROOT / 'tools/observe.py'), '--ros-args', '-p', 'use_sim_time:=true']]
         if map_input: commands[0] += ['-p', 'map_file:=' + str(map_input)]
+        if conditional_oracle: commands[0] += ['-r', '__node:=liuo_conditional_oracle']
         if installation: commands[0] += ['-p', 'installation_file:=' + str(installation)]
         for name, command in zip(['odometry', 'observer'], commands):
             handle = (run / 'runtime' / (name + '.log')).open('w')
@@ -251,6 +276,8 @@ def main():
         if not trajectory or abs(float(trajectory[-1]['stamp']) - cloud_stamps[-1]) > 1e-6:
             raise RuntimeError('estimator did not consume final scan')
         if (run / 'runtime/odometry_failure.json').exists(): raise RuntimeError('estimator failure artifact')
+        if conditional_oracle and list((run/'export/map').glob('*.json')):
+            raise RuntimeError('oracle diagnostic must not export a deployable map')
         report = dict(scope=f'native {scan_model} GPU input/output contract, not localization or map acceptance',
                       result='PASS', raw_counts=counts, raw_sha256=expected_hashes, output_count=len(trajectory),
                       first_output=float(trajectory[0]['stamp']), last_output=float(trajectory[-1]['stamp']), source_run=str(source),

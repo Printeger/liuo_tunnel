@@ -18,7 +18,8 @@ class RoadDiagnosticTest(unittest.TestCase):
             t = np.arange(0, 12.01, .1)
             positions = np.column_stack([10*t, 0*t, 0*t])
             rotations = Rotation.from_euler('z', .01*t)
-            np.savez(truth / 'trajectory.npz', t=t, p=positions, R=rotations.as_matrix())
+            np.savez(truth / 'trajectory.npz', t=t, p=positions, R=rotations.as_matrix(),
+                     v=np.tile([10., 0., 0.], (len(t), 1)))
             gauge = Rotation.from_euler('z', .7)
             # Deterministic growing error must remain after initial gauge fixing.
             drift = np.column_stack([.1*t*t, 0*t, 0*t])
@@ -35,6 +36,18 @@ class RoadDiagnosticTest(unittest.TestCase):
             self.assertLess(result['attitude_rmse_deg'], 1e-8)
             expected = .1*((t[t <= 11]+1)**2-t[t <= 11]**2)
             self.assertAlmostEqual(result['rpe']['1.0']['translation_rmse_m'], np.sqrt(np.mean(expected**2)), places=8)
+            manifests = root/'estimate/metadata/manifests'; manifests.mkdir(parents=True)
+            (manifests/'conditional_diagnostic.json').write_text(json.dumps(dict(role='D2_ORACLE_ANCHORS_NOT_DEPLOYABLE')))
+            subprocess.run([sys.executable, str(Path(__file__).with_name('analyze_road_diagnostic.py')),
+                '--run', str(root/'estimate'), '--truth-run', str(root/'truth'), '--oracle-world',
+                '--focus-start', '4', '--focus-end', '8'], check=True, stdout=subprocess.DEVNULL)
+            oracle = json.loads((root/'estimate/export/analysis/conditional_oracle_vehicle_focus_4_8.json').read_text())
+            np.testing.assert_array_equal(oracle['yaw_rotation_matrix'], np.eye(3))
+            np.testing.assert_array_equal(oracle['translation'], np.zeros(3))
+            focus = (t >= 3-1e-8) & (t <= 7+1e-8)
+            expected = np.sqrt(np.mean(np.sum((estimated[focus]-positions[focus])**2, axis=1)))
+            self.assertAlmostEqual(oracle['focus']['position_rmse_m'], expected, places=8)
+            self.assertEqual(oracle['focus']['samples'], 41)
 
 
 if __name__ == '__main__':

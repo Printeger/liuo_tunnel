@@ -78,6 +78,10 @@ A结论限定：“静态 AA 信息生命周期、地图闭环、rolling 接入�
 
 报告关注片段的输出覆盖、固定规范分轴/沿横向误差、姿态/速度/bias、TA接纳/残差、IMU覆盖及时间合同；保留前缀输出。明显失控支持优先查车辆链路，不能归咎未知Anchor；合理表现也不保证联合问题必然可解。
 
+D2实现冻结补充：独立`conditional_road_estimator.sh`入口复用原GPU/IMU/固定Anchor因子及输入保护，进程重命名为liuo_conditional_oracle；普通road_estimator仍不接受fuse。从冻结联合配置仅派生mode=fuse、use_aa=false、local_installation=false、删除static_edges，并显式保持原free模式已启用的bounded_bootstrap_work；传感器、噪声、车辆估计参数不变，不加载安装观测。真值Anchor文件必须标D2_ORACLE_ANCHORS_NOT_DEPLOYABLE并绑定原包SHA；拒绝车辆轨迹/位姿字段、安装先验或协方差。估计进程不读车辆真值，原始包truth topic在storage层过滤，禁止导出地图。评价使用`--oracle-world`，直接比较原世界坐标、不再作首输出或路线对齐；关注片段使用预声明inclusive ROS边界。此处是oracle条件变化，不能冒称实际联合后验。
+
+准备的D2文件在`/home/dev/ws_iap/conditional_diagnostics_20261027/`：S_oracle_anchors.json的SHA256为`54489a48f9eb1324f9dbba74be07cb7d6b63d9ef0c581436e92bf52153466acb`，L_oracle_anchors.json为`aa90105ba85818889c86770c9ba9b212c70a2e61d5b3aff2031bbf684cc964bc`。只读源Anchor资料，不读取真实车辆轨迹；文件不覆盖、不送入生产缓存。
+
 ### D3：实际联合问题
 
 假设：条件问题与实际联合结果之差可能来自初始化、状态耦合、候选分支、窗口信息移交或实现缺陷。

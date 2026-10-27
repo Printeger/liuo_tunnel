@@ -33,7 +33,16 @@ def main():
     parser.add_argument('--truth-run', type=Path, required=True)
     parser.add_argument('--truth-format', choices=['road_npz', 'straight_csv'], default='road_npz')
     parser.add_argument('--map-reference-run', type=Path, help='CAL run supplying fixed offline gauge; never align REUSE to its own first truth pose')
+    parser.add_argument('--oracle-world', action='store_true', help='D2 only: retain the fixed Anchor world frame without truth alignment')
+    parser.add_argument('--focus-start', type=float, help='inclusive ROS stamp of predeclared diagnostic interval')
+    parser.add_argument('--focus-end', type=float, help='inclusive ROS stamp of predeclared diagnostic interval')
     args = parser.parse_args()
+    if (args.focus_start is None) != (args.focus_end is None) or (args.focus_start is not None and args.focus_start >= args.focus_end):
+        raise ValueError('both increasing focus boundaries are required')
+    if args.oracle_world:
+        role = json.loads((args.run/'metadata/manifests/conditional_diagnostic.json').read_text())
+        if args.map_reference_run or role['role'] != 'D2_ORACLE_ANCHORS_NOT_DEPLOYABLE':
+            raise ValueError('oracle world gauge requires the independent D2 run')
     rows = list(csv.DictReader((args.run / 'export/odometry/trajectory.csv').open()))
     if not rows:
         raise ValueError('no trajectory')
@@ -71,7 +80,10 @@ def main():
     # Declare only yaw and translation gauge from the FIRST output. Do not fit
     # the route or remove roll/pitch error; no later truth influences transform.
     yaw = lambda r: np.arctan2(r.as_matrix()[1, 0], r.as_matrix()[0, 0])
-    if gauge_reference:
+    if args.oracle_world:
+        transform = Rotation.identity()
+        translation = np.zeros(3)
+    elif gauge_reference:
         transform = Rotation.from_matrix(gauge_reference['yaw_rotation_matrix'])
         translation = np.array(gauge_reference['translation'])
     else:
@@ -83,7 +95,7 @@ def main():
     route_error = route_error_components(t, error, truth['t'], truth['v'])
     attitude = (target_rotations.inv() * aligned_rotations).magnitude()
     result = dict(scope='offline diagnostic only, not stage acceptance', truth_run=str(args.truth_run), truth_format=args.truth_format,
-        run=str(args.run), gauge='inherited_CAL_gauge_no_REUSE_alignment' if gauge_reference else 'first_output_yaw_and_translation_only_no_route_fit',
+        run=str(args.run), gauge='oracle_world_no_truth_alignment' if args.oracle_world else ('inherited_CAL_gauge_no_REUSE_alignment' if gauge_reference else 'first_output_yaw_and_translation_only_no_route_fit'),
         reference_run=str(args.map_reference_run) if gauge_reference else str(args.run),
         total_output_samples=all_count, pre_map_output_samples=all_count-len(rows),
         reference_stamp=gauge_reference['reference_stamp'] if gauge_reference else float(t[0]+1), yaw_rotation_matrix=transform.as_matrix().tolist(), translation=translation.tolist(),
@@ -116,9 +128,23 @@ def main():
         velocities = transform.apply([[float(r[k]) for k in ['vx','vy','vz']] for r in rows])
         target_v = np.column_stack([np.interp(t, truth['t'], truth['v'][:,j]) for j in range(3)])
         result['velocity_rmse_mps'] = float(np.sqrt(np.mean(np.sum((velocities-target_v)**2, axis=1))))
+    if args.focus_start is not None:
+        focus = (t+1 >= args.focus_start-1e-8) & (t+1 <= args.focus_end+1e-8)
+        if not np.any(focus): raise ValueError('no output in fixed diagnostic focus interval')
+        result['focus'] = dict(requested_ros_interval=[args.focus_start, args.focus_end],
+            boundary='inclusive; preceding output fixes the same gauge, no focus realignment',
+            samples=int(focus.sum()), first_stamp=float(t[focus][0]+1), last_stamp=float(t[focus][-1]+1),
+            position_rmse_m=float(np.sqrt(np.mean(np.sum(error[focus]**2, axis=1)))),
+            xyz_rmse_m=np.sqrt(np.mean(error[focus]**2, axis=0)).tolist(),
+            along_cross_height_rmse_m=np.sqrt(np.mean(route_error[focus]**2, axis=0)).tolist(),
+            maximum_position_error_m=float(np.max(np.linalg.norm(error[focus], axis=1))),
+            attitude_rmse_deg=float(np.rad2deg(np.sqrt(np.mean(attitude[focus]**2)))))
+        if 'vx' in rows[0]:
+            result['focus']['velocity_rmse_mps'] = float(np.sqrt(np.mean(np.sum((velocities[focus]-target_v[focus])**2, axis=1))))
     output = args.run / 'export/analysis'
     output.mkdir(exist_ok=True, parents=True)
-    prefix = 'road_fixed_map_diagnostic' if gauge_reference else 'road_fixed_start_diagnostic'
+    prefix = 'conditional_oracle_vehicle' if args.oracle_world else ('road_fixed_map_diagnostic' if gauge_reference else 'road_fixed_start_diagnostic')
+    if args.focus_start is not None: prefix += f'_focus_{args.focus_start:g}_{args.focus_end:g}'
     (output / (prefix+'.json')).write_text(json.dumps(result, indent=2, allow_nan=False)+'\n')
     import matplotlib
     matplotlib.use('Agg')
@@ -127,7 +153,7 @@ def main():
     for i, label in enumerate(['world x error (m)', 'world y error (m)', 'world z error (m)']):
         axes[i].plot(t+1, error[:,i]); axes[i].set_ylabel(label); axes[i].grid(True)
     axes[-1].set_xlabel('ROS stamp (s)')
-    fig.suptitle('Inherited CAL gauge — no REUSE alignment' if gauge_reference else 'Offline fixed-start yaw/translation diagnostic — no route fitting')
+    fig.suptitle('ORACLE Anchor diagnostic — world frame, no truth alignment' if args.oracle_world else ('Inherited CAL gauge — no REUSE alignment' if gauge_reference else 'Offline fixed-start yaw/translation diagnostic — no route fitting'))
     fig.tight_layout(); fig.savefig(output / (prefix+'.png'), dpi=150); plt.close(fig)
     fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
     for i, label in enumerate(['horizontal along-route error (m)', 'left cross-route error (m)', 'world height error (m)']):
