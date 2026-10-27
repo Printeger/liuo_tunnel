@@ -116,6 +116,34 @@ TEST(AnchorRelativeCandidate, MainGraphInitialGuessUsesSameObservedVehicleRefere
   EXPECT_THROW(local.in_reference(491, main_pose), std::invalid_argument);
 }
 
+TEST(AnchorRelativeCandidate, RecordedStraightCandidatesShareOneRelativeBranchDespiteWorldDrift) {
+  // S-CAL 192427, candidate batch 95.4--97.8 s: four finite upper candidates,
+  // all referenced to X880. Lower mirror candidates were rejected by geometry.
+  const std::vector<gtsam::Point3> relative{
+    {.01563512478236361, -2.7999002241344, 3.357323108380853},
+    {.0669125226753108, -2.799913870559292, 3.344887180142677},
+    {.009847849712935008, -2.799896769826331, 3.358665173144771},
+    {.06547756301289252, -2.799915100781116, 3.345233986924528}};
+  const std::vector<gtsam::Point3> world{
+    {479.5899403403756, -6.011450796295583, 4.722584438875808},
+    {520.9525527438969, -6.606327569159763, 5.162152506734762},
+    {474.9597715533332, -5.95896882782579, 4.678659337185399},
+    {519.9664185836426, -6.58670491537481, 5.150609636109479}};
+  const AnchorRelativeCandidate best{880, relative[0]};
+  EXPECT_GT((world[1] - world[0]).norm(), 40.);
+  for (const auto& point : relative) EXPECT_LT(*best.displacement({880, point}), .06);
+  const AnchorRelativeCandidate mirror{880, {relative[0].x(), relative[0].y(), -2.85724792757229}};
+  EXPECT_GT(*best.displacement(mirror), .5);
+}
+
+TEST(AnchorRelativeCandidate, RecordedCurvedHeightBranchesRemainDistinctAtCommonVehicleReference) {
+  // L-CAL 183140, A2 at 215.3 s, common X2080: genuine relative height
+  // ambiguity must not disappear when changing the comparison coordinate.
+  const AnchorRelativeCandidate lower{2080, {-2.2048505, -3.6777123, -1.6405160}};
+  const AnchorRelativeCandidate upper{2080, {-2.2051102, -3.6108614, 1.7823691}};
+  EXPECT_GT(*lower.displacement(upper), 3.4);
+}
+
 TEST(LocalInstallation, GroundAssociationUsesActualSupportAndCannotExtendToWallSpan) {
   const gtsam::Pose3 body(gtsam::Rot3(), {0, -1.875, 1.66});
   auto points = walls(body);

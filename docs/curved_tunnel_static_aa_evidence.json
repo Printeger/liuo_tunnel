@@ -529,10 +529,128 @@
       "input_result": "PASS",
       "initialized_anchors": 0,
       "stage_acceptance": "NOT_ASSESSED"
+    },
+    "S_CAL_FULL_FIRST_FAILED": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T192427Z_824",
+      "source_commit": "2c29438",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933",
+      "stage_acceptance": "FAILED_NO_ANCHOR_MAP",
+      "input_report": {
+        "first_output": 3.1,
+        "last_output": 540.9,
+        "output_count": 5379,
+        "publish_wall_s": 539.9959237450021,
+        "raw_counts": {
+          "clock": 108000,
+          "cloud": 5400,
+          "imu": 108000,
+          "uwb": 39960
+        },
+        "raw_sha256": {
+          "clock": "66bb6e3bbcede3084b00aef9efb71b0c58e449ac23c54467980a2049572e79d1",
+          "cloud": "bb9a65a0a1cb806284f020d901d4c6b902e6f1ca1cfbde2e457ddf3d8866543e",
+          "imu": "b2320e602c000db59955473036e2b623ed8bfb98aa3bb88ede665572c2d7f532",
+          "uwb": "413ad19563426759f0bd295f00183e7e052618f3492716885ba2fcf762a5dd3c"
+        },
+        "real_time_factor": 1.0000075486773485,
+        "result": "PASS",
+        "scope": "native snapshot GPU input/output contract, not localization or map acceptance",
+        "source_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933"
+      },
+      "static_audit": {
+        "result": "INCOMPLETE_NO_EXPORTED_MAP",
+        "scope": "delivered raw AA and callback verified; no anchor initialization or fused AA; not acceptance",
+        "raw_records": 1805,
+        "received_records": 1805,
+        "unique_new_leaves": 1805,
+        "final_fused_leaves": 0,
+        "final_pending_leaves": 1805,
+        "raw_sha256": "8de5439e8e35ae747ee42842aa505b8ec5290548a70b4386b47c71df82ccdd7a"
+      },
+      "metrics": {
+        "scope": "offline diagnostic only, not stage acceptance",
+        "truth_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T190229Z_933",
+        "truth_format": "straight_csv",
+        "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T192427Z_824",
+        "gauge": "first_output_yaw_and_translation_only_no_route_fit",
+        "reference_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T192427Z_824",
+        "total_output_samples": 5379,
+        "pre_map_output_samples": 0,
+        "reference_stamp": 3.1,
+        "yaw_rotation_matrix": [
+          [
+            0.9999999996778381,
+            -2.5383533968098427e-05,
+            0.0
+          ],
+          [
+            2.5383533968098427e-05,
+            0.9999999996778381,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "translation": [
+          9.658074414358256e-06,
+          -4.519287881649864e-06,
+          1.2001327441431016
+        ],
+        "samples": 5379,
+        "first_stamp": 3.1,
+        "last_stamp": 540.9,
+        "covered_seconds": 537.8,
+        "position_rmse_m": 8144.87813630422,
+        "xyz_rmse_m": [
+          7319.83414243988,
+          2400.737897605615,
+          2644.905580435351
+        ],
+        "maximum_position_error_m": 37465.52084438911,
+        "attitude_rmse_deg": 22.374703685811745,
+        "rpe": {
+          "1.0": {
+            "samples": 5369,
+            "translation_rmse_m": 190.5392961368728,
+            "rotation_rmse_deg": 0.8916873949570839
+          },
+          "10.0": {
+            "samples": 5279,
+            "translation_rmse_m": 1750.9622684699068,
+            "rotation_rmse_deg": 5.4199686604519
+          }
+        },
+        "velocity_rmse_mps": 158.12952063829752
+      },
+      "resources": {
+        "scope": "recorded extrema and output coverage only; no localization or load-test acceptance",
+        "states_samples": {
+          "DEGRADED": 442,
+          "LOST": 4937
+        },
+        "output_samples": 5379,
+        "first_output_stamp": 3.1,
+        "last_output_stamp": 540.9,
+        "max_retained_vehicle_states": 101.0,
+        "max_factors": 398.0,
+        "max_rss_mib": 336.0078125,
+        "max_device_mib": 1177.125,
+        "device_memory_scope": "entire CUDA device, not exclusive process allocation",
+        "max_imu_queue": 402.0,
+        "max_cloud_queue": 0.0,
+        "max_uwb_queue": 2.0,
+        "maximum_optimization_ms": 33.7761,
+        "max_retained_cloud_frames": 101.0,
+        "max_keyframes": 1.0
+      },
+      "branch_diagnostic": "export/analysis/candidate_branch_diagnostic.json"
     }
   },
   "limitations": [
-    "Legacy S inputs lack reporter reachability. New full 540 s CAL and REUSE inputs passed coverage, reachability and independent noise checks; full ordinary S algorithm calibration is running.",
+    "Legacy S inputs lack reporter reachability. New full 540 s CAL and REUSE inputs passed coverage, reachability and independent noise checks; first full ordinary S calibration failed; candidate branch fix awaits production validation.",
     "Legacy S calibration leaves four anchors uninitialized; full ordinary S calibration remains pending. L full CAL initialized only four anchors; vertical and branch ambiguity remain unresolved.",
     "Native S/L input seams and L independent posterior ledger are verified, but full dual-scene localization effectiveness, comparisons and required static-pair/fault/load evidence remain incomplete."
   ],

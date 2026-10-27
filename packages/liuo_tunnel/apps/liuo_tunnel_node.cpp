@@ -1161,9 +1161,19 @@ private:
     const size_t best=std::distance(batch.costs.begin(),std::min_element(batch.costs.begin(),batch.costs.end()));
     if (!std::isfinite(batch.costs[best])) { log(id,"NO_VALID_LOCAL_HEIGHT_BRANCH"); extension_previous.erase(id); extension_relative_previous.erase(id); extension_batch.reset(); return; }
     const auto point=batch.solutions[best];
-    for (size_t i=0;i<batch.solutions.size();++i) if (std::isfinite(batch.costs[i]) && (batch.solutions[i]-point).norm()>=.5) {
-      log(id,"UNRESOLVED_POSITION_BRANCH",(batch.solutions[i]-point).norm());
-      extension_previous.erase(id); extension_relative_previous.erase(id); extension_batch.reset(); return;
+    for (size_t i=0;i<batch.solutions.size();++i) if (i!=best && std::isfinite(batch.costs[i])) {
+      const double world_distance=(batch.solutions[i]-point).norm();
+      // Local candidates jointly optimize X and A. Their weak world gauge is
+      // not an independent anchor branch; compare at the SAME vehicle key,
+      // as already done for cross-window consistency and seed transfer.
+      const double branch_distance=batch.relative_reference ?
+        *AnchorRelativeCandidate{*batch.relative_reference,batch.relative_points.at(best)}.displacement(
+          AnchorRelativeCandidate{*batch.relative_reference,batch.relative_points.at(i)}) : world_distance;
+      log(id,"CANDIDATE_BRANCH_SEPARATION",branch_distance,world_distance);
+      if (branch_distance>=.5) {
+        log(id,"UNRESOLVED_POSITION_BRANCH",branch_distance,world_distance);
+        extension_previous.erase(id); extension_relative_previous.erase(id); extension_batch.reset(); return;
+      }
     }
     const double stability_delta=extension_previous.count(id) ? (extension_previous.at(id)-point).norm() : NAN;
     log(id,"CANDIDATE_STABILITY_DELTA",stability_delta);

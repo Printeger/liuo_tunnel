@@ -184,6 +184,18 @@ def check(run):
         assert received_count >= raw_records
     else:
         raise ValueError('unsupported static delivery strategy')
+    if config['uwb']['mode'] == 'self_calibrate_free' and not (run/'export/map/calibrated_map.json').exists():
+        updates = [row for row in audit if row['event'] == 'graph_update']
+        graph = list(csv.DictReader((run/'export/odometry/graph.csv').open()))
+        assert updates and graph
+        assert updates[-1]['fused_leaves'] == 0 and updates[-1]['pending'] == len(expected)
+        assert max(int(row['A']) for row in graph) == 0
+        report = dict(result='INCOMPLETE_NO_EXPORTED_MAP',
+                      scope='delivered raw AA and callback verified; no anchor initialization or fused AA; not acceptance',
+                      raw_records=raw_records,received_records=received_count,unique_new_leaves=len(expected),
+                      final_fused_leaves=0,final_pending_leaves=updates[-1]['pending'],raw_sha256=digest)
+        (run/'export/analysis/road_static_audit.json').write_text(json.dumps(report,indent=2)+'\n')
+        return report
     if config['uwb']['mode'] == 'reuse_anchor_map':
         return check_reuse_seam(run, expected, audit, digest, raw_records, received_count)
     model = json.loads((run / 'export/map/calibrated_map.json').read_text())
@@ -220,4 +232,6 @@ def check(run):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('run', type=Path)
-    print(json.dumps(check(parser.parse_args().run), indent=2))
+    result = check(parser.parse_args().run)
+    print(json.dumps(result, indent=2))
+    raise SystemExit(0 if result['result'].startswith('PASS') else 1)
