@@ -166,6 +166,8 @@ public:
       });
     observation_input = std::make_unique<ObservationInput>(cfg.at("uwb").at("input"));
     input_batches.open(logs.export_path("odometry/uwb_batches.csv"));
+    input_decisions.open(logs.export_path("odometry/uwb_input_decisions.csv"));
+    input_decisions << "driver_session,batch_seq,item,reporter,source_session,source_sequence,kind,node_a,node_b,reason,queue_size,identity_size,retired_size,callback_stamp,received_stamp,callback_wall_ns,processing_us\n";
     input_batches << "callback_stamp,driver_session,batch_seq,observations,reason,cdr_hex\n";
     const auto topic = declare_parameter<std::string>("uwb_topic", "/liuo/uwb/observations");
     const int depth = declare_parameter<int>("uwb_qos_depth", 100);
@@ -359,6 +361,7 @@ private:
         << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() << ',' << o.network << ',' << o.driver_session << '\n';
   }
   void on_uwb(const liuo_uwb_msgs::msg::UwbObservationBatch& batch) {
+    const auto callback_start = std::chrono::steady_clock::now();
     const double callback_stamp = now().seconds();
     rclcpp::SerializedMessage raw;
     rclcpp::Serialization<liuo_uwb_msgs::msg::UwbObservationBatch>().serialize_message(&batch, &raw);
@@ -370,17 +373,25 @@ private:
     for (size_t i = 0; i < bytes.buffer_length; ++i) input_batches << hex[bytes.buffer[i] >> 4] << hex[bytes.buffer[i] & 15];
     input_batches << '\n';
     if (!batch_reason.empty()) return;
+    size_t item = 0;
     for (const auto& m : batch.observations) {
       RangeObservation o;
-      const auto reason = observation_input->adapt(batch, m, callback_stamp, o);
-      if (reason != "ACCEPT_INPUT") { log_range(o, reason); continue; }
-      enqueue_uwb(o);
+      auto reason = observation_input->adapt(batch, m, callback_stamp, o);
+      if (reason != "ACCEPT_INPUT") log_range(o, reason);
+      else reason = enqueue_uwb(o);
+      input_decisions << std::setprecision(17) << batch.driver_session_id << ',' << batch.batch_seq << ',' << item++ << ','
+                      << int(m.reporter_id) << ',' << m.source_session_id << ',' << m.source_frame_seq << ',' << int(m.kind) << ','
+                      << int(m.node_a) << ',' << int(m.node_b) << ',' << reason << ',' << range_queue.size() << ','
+                      << observation_input->identity_size() << ',' << observation_input->retired_size() << ',' << callback_stamp << ','
+                      << (double(m.received_stamp.sec) + 1e-9 * m.received_stamp.nanosec) << ','
+                      << std::chrono::duration_cast<std::chrono::nanoseconds>(callback_start.time_since_epoch()).count() << ','
+                      << std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - callback_start).count() << '\n';
     }
   }
-  void enqueue_uwb(RangeObservation o) {
+  std::string enqueue_uwb(RangeObservation o) {
     if (!fuse) {
       log_range(o, "RECORD_ONLY");
-      return;
+      return "RECORD_ONLY";
     }
     if (o.a_type == 1 && o.b_type == 0) {
       std::swap(o.a_type, o.b_type);
@@ -388,14 +399,14 @@ private:
     }
     if (o.a_type == 0 && o.a != 0) {
       log_range(o, "UNKNOWN_TAG");
-      return;
+      return "UNKNOWN_TAG";
     }
     // Disabled AA must not require initialized map endpoints or affect health.
     // Keep field/session/dedup validation and let the owner log the disabled sample.
     if (!use_aa && o.a_type == 1 && o.b_type == 1) {
       const auto reason = range_queue.push(o);
       if (reason != "QUEUED") log_range(o, reason);
-      return;
+      return reason;
     }
     try {
       auto validate_id = [&](uint32_t id) {
@@ -408,7 +419,7 @@ private:
       if (o.a_type == 1) validate_id(o.a);
     } catch (const std::exception&) {
       log_range(o, "UNKNOWN_ANCHOR");
-      return;
+      return "UNKNOWN_ANCHOR";
     }
     auto reason = range_queue.push(o);
     if (reason != "QUEUED") log_range(o, reason);
@@ -416,6 +427,7 @@ private:
     // interval generate seeds. These summaries are NOT graph observations.
     if (reason == "QUEUED" && o.a_type == 0 && first_imu >= 0 && o.stamp >= first_imu && o.stamp <= first_imu + cfg.at("odometry").at("initialization_s").get<double>())
       stationary_seed_ranges[o.b].add(o.range, o.variance);
+    return reason;
   }
   std::optional<gtsam::Values> solve_bootstrap_branches(double t, const gtsam_points::LevenbergMarquardtExtParams& params) {
     const double bootstrap_timeout = cfg.at("uwb").value("bootstrap_timeout_s", self_calibrate ? 60. : 20.);
@@ -1884,7 +1896,7 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub;
   std::unique_ptr<ObservationInput> observation_input;
-  std::ofstream input_batches;
+  std::ofstream input_batches, input_decisions;
   rclcpp::Subscription<liuo_uwb_msgs::msg::UwbObservationBatch>::SharedPtr uwb_sub;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr visual_cloud;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr visual_anchors;

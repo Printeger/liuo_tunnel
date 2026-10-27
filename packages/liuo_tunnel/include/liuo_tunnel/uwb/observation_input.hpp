@@ -38,6 +38,17 @@ public:
     if (b.observations.size() > 1024) return "BATCH_LIMIT";
     return "";
   }
+  size_t identity_size() const {
+    size_t size = 0;
+    for (const auto& source : sources_)
+      for (const auto& frame : source.second.frames) size += frame.second.size();
+    return size;
+  }
+  size_t retired_size() const {
+    size_t size = retired_drivers_.size();
+    for (const auto& source : sources_) size += source.second.retired.size();
+    return size;
+  }
   // Clock resets retire the entire dataset, including records not yet fused.
   void reset() {
     if (driver_) retired_drivers_.insert(*driver_);

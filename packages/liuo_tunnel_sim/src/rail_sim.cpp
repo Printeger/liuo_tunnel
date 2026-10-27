@@ -68,7 +68,7 @@ public:
     truth.open(logs.export_path("simulation/truth.csv"));
     truth << std::setprecision(16) << "session,stamp,x,y,z,vx,vy,vz,available_ta_count,available_ta_ids,qx,qy,qz,qw\n";
     uwblog.open(logs.export_path("simulation/uwb.csv"));
-    uwblog << std::setprecision(16) << "session,sequence,stamp,a_type,a,b,true_range,range,variance\n";
+    uwblog << std::setprecision(16) << "session,sequence,stamp,a_type,a,b,true_range,range,variance,physical_range,sample_index,stream_id,float32_error\n";
     scheduling.open(logs.export_path("simulation/scheduling.csv"));
     scheduling << "session,stamp,ta_published,aa_published,unreachable,occluded,slots,overdue_links,max_lateness_s\n";
     timing.open(logs.profiling_path("simulation.csv"));
@@ -359,7 +359,7 @@ private:
     u.observations.push_back(o);
     capture(u, uwb_pub->get_topic_name());
     uwb_pub->publish(u);
-    uwblog << session << ',' << u.batch_seq << ',' << 1 + t << ',' << l.type << ',' << l.a << ',' << l.b << ',' << (a - b).norm() << ',' << o.distance_m << ",0.01\n";
+    uwblog << session << ',' << u.batch_seq << ',' << 1 + t << ',' << l.type << ',' << l.a << ',' << l.b << ',' << (a - b).norm() << ',' << o.distance_m << ",0.01," << physical_range << ',' << (l.samples - 1) << ',' << (1000 + l.type * 10000 + l.a * 100 + l.b) << ',' << (double(o.distance_m) - physical_range) << '\n';
     if (l.type)
       aa_published++;
     else

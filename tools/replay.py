@@ -21,6 +21,7 @@ import rosbag2_py
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--uwb-contract-fixture", action="store_true")
     parser.add_argument("--source-run", type=Path, required=True)
     parser.add_argument("--delivery-profile", type=Path)
     args = parser.parse_args()
@@ -120,6 +121,10 @@ def main():
             deserialize_message(data, types[topic])
             prepared.add(topic)
     input_prepare_s = (time.monotonic_ns() - prepare_ns) * 1e-9
+    fixture = None
+    if args.uwb_contract_fixture:
+        from uwb_contract_fixture import cases
+        fixture = iter(cases())
     first_stamp = None
     start_ns = None
     clock_session = 1
@@ -153,7 +158,12 @@ def main():
                 raise RuntimeError("REPLAY_DEADLINE_MISSED: backlog >250ms")
             message = deserialize_message(data, types[topic])
             kind = allowed[topic]
-            if kind == "uwb":
+            if kind == "uwb" and fixture is not None:
+                case = next(fixture, None)
+                if case is None:
+                    continue
+                message = case[1]
+            if kind == "uwb" and fixture is None:
                 kept = []
                 elapsed = (record_ns - first_stamp) * 1e-9
                 for o in message.observations:
@@ -196,7 +206,7 @@ def main():
         "real_time_factor": duration / wall,
         "peak_rss_kib": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
         "scan_model": "snapshot",
-        "input_mode": "frozen_replay",
+        "input_mode": "software_contract_fixture" if fixture is not None else "frozen_replay",
         "published_counts": counts,
         "delivered_sha256": {k: h.hexdigest() for k, h in hashes.items()},
         "duplicate_uwb": duplicates,

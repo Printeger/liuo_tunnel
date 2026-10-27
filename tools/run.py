@@ -49,6 +49,7 @@ def main():
         type=Path,
         help="explicit frozen-replay UWB transport fault profile",
     )
+    p.add_argument("--uwb-contract-fixture", action="store_true", help="predeclared software callback fixture on frozen IMU/LiDAR/clock")
     p.add_argument("--capture-only", action="store_true", help="live raw capture and observer only; no estimator or localization acceptance")
     p.add_argument("--uwb-topic", default="/liuo/uwb/observations")
     p.add_argument("--uwb-qos-depth", type=int, default=100)
@@ -124,6 +125,8 @@ def main():
         not math.isfinite(args.wall_timeout) or args.wall_timeout <= 0
     ):
         p.error("wall timeout must be finite and positive")
+    if args.uwb_contract_fixture and (not args.replay or args.delivery_profile):
+        p.error("contract fixture requires replay without delivery profile")
     if args.delivery_profile and not args.replay:
         p.error("delivery profile requires --replay")
     if args.replay and (args.capture or args.rate != 1.0):
@@ -436,6 +439,12 @@ def main():
                 "--source-run",
                 frozen["source_run"],
             ]
+            if args.uwb_contract_fixture:
+                from uwb_contract_fixture import prepare
+                prepare(run)
+                rd.register_config_snapshot(run, run / "metadata/config/uwb_contract_expected.json")
+                identity["uwb_contract_fixture_sha256"] = digest(ROOT / "tools/uwb_contract_fixture.py")
+                commands["simulation"] += ["--uwb-contract-fixture"]
             identity["frozen_input"] = frozen
         if args.delivery_profile:
             from delivery_schedule import DeliverySchedule
