@@ -46,3 +46,19 @@ data-run -- bash -c '
 S 回归配置 `phase3_static_s_regression.json` 绑定旧 360 s 包 SHA256 `5215d2b35af02389e401f05c1925acb3c36707addc00700eff7aa47ef27ed26a`。回放派生器只处理送达的原始 AA，未读取物理全局日志；单元测试验证 driver 改变后物理 ID 不变、采集时间不改写、原包内容身份不符则拒绝。初次 Python 测试缺少共享消息 underlay，补齐与正式 wrapper 相同的环境后通过，没有绕过 data-run。
 
 以上是实现与定向测试进展。实际生产回放、独立地图复用和完整 C01–C16 验收尚未完成；早先“待完成”条目仍是验收状态，不因新增代码自动标为 PASS。
+
+### S 旧路线生产回归：`20261027T152225Z_083`
+
+绑定干净提交 `14fbd3a`，实际 RTX 4070 Ti SUPER，360 s 录包在 360.00085 s 发布完成。输入 72,000 IMU / 3,600 snapshot / 26,614 UWB batch 全部核对，原始内容 hash 检查通过。命令：
+
+```bash
+data-run -- tools/run.sh --formal --replay /home/dev/ws_iap/.runtime/0/liuo/20261027T031155Z_389 --config packages/liuo_tunnel/config/phase3_static_s_regression.json --installation packages/liuo_tunnel/config/installation/straight_simulated.json --use-aa --wall-timeout 480
+```
+
+run 路径 `/home/dev/ws_iap/.runtime/0/liuo/20261027T152225Z_083`；owner manifest 为 completed，`export/analysis/report.json` 单 run 合同 PASS，阶段验收仍 NOT_ASSESSED。实际未知 A 为 0/1/2，共接收 2,160 个独立静态叶，最终融合 720 个、两个显式 AA 因子，另外 1,440 叶因端点未初始化保留 pending。最后地图检查点在 t=360.0，含 718 叶；最终状态 t=360.9，比该检查点晚，因此不能把地图说成含全部 720 叶。其余 4 站未初始化；扩图日志保留未消除的位置分支。
+
+首次输出 t=40.9（等待 39.9 s）。固定首轮规范的位置 RMSE 0.75249 m，分轴为 0.01760/0.02319/0.75193 m，高度弱误差未解决，未达到 0.30 m 参考值；输出 3197 个 DEGRADED 和 4 个 LOST。处理 p95 44.71 ms，端到端 p95 51.80 ms。该结果仅证明此旧路线上的生产静态接入与真实地图导出，不能替代完整 S/L、rolling 或独立复用。
+
+另已确认旧 S 生成器只检查 AA 两端的量程/LOS，没有单独检查 reporter→车辆链路。旧包原样保留；本派生器只使用其中已送达的消息，但这不证明无线交付物理成立。新完整 S 采集必须补齐这项物理门限，旧回归不得作为 C10 的 LOS 通过证据。
+
+独立复用的旧输入 `20261027T031819Z_304` 为 seed 1、启动 `[220,0.2,1.6,pi/2]`，与首轮 seed 0、`[200,0,1.2,0]` 不同。专用静态复用配置绑定其 raw SHA256 `5be10c3a8c89879865f0dc7c11d380d992ea429d51ddf6eca015c1e0a78764b4`；复用结果待实际运行，不按配置存在判通过。

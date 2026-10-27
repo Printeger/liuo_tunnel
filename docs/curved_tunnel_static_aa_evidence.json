@@ -1,0 +1,34 @@
+{
+  "schema": "curved_tunnel_static_aa_development_evidence_v1",
+  "completion": "INCOMPLETE",
+  "scope": "S legacy 360 s calibration route development regression only; not full S or L",
+  "runs": {
+    "S_LEGACY_CAL_STATIC": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T152225Z_083",
+      "source_commit": "14fbd3a7c564739943998a635b00f7239306afba",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T031155Z_389",
+      "raw_sha256": "5215d2b35af02389e401f05c1925acb3c36707addc00700eff7aa47ef27ed26a",
+      "gpu": "NVIDIA GeForce RTX 4070 Ti SUPER",
+      "report": "export/analysis/report.json",
+      "single_run_result": "PASS",
+      "initialized_anchor_ids": [
+        0,
+        1,
+        2
+      ],
+      "static_delivered_leaves": 2160,
+      "static_fused_leaves_final": 720,
+      "static_explicit_edges": 2,
+      "map_checkpoint_stamp": 360.0,
+      "map_absorbed_leaves": 718,
+      "position_rmse_m": 0.752492483632072,
+      "real_time_factor": 0.9999976252389727,
+      "stage_acceptance": "NOT_ASSESSED"
+    }
+  },
+  "limitations": [
+    "Old S rail simulator gates AA measurement LOS but lacks separate reporter-to-vehicle reachability; this regression cannot validate C10 delivery physics. New full S generation must add that gate without rewriting frozen inputs.",
+    "Four anchors remain uninitialized; vertical accuracy remains weak.",
+    "Full dual-scene matrix, rolling, general curved initialization and independent map reuse are not yet verified."
+  ]
+}
