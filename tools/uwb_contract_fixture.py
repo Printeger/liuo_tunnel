@@ -97,6 +97,15 @@ def cases():
     add('old_source_late', [observation(source_session_id=100, source_frame_seq=301)], ['RETIRED_SOURCE_SESSION'])
     add('driver_restart', [observation(source_session_id=1, source_frame_seq=1)], ['ACCEPT'], driver_session_id=9002)
     add('old_driver_late', [observation(source_session_id=101, source_frame_seq=1)], ['RETIRED_DRIVER_SESSION'])
+    for session in range(2, 66):
+        add('source_retirement_capacity_' + str(session), [observation(source_session_id=session, source_frame_seq=1)], ['ACCEPT'], driver_session_id=9002)
+    add('source_retirement_exhausted', [observation(source_session_id=66, source_frame_seq=1)], ['SOURCE_SESSION_CAPACITY'], driver_session_id=9002)
+    add('active_source_after_exhaustion', [observation(source_session_id=65, source_frame_seq=2)], ['ACCEPT'], driver_session_id=9002)
+    add('retired_source_stays_retired', [observation(source_session_id=1, source_frame_seq=2)], ['RETIRED_SOURCE_SESSION'], driver_session_id=9002)
+    for driver in range(9003, 9066):
+        add('driver_retirement_capacity_' + str(driver), [observation(source_session_id=1, source_frame_seq=1)],
+            ['ACCEPT' if driver < 9065 else 'IDENTITY_CAPACITY_EXHAUSTED'], driver_session_id=driver)
+    add('capacity_cannot_resurrect_old_driver', [observation(source_session_id=1, source_frame_seq=2)], ['IDENTITY_CAPACITY_EXHAUSTED'], driver_session_id=9002)
     return result
 
 
