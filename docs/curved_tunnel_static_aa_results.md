@@ -103,3 +103,7 @@ data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liu
 随后的 180 s 投影诊断 `20261027T160542Z_501` 在约 t=47 已出现大幅位置跳变（t=46 x=424.20、t=47 x=141.74 m），投影秩仍为 2，不能把投影开关视作修复。下一项 `road_rolling_lio_projected_dogleg.json` 相对投影配置仅加入既有 `use_dogleg=true`；同一输入、噪声、因子和关键帧数量，检查非线性步长控制是否能抑制该跳变。该诊断不增加位姿先验。
 
 高速 TA 独立解析检查通过：半径 2998.125 m、最大 80 km/h、制动/匀速/加速，非零杆臂及旋转规范下，0.1 s 插值的点和距离误差满足预声明 0.00190 m 上界；另补齐全覆盖 IMU 中重复/逆序拒绝检查，rolling 共 4 测试通过。这些定向测试不验证整体定位效果。
+
+180 s 投影诊断最终在 t=171.5、x1675 附近发生 `OPTIMIZATION_FAILED`，run `20261027T160542Z_501` 为 failed，未出具片段 PASS。
+
+外部 Adapter 新增显式 rolling 模式：校验字段/存储/时间/ring 后返回原消息，snapshot 继续原零时间转换。新增测试先因缺 scan_model 参数失败，再实现并与既有 snapshot 测试一起通过（2 测试）。尚未改变外部 runner 的场景选择、配置、时长或输出路径；不能称完整 FAST-LIO2 接通。

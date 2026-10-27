@@ -65,7 +65,10 @@ def startup(source):
 
 
 class Adapter:
-    def __init__(self, rotation, bias):
+    def __init__(self, rotation, bias, scan_model="snapshot"):
+        if scan_model not in {"snapshot", "rolling"}:
+            raise ValueError("unknown scan model")
+        self.scan_model = scan_model
         self.rotation = rotation
         self.bias = bias
         self.previous = None
@@ -93,7 +96,21 @@ class Adapter:
         xyz = point_cloud2.read_points_numpy(msg, field_names=('x', 'y', 'z'), skip_nans=False)
         if not np.isfinite(xyz).all():
             raise RuntimeError('nonfinite frozen cloud')
-        times = point_cloud2.read_points_numpy(msg, field_names=('time',), skip_nans=False)
+        times = point_cloud2.read_points_numpy(msg, field_names=('time',), skip_nans=False).reshape(-1)
+        if self.scan_model == 'rolling':
+            if msg.is_bigendian or msg.height != 1 or msg.row_step != msg.width * msg.point_step or len(msg.data) != msg.row_step:
+                raise RuntimeError('invalid native rolling cloud layout')
+            for name in ('x', 'y', 'z', 'intensity', 'time', 'ring'):
+                fields = [f for f in msg.fields if f.name == name]
+                datatype, size = (PointField.UINT16, 2) if name == 'ring' else (PointField.FLOAT32, 4)
+                if len(fields) != 1 or fields[0].datatype != datatype or fields[0].count != 1 or fields[0].offset + size > msg.point_step:
+                    raise RuntimeError('invalid native rolling field: ' + name)
+            ring = point_cloud2.read_points(msg, field_names=('ring',), skip_nans=False)['ring']
+            if not len(times) or not np.isfinite(times).all() or np.any((times < 0) | (times >= .1)) or np.any(np.diff(times) < 0) or np.any(ring >= 40):
+                raise RuntimeError('invalid native rolling time or ring')
+            # FAST-LIO Velodyne preprocessing with timestamp_unit=SEC consumes
+            # these native float seconds and uint16 rings. No deskew here.
+            return msg
         if np.any(times != 0):
             raise RuntimeError('this adapter is snapshot-only')
         elevation = np.rad2deg(np.arctan2(xyz[:, 2], np.linalg.norm(xyz[:, :2], axis=1)))

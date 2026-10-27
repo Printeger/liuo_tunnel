@@ -27,6 +27,25 @@ class AdapterTest(unittest.TestCase):
         self.assertEqual(m.orientation_covariance[0],-1)
         self.assertEqual(m.header.stamp.sec,1)
 
+    def test_native_rolling_preserves_bytes_and_ring(self):
+        adapter = Adapter(Rotation.identity(), np.zeros(3), scan_model='rolling')
+        fields = [PointField(name=k, offset=4*i, datatype=PointField.FLOAT32, count=1)
+                  for i,k in enumerate(('x','y','z','intensity','time'))]
+        fields.append(PointField(name='ring', offset=20, datatype=PointField.UINT16, count=1))
+        # Native ring must survive; it must not be reconstructed from noisy xyz.
+        source = point_cloud2.create_cloud(Header(frame_id='lidar'), fields,
+            [(4., 1., 0., 7., 0., 39), (4., 1., 0., 8., .099, 0)])
+        self.assertIs(adapter.cloud(source), source)
+        for bad_time, bad_ring in [(100., 0), (float('nan'), 0), (.05, 40), (-.01, 0)]:
+            bad = point_cloud2.create_cloud(Header(frame_id='lidar'), fields,
+                [(4., 1., 0., 7., 0., 0), (4., 1., 0., 8., bad_time, bad_ring)])
+            with self.assertRaises(RuntimeError):
+                adapter.cloud(bad)
+        reversed_time = point_cloud2.create_cloud(Header(frame_id='lidar'), fields,
+            [(4., 1., 0., 7., .09, 0), (4., 1., 0., 8., .01, 1)])
+        with self.assertRaises(RuntimeError):
+            adapter.cloud(reversed_time)
+
 
 if __name__=='__main__':
     unittest.main()
