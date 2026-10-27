@@ -11,6 +11,8 @@ import numpy as np
 
 
 def analyze(run):
+    config=json.loads((run/'metadata/config/phase1.json').read_text())
+    iteration_limit=config['uwb'].get('bootstrap_max_iterations',30)
     content=(run/'profiling/anchor_extension.csv').read_text()
     incomplete_tail=not content.endswith('\n')
     if incomplete_tail:
@@ -24,7 +26,10 @@ def analyze(run):
         if batch is None:
             continue
         current=batch['current']
-        if event=='CANDIDATE_COMMON_REFERENCE':
+        if event=='CANDIDATE_ITERATIONS':
+            current['iterations']=int(float(row['value_a']))
+            current['iteration_limit_reached']=current['iterations']>iteration_limit
+        elif event=='CANDIDATE_COMMON_REFERENCE':
             current['reference']=int(float(row['value_a']))
         elif event=='CANDIDATE_RELATIVE_XY':
             current['relative_xy']=[float(row['value_a']),float(row['value_b'])]
@@ -56,6 +61,8 @@ def analyze(run):
             rejected.append(entry)
             batches.pop(key,None)
     result=dict(scope='logged candidate comparison only; no truth or localization acceptance',run=str(run),gate_m=.5,
+                convergence_scope='finite candidates are numerical outputs, not proven stationary solutions; iteration limit may coincide with another stopping criterion',
+                configured_iteration_limit=iteration_limit,
                 incomplete_tail_ignored=incomplete_tail,counts=dict(Counter(r['classification'] for r in rejected)),rejected_batches=rejected)
     output=run/'export/analysis/candidate_branch_diagnostic.json';output.parent.mkdir(parents=True,exist_ok=True)
     output.write_text(json.dumps(result,indent=2,allow_nan=False)+'\n')
