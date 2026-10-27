@@ -221,11 +221,25 @@ def evaluate(run, output_dir=None):
                 "AA summary pair bound exceeded",
             )
             if audit["clock_resets"] == 0:
-                check(
-                    int(graph[-1]["aa_accumulated_measurements"])
-                    == sum(r["reason"] == "ACCEPT_AA" for r in uwb),
-                    "AA accumulated/raw identity count mismatch",
-                )
+                if "static_edges" in config["uwb"] and config["uwb"]["use_aa"]:
+                    events = [json.loads(line) for line in (run / "export/odometry/static_edges.jsonl").read_text().splitlines()]
+                    updates = [event for event in events if event["event"] == "graph_update"]
+                    check(bool(updates), "static graph updates missing")
+                    check(not any(r["reason"] == "ACCEPT_AA" for r in uwb), "raw/static AA counted simultaneously")
+                    if updates:
+                        check(int(graph[-1]["aa_accumulated_measurements"]) == updates[-1]["fused_leaves"], "static graph counter mismatch")
+                    delivered = json.loads((run / "export/simulation/static_delivery.json").read_text())
+                    check(int(graph[-1]["aa_accumulated_measurements"]) <= len(delivered["unique_physical_ids"]), "static count exceeds physical deliveries")
+                    if mode == "self_calibrate":
+                        leaves = map_config["static_edge_ledger"]["leaves"]
+                        check(len({leaf["physical_id"] for leaf in leaves}) == len(leaves), "duplicate map physical leaf")
+                        check({leaf["physical_id"] for leaf in leaves} <= set(delivered["unique_physical_ids"]), "map absorbed undelivered static input")
+                else:
+                    check(
+                        int(graph[-1]["aa_accumulated_measurements"])
+                        == sum(r["reason"] == "ACCEPT_AA" for r in uwb),
+                        "AA accumulated/raw identity count mismatch",
+                    )
             cfg = json.loads((run / "metadata/config/phase1.json").read_text())
             odometry = cfg["odometry"]
             factor_bound = (

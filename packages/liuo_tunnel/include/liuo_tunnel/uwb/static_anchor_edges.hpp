@@ -120,6 +120,8 @@ public:
     auto found = summaries_.find({pair.first, pair.second});
     return found == summaries_.end() ? GaussianRangeSummary{} : found->second;
   }
+  bool contains(const std::string& physical_id) const { return blocks_.count(physical_id) != 0; }
+  size_t size() const { return blocks_.size(); }
 
 private:
   static uint32_t endpoint(const nlohmann::json& value) {

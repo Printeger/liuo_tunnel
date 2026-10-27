@@ -79,6 +79,12 @@ def main():
     registry = {n["logical_id"]: (n["type"], n["internal_id"]) for n in input_config["nodes"]}
     def anchor_ids(o):
         return [registry[n][1] for n in (o.node_a, o.node_b) if n in registry and registry[n][0] == 1]
+    static_publisher = None
+    if "static_edges" in target_config["uwb"]:
+        if args.capture_derived:
+            raise RuntimeError("static derived recording must include its separate topic; not implemented")
+        from static_replay import StaticReplayPublisher
+        static_publisher = StaticReplayPublisher(node, source, run, registry, target_config["uwb"]["static_edges"])
     legacy = None
     if args.legacy_reference:
         from legacy_uwb_reference import LegacyReference
@@ -103,7 +109,7 @@ def main():
     while any(
         publishers[t].get_subscription_count() < (1 if legacy and t == source_topic else 2)
         for t in ["/sensors/imu", "/sensors/lidar/points", source_topic]
-    ) or (legacy is not None and legacy.publisher.get_subscription_count() < 1):
+    ) or (legacy is not None and legacy.publisher.get_subscription_count() < 1) or (static_publisher is not None and static_publisher.publisher.get_subscription_count() < 1):
         if time.monotonic() > ready_deadline:
             raise RuntimeError("replay consumers not ready")
         rclpy.spin_once(node, timeout_sec=0.01)
@@ -212,6 +218,8 @@ def main():
                 legacy.publish(message)
             publish_wall_ns = time.monotonic_ns()
             publishers[topic].publish(message)
+            if static_publisher and kind == "uwb":
+                static_publisher.publish(message)
             if load_delivery_csv and kind == "uwb":
                 load_delivery_csv.writerow([message.batch_seq, publish_wall_ns, len(message.observations)])
             if time.monotonic_ns() - deadline > 250_000_000:
@@ -230,6 +238,8 @@ def main():
         end = start_ns + round(duration * 1e9)
         while time.monotonic_ns() < end:
             rclpy.spin_once(node, timeout_sec=0.001)
+    if static_publisher:
+        static_publisher.close()
     if legacy:
         legacy.close()
     if writer:

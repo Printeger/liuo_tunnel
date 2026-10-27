@@ -1,5 +1,6 @@
 #pragma once
 #include <liuo_tunnel/common/sensors.hpp>
+#include <liuo_tunnel/uwb/static_anchor_edges.hpp>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <gtsam/geometry/Point3.h>
 #include <gtsam/inference/Symbol.h>
@@ -30,7 +31,7 @@ struct CalibratedMap {
     return mean;
   }
   static CalibratedMap parse(const nlohmann::json& j, const nlohmann::json& sensor_identity) {
-    if (j.at("schema_version") != "liuo_joint_map_v1" || j.at("frame") != "map" || j.at("anchor_units") != "m" ||
+    if ((j.at("schema_version") != "liuo_joint_map_v1" && j.at("schema_version") != "liuo_joint_map_static_v2") || j.at("frame") != "map" || j.at("anchor_units") != "m" ||
         j.at("reference_units") != nlohmann::json::array({"mrad", "m"}) || j.at("reference_origin_m") != nlohmann::json::array({0, 0, 0}) ||
         j.at("status") != "PROVISIONAL_INITIALIZED" || j.at("unresolved_branches") != nlohmann::json::array())
       throw std::invalid_argument("CALIBRATED_MAP_INVALID_SCHEMA_OR_BRANCHES");
@@ -72,6 +73,13 @@ struct CalibratedMap {
     if (!m.mean_vector().allFinite() || !m.covariance.allFinite() || !m.covariance.isApprox(m.covariance.transpose(), 1e-10) ||
         Eigen::LLT<gtsam::Matrix>(m.covariance).info() != Eigen::Success)
       throw std::invalid_argument("CALIBRATED_MAP_NONFINITE_OR_NOT_SPD");
+    if (j.at("schema_version") == "liuo_joint_map_static_v2") {
+      const auto& ledger = j.at("static_edge_ledger");
+      StaticAnchorEdges validated(ledger.at("network"), ledger.at("deployment_epoch"), 65536, ledger);
+      for (const auto& leaf : ledger.at("leaves"))
+        if (!seen.count(leaf.at("first").get<uint32_t>()) || !seen.count(leaf.at("second").get<uint32_t>()))
+          throw std::invalid_argument("STATIC_MAP_LEDGER_UNKNOWN_ANCHOR");
+    } else if (j.contains("static_edge_ledger")) throw std::invalid_argument("STATIC_MAP_LEDGER_REQUIRES_V2");
     return m;
   }
   static CalibratedMap load(const std::filesystem::path& path, const nlohmann::json& sensors) {

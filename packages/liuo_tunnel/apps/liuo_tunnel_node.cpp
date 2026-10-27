@@ -9,6 +9,8 @@
 #include <visualization_msgs/msg/marker_array.hpp>
 #include <diagnostic_msgs/msg/diagnostic_array.hpp>
 #include <liuo_tunnel/uwb/observation_input.hpp>
+#include <liuo_tunnel/uwb/static_record_input.hpp>
+#include <liuo_tunnel/uwb/static_edge_graph.hpp>
 #include <rclcpp/serialization.hpp>
 #include <liuo_tunnel/common/imu_integration.hpp>
 #include <liuo_tunnel/common/cloud_covariance_estimation.hpp>
@@ -176,6 +178,23 @@ public:
     uwb_sub = create_subscription<liuo_uwb_msgs::msg::UwbObservationBatch>(
       topic, rclcpp::QoS(rclcpp::KeepLast(depth)).best_effort().durability_volatile(),
       [this](liuo_uwb_msgs::msg::UwbObservationBatch::ConstSharedPtr m) { on_uwb(*m); });
+    if (cfg.at("uwb").contains("static_edges")) {
+      const auto& input = cfg.at("uwb").at("static_edges");
+      if (!fuse || (!self_calibrate && !reuse_map && !map.surveyed())) throw std::invalid_argument("STATIC_EDGES_REQUIRE_VARIABLE_ANCHORS");
+      static_input = std::make_unique<StaticRecordInput>(input);
+      nlohmann::json absorbed = nullptr;
+      if (reuse_map) {
+        if (!calibrated_map->document.contains("static_edge_ledger")) throw std::invalid_argument("MAP_AA_OVERLAP_UNKNOWN");
+        absorbed = calibrated_map->document.at("static_edge_ledger");
+      }
+      const size_t capacity = input.value("max_leaves", 8192u);
+      if (capacity == 0 || capacity > 65536) throw std::invalid_argument("STATIC_EDGE_CAPACITY_INVALID");
+      static_edges = std::make_unique<StaticEdgeGraph>(input.at("network"), input.at("deployment_epoch"), capacity, absorbed);
+      static_audit.open(logs.export_path("odometry/static_edges.jsonl"));
+      static_sub = create_subscription<liuo_tunnel_msgs::msg::StaticAnchorRecord>(
+        input.value("topic", std::string("/liuo/uwb/static_edges")), rclcpp::QoS(100).reliable(),
+        [this](liuo_tunnel_msgs::msg::StaticAnchorRecord::ConstSharedPtr record) { on_static_record(*record); });
+    }
     estimator_timer = create_wall_timer(std::chrono::milliseconds(1), [this] { drain(); });
     failure_context = "SENSOR_INPUT_FAILED";
     logger->info("{} raw multi-frame VGICP ready; device={}; UWB={}; truth is not subscribed", backend, gpu_name, fuse ? "FUSED_RAW" : "RECORD_ONLY");
@@ -199,6 +218,7 @@ public:
 
 private:
   void reset() {
+    if (static_edges) static_edges->reset_graph();
     gtsam::ISAM2Params p;
     p.relinearizeSkip = 1;
     p.relinearizeThreshold = cfg.at("odometry").value("relinearize_threshold", .05);
@@ -347,7 +367,7 @@ private:
     const std::string& anchor_key = "",
     double residual = NAN,
     const std::string& category = "NONE") {
-    if (fuse && reason != "ACCEPT_TA" && reason != "ACCEPT_AA" && reason != "ORACLE_AA_CHECK" && reason != "CLOCK_RESET" && reason != "SHUTDOWN_PENDING" && reason != "PENDING_CALIBRATION" && reason != "AA_ABLATION_DISABLED" && reason != "ANCHOR_PENDING" && reason != "ANCHOR_WINDOW_EXPIRED") {
+    if (fuse && reason != "AA_STATIC_CHANNEL_ONLY" && reason != "MAP_AA_OVERLAP_UNKNOWN" && reason != "ACCEPT_TA" && reason != "ACCEPT_AA" && reason != "ORACLE_AA_CHECK" && reason != "CLOCK_RESET" && reason != "SHUTDOWN_PENDING" && reason != "PENDING_CALIBRATION" && reason != "AA_ABLATION_DISABLED" && reason != "ANCHOR_PENDING" && reason != "ANCHOR_WINDOW_EXPIRED") {
       ++rejected_total;
       last_rejected = now().seconds();
       last_rejection = reason;
@@ -389,6 +409,11 @@ private:
     }
   }
   std::string enqueue_uwb(RangeObservation o) {
+    if (o.a_type == 1 && o.b_type == 1 && (static_edges || reuse_map)) {
+      const std::string reason = static_edges ? "AA_STATIC_CHANNEL_ONLY" : "MAP_AA_OVERLAP_UNKNOWN";
+      log_range(o, reason);
+      return reason;
+    }
     if (!fuse) {
       log_range(o, "RECORD_ONLY");
       return "RECORD_ONLY";
@@ -718,6 +743,11 @@ private:
       {"bounds_scope", "current retained vehicle states only; not a certified reuse region"},
       {"absorbed_information", "all accepted first-session raw factors up to measurement_stamp; do not reload installation or first-run ranges as independent observations"}
     };
+    if (static_edges) {
+      document["schema_version"] = "liuo_joint_map_static_v2";
+      document["static_edge_ledger"] = static_edges->checkpoint();
+      document["static_edge_source"] = cfg.at("uwb").at("static_edges");
+    }
     CalibratedMap::parse(document, cfg.at("sensors")).save_atomic(logs.export_path("map/calibrated_map.json"));
     map_export_session = session;
     map_export_anchor_count = map.ids.size();
@@ -1011,7 +1041,7 @@ private:
       auto bracket = count == 0 && cfg.at("uwb").value("use_static_alignment_ranges", false)
                        ? static_alignment_bracket(poses, o.stamp, first_imu, first_imu + cfg.at("odometry").at("initialization_s").get<double>())
                        : range_bracket(poses, o.stamp);
-      if (bracket.reason != "SYNC" && bracket.reason != "INTERPOLATED" && bracket.reason != "STATIC_ALIGNMENT") {
+      if (o.a_type == 0 && bracket.reason != "SYNC" && bracket.reason != "INTERPOLATED" && bracket.reason != "STATIC_ALIGNMENT") {
         log_range(o, bracket.reason);
         continue;
       }
@@ -1072,7 +1102,56 @@ private:
     aa_added.clear();
     aa_removed.clear();
   }
+  void on_static_record(const liuo_tunnel_msgs::msg::StaticAnchorRecord& record) {
+    std::string reason = "QUEUED";
+    try {
+      auto leaves = static_input->validate(record);
+      for (const auto& leaf : leaves) {
+        if (self_calibrate) {
+          for (auto id : {leaf.first, leaf.second})
+            if (std::find(installation_input->ids.begin(), installation_input->ids.end(), id) == installation_input->ids.end())
+              throw std::invalid_argument("STATIC_RECORD_UNKNOWN_ANCHOR");
+        }
+        else { map.index(leaf.first); map.index(leaf.second); }
+      }
+      if (!use_aa) reason = "AA_ABLATION_DISABLED";
+      else if (static_queue_leaves + leaves.size() > 2048) reason = "STATIC_INPUT_QUEUE_CAPACITY";
+      else { static_queue_leaves += leaves.size(); static_queue.push_back(std::move(leaves)); }
+    } catch (const std::exception& e) { reason = e.what(); }
+    rclcpp::Serialization<liuo_tunnel_msgs::msg::StaticAnchorRecord> serializer;
+    rclcpp::SerializedMessage serialized;
+    serializer.serialize_message(&record, &serialized);
+    const auto& bytes = serialized.get_rcl_serialized_message();
+    static constexpr char hex[] = "0123456789abcdef";
+    std::string cdr; cdr.reserve(2 * bytes.buffer_length);
+    for (size_t i = 0; i < bytes.buffer_length; ++i) { cdr += hex[bytes.buffer[i] >> 4]; cdr += hex[bytes.buffer[i] & 15]; }
+    static_audit << nlohmann::json({{"event", "input"}, {"receive_stamp", now().seconds()}, {"reason", reason},
+      {"record_id", record.record_id}, {"revision", record.revision}, {"queue_leaves", static_queue_leaves}, {"cdr_hex", cdr}}).dump() << '\n';
+  }
+  void update_static_edges(double stamp) {
+    if (!static_edges || !use_aa) return;
+    const auto before = static_edges->fused();
+    gtsam::NonlinearFactorGraph additions;
+    const auto remove = static_edges->stage(additions, smoother->calculateEstimate());
+    try {
+      if (!additions.empty()) {
+        smoother->update(additions, {}, {}, remove);
+        static_edges->commit(smoother->getISAM2Result().newFactorsIndices);
+      } else static_edges->commit({});
+    } catch (...) { static_edges->abort(); throw; }
+    new_aa += static_edges->fused() - before;
+    aa_measurements = static_edges->fused();
+    static_audit << nlohmann::json({{"event", "graph_update"}, {"stamp", stamp}, {"pending", static_edges->pending()},
+      {"explicit_factors", static_edges->factor_count()}, {"fused_leaves", static_edges->fused()}, {"added_factors", additions.size()}, {"removed_factors", remove.size()}}).dump() << '\n';
+  }
   void drain() {
+    while (!static_queue.empty()) {
+      try { static_edges->offer(static_queue.front()); }
+      catch (const std::invalid_argument& e) { static_audit << nlohmann::json({{"event", "rejected_before_graph"}, {"reason", e.what()}}).dump() << '\n'; }
+      catch (const std::length_error& e) { static_audit << nlohmann::json({{"event", "rejected_before_graph"}, {"reason", e.what()}}).dump() << '\n'; }
+      static_queue_leaves -= static_queue.front().size();
+      static_queue.pop_front();
+    }
     if (clouds.empty() && extension_batch && extension_batch->optimizer && !extension_batch->optimizer->finished() && !extension_batch->failure) {
       try { extension_batch->optimizer->advance(); }
       catch (...) { extension_batch->failure = std::current_exception(); }
@@ -1541,6 +1620,7 @@ private:
       bind_aa_factor_indices();
     }
     if (self_calibrate) advance_anchor_extension(t, factors);
+    update_static_edges(t);
     // Bounded diagnostic: re-optimize the SAME early graph without new data.
     // Never enabled implicitly or extended after a failed experiment.
     if (fuse && cfg.at("odometry").value("early_five_extra_updates", false) && t <= 13.0) {
@@ -1800,7 +1880,7 @@ private:
     size_t active = (smoother->timestamps().size() - anchors) / 3;
     graph << session << ',' << t << ',' << active << ',' << active << ',' << active << ',' << anchors << ',' << (count ? 1 : 0) << ',' << lidar.size() << ','
           << smoother->getFactors().nrFactors() << ',' << retired << ',' << ms(preprocessed, finish) << ',' << (session - 1) << ",0," << new_ta << ',' << new_aa << ','
-          << (joint_map_priors + surveyed_priors) << ',' << range_queue.size() << ',' << aa_summaries.size() << ',' << aa_measurements
+          << (joint_map_priors + surveyed_priors) << ',' << range_queue.size() << ',' << (aa_summaries.size() + (static_edges ? static_edges->factor_count() : 0)) << ',' << aa_measurements
           << ',' << joint_map_priors << ',' << installation_observations << "\n";
     icp << session << ',' << t << ',' << points.size() << ',' << fraction << ',' << cost;
     for (int i = 0; i < 6; i++) icp << ',' << eigen[i];
@@ -1902,6 +1982,12 @@ private:
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr cloud_sub;
   std::unique_ptr<ObservationInput> observation_input;
+  std::unique_ptr<StaticRecordInput> static_input;
+  std::unique_ptr<StaticEdgeGraph> static_edges;
+  std::deque<std::vector<StaticRangeBlock>> static_queue;
+  size_t static_queue_leaves = 0;
+  std::ofstream static_audit;
+  rclcpp::Subscription<liuo_tunnel_msgs::msg::StaticAnchorRecord>::SharedPtr static_sub;
   std::ofstream input_batches, input_decisions;
   rclcpp::Subscription<liuo_uwb_msgs::msg::UwbObservationBatch>::SharedPtr uwb_sub;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr visual_cloud;

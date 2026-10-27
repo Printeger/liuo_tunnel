@@ -49,3 +49,20 @@ TEST(CalibratedMap, RejectsAmbiguityCorruptionAndExtrinsicMismatch) {
   j=sample();j["anchors"][1]["id"]=91;
   EXPECT_THROW(CalibratedMap::parse(j,{{"test",1}}),std::invalid_argument);
 }
+TEST(CalibratedMap, StaticLedgerIsBoundToTheSameAtomicPosterior) {
+  auto document = sample();
+  StaticAnchorEdges edges("network", "deployment", 16);
+  edges.commit(edges.prepare({{"network", "deployment", 91, 4, "physical-1", "independent-gaussian-v1", 200, .01}}));
+  document["static_edge_ledger"] = edges.absorbed_checkpoint();
+  EXPECT_THROW(CalibratedMap::parse(document, {{"test",1}}), std::invalid_argument);
+  document["schema_version"] = "liuo_joint_map_static_v2";
+  const auto map = CalibratedMap::parse(document, {{"test",1}});
+  auto directory = std::filesystem::temp_directory_path()/("static_map_test_"+std::to_string(getpid()));
+  map.save_atomic(directory/"map.json");
+  auto loaded = CalibratedMap::load(directory/"map.json", {{"test",1}});
+  EXPECT_EQ(loaded.document.at("static_edge_ledger"), document.at("static_edge_ledger"));
+  EXPECT_TRUE(loaded.covariance.isApprox(map.covariance, 0));
+  document["static_edge_ledger"]["leaves"][0]["first"] = 500;
+  EXPECT_THROW(CalibratedMap::parse(document, {{"test",1}}), std::invalid_argument);
+  std::filesystem::remove_all(directory);
+}
