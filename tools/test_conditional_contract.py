@@ -24,6 +24,7 @@ class ConditionalContractTest(unittest.TestCase):
         self.assertEqual(derived['uwb']['input'], original['uwb']['input'])
         self.assertFalse(derived['uwb']['use_aa'])
         self.assertEqual(derived['uwb']['initial_position_guess'], [0., 0., 0.])
+        self.assertEqual(derived['uwb']['bootstrap_s'], 8.)
         self.assertNotIn('static_edges', derived['uwb'])
         validate_oracle_map(self.map, derived, 'raw')
 

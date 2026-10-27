@@ -17,6 +17,9 @@ def vehicle_condition_config(original):
     # The free-mode node initializes at zero internally. Fixed-map mode requires
     # this numerical seed explicitly; it is not a factor or a surveyed start.
     uwb['initial_position_guess'] = [0., 0., 0.]
+    # Required by the existing known-map startup, absent in free calibration.
+    # Use its established 8 s collection interval, not a truth-derived state.
+    uwb['bootstrap_s'] = 8.
     if uwb.get('installation_factors') or uwb.get('continuous_installation_walls'):
         raise ValueError('D2 cannot silently add or remove installation factors')
     result['diagnostic_role'] = 'D2_ORACLE_ANCHORS_NOT_DEPLOYABLE'
