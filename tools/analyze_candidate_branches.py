@@ -29,6 +29,10 @@ def analyze(run):
         if event=='CANDIDATE_ITERATIONS':
             current['iterations']=int(float(row['value_a']))
             current['iteration_limit_reached']=current['iterations']>iteration_limit
+        elif event=='CANDIDATE_TERMINATION':
+            current['termination_flags']=int(float(row['value_a']))
+            change=float(row['value_b'])
+            current['last_absolute_error_change']=change if math.isfinite(change) else None
         elif event=='CANDIDATE_COMMON_REFERENCE':
             current['reference']=int(float(row['value_a']))
         elif event=='CANDIDATE_RELATIVE_XY':

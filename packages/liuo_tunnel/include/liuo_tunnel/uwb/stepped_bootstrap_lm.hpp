@@ -16,6 +16,10 @@ public:
     initTime();
   }
   bool finished() const { return complete_; }
+  // Diagnostic bits can coexist: reaching the iteration budget does not
+  // establish stationarity, even when another stopping condition also fires.
+  unsigned termination_flags() const { return termination_flags_; }
+  double last_absolute_error_change() const { return last_change_; }
   bool advance() {
     if (complete_) return true;
     double before = error();
@@ -44,9 +48,12 @@ public:
       trial_linear_.reset();
     } else linearized_ = iterate();
     const double after = error(), change = std::abs(before - after);
-    complete_ = iterations() > params_.maxIterations || !std::isfinite(after) || change < params_.absoluteErrorTol || change / std::abs(before) < params_.relativeErrorTol ||
-                after < params_.errorTol;
-    if (params_.termination_criteria) complete_ = params_.termination_criteria(values()) || complete_;
+    last_change_ = change;
+    termination_flags_ = (iterations() > params_.maxIterations ? 1u : 0u) | (!std::isfinite(after) ? 2u : 0u) |
+                         (change < params_.absoluteErrorTol ? 4u : 0u) | (change / std::abs(before) < params_.relativeErrorTol ? 8u : 0u) |
+                         (after < params_.errorTol ? 16u : 0u);
+    if (params_.termination_criteria && params_.termination_criteria(values())) termination_flags_ |= 32u;
+    complete_ = termination_flags_ != 0;
     return complete_;
   }
 
@@ -60,6 +67,8 @@ private:
     out << getInnerIterations() << ',' << seconds << ',' << current_error << ',' << lambda() << ',' << iterations() << std::endl;
   }
   bool complete_ = false, single_trial_ = false;
+  unsigned termination_flags_ = 0;
+  double last_change_ = NAN;
   double outer_before_ = 0;
   gtsam::GaussianFactorGraph::shared_ptr trial_linear_;
   gtsam::VectorValues diagonal_;

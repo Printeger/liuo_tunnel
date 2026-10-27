@@ -1,6 +1,40 @@
 #include <gtest/gtest.h>
 #include <liuo_tunnel/uwb/initialization_candidates.hpp>
+#include <liuo_tunnel/uwb/stepped_bootstrap_lm.hpp>
+#include <gtsam/slam/PriorFactor.h>
 using namespace liuo_tunnel;
+
+TEST(BootstrapTermination, BudgetIsNotReportedAsConvergence) {
+  gtsam::NonlinearFactorGraph graph;
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(0, gtsam::Point3::Zero(), gtsam::noiseModel::Isotropic::Sigma(3, 1));
+  gtsam::Values initial;
+  initial.insert(0, gtsam::Point3(10, 2, 1));
+  gtsam_points::LevenbergMarquardtExtParams params;
+  params.maxIterations = 0;
+  params.absoluteErrorTol = params.relativeErrorTol = params.errorTol = 0;
+  SteppedBootstrapLM optimizer(graph, initial, params, true);
+  for (int i = 0; i < 100 && !optimizer.finished(); ++i) optimizer.advance();
+  ASSERT_TRUE(optimizer.finished());
+  EXPECT_EQ(optimizer.termination_flags(), 1u);
+  EXPECT_GT(optimizer.last_absolute_error_change(), 0);
+}
+
+TEST(BootstrapTermination, ErrorAndCustomStopCanCoexistWithoutBudget) {
+  gtsam::NonlinearFactorGraph graph;
+  graph.emplace_shared<gtsam::PriorFactor<gtsam::Point3>>(0, gtsam::Point3::Zero(), gtsam::noiseModel::Isotropic::Sigma(3, 1));
+  gtsam::Values initial;
+  initial.insert(0, gtsam::Point3(1, 2, 3));
+  gtsam_points::LevenbergMarquardtExtParams params;
+  params.maxIterations = 30;
+  params.absoluteErrorTol = params.relativeErrorTol = 0;
+  params.errorTol = 1;
+  params.termination_criteria = [](const gtsam::Values&) { return true; };
+  SteppedBootstrapLM optimizer(graph, initial, params, true);
+  for (int i = 0; i < 100 && !optimizer.finished(); ++i) optimizer.advance();
+  ASSERT_TRUE(optimizer.finished());
+  EXPECT_EQ(optimizer.termination_flags(), 16u | 32u);
+  EXPECT_LT(optimizer.error(), 1);
+}
 namespace {
 std::array<RangeSeedSphere, 3> spheres(const gtsam::Point3& p) {
   std::array<RangeSeedSphere, 3> s{{{{0, 0, 0}, 0}, {{400, 3, 0}, 0}, {{800, -2, 4}, 0}}};

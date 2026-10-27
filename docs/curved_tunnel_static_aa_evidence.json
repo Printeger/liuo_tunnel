@@ -1403,6 +1403,90 @@
       },
       "result": "COMPLETE_INPUT_VALID_LOCALIZATION_FAILED",
       "stage_acceptance": "INCOMPLETE"
+    },
+    "L_REUSE_7A_PRIOR_FAILED_FINITE_DOMAIN": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T204511Z_773",
+      "source_commit": "26df24b",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414",
+      "map_run": "20261027T201351Z_374",
+      "requested_seconds": 392.6,
+      "result": "FAILED_EARLY",
+      "failure": {
+        "detail": "LOCAL_INSTALLATION_OUTSIDE_OBSERVED_PATCH;linearization=1;along=10.000305",
+        "measurement_stamp": 160.2,
+        "reason": "OPTIMIZATION_FAILED",
+        "session": 1,
+        "state": "LOST"
+      },
+      "diagnostic": {
+        "scope": "offline diagnostic only, not stage acceptance",
+        "truth_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T182209Z_414",
+        "truth_format": "road_npz",
+        "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T204511Z_773",
+        "gauge": "inherited_CAL_gauge_no_REUSE_alignment",
+        "reference_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T201351Z_374",
+        "total_output_samples": 1570,
+        "pre_map_output_samples": 1374,
+        "reference_stamp": 3.1,
+        "yaw_rotation_matrix": [
+          [
+            0.9999999980587323,
+            -6.230999578449417e-05,
+            0.0
+          ],
+          [
+            6.230999578449417e-05,
+            0.9999999980587323,
+            0.0
+          ],
+          [
+            0.0,
+            0.0,
+            1.0
+          ]
+        ],
+        "translation": [
+          2.0719267102383796e-05,
+          -1.874981212274536,
+          1.6625023001088146
+        ],
+        "samples": 196,
+        "first_stamp": 140.5,
+        "last_stamp": 160.0,
+        "covered_seconds": 19.5,
+        "position_rmse_m": 27.514178679329305,
+        "xyz_rmse_m": [
+          7.839920264830459,
+          26.333870442235096,
+          1.446701825096328
+        ],
+        "maximum_position_error_m": 31.605894916615483,
+        "attitude_rmse_deg": 1.1932645516646718,
+        "rpe": {
+          "1.0": {
+            "samples": 186,
+            "translation_rmse_m": 0.09421611497964738,
+            "rotation_rmse_deg": 0.03359905748674991
+          },
+          "10.0": {
+            "samples": 96,
+            "translation_rmse_m": 0.7621915322305871,
+            "rotation_rmse_deg": 0.1334617452596671
+          }
+        },
+        "route_frame": {
+          "definition": "horizontal truth travel tangent, left horizontal normal, world vertical; no alignment or estimator input",
+          "stationary_direction": "nearest moving truth sample in time; ties choose earlier; speed threshold 1e-6 m/s",
+          "along_cross_height_rmse_m": [
+            3.843948725772572,
+            27.205902676091338,
+            1.446701825096328
+          ]
+        },
+        "velocity_rmse_mps": 0.40604974285030343
+      },
+      "anchor_map_diagnostic": "export/analysis/anchor_map_diagnostic.json",
+      "stage_acceptance": "FAILED"
     }
   },
   "limitations": [

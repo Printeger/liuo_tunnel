@@ -1142,6 +1142,7 @@ private:
         cost=std::numeric_limits<double>::infinity();
       }
       log(batch.id,"CANDIDATE_ITERATIONS",batch.optimizer->iterations(),cost);
+      log(batch.id,"CANDIDATE_TERMINATION",batch.optimizer->termination_flags(),batch.optimizer->last_absolute_error_change());
       if (batch.relative_reference) {
         const auto relative=AnchorRelativeCandidate::from_joint(*batch.relative_reference,batch.optimizer->values().at<gtsam::Pose3>(*batch.relative_reference),solution).point;
         batch.relative_points.push_back(relative);
