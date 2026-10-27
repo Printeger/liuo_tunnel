@@ -2,6 +2,7 @@
 #include <liuo_tunnel/uwb/body_wall_observation.hpp>
 #include <gtsam/nonlinear/NonlinearFactor.h>
 #include <array>
+#include <liuo_tunnel/uwb/local_floor.hpp>
 
 namespace liuo_tunnel {
 // A measured finite patch in ONE scan's body frame, never a global/free axis.
@@ -11,9 +12,11 @@ struct LocalInstallationObservation {
   gtsam::Vector3 normal, tangent, up;
   double center_offset, width, minimum_height, maximum_height;
   double surface_model_error, sigma;
+  std::array<LocalFloorPatch, 2> floors;
   static constexpr double span = 10.;
   bool supports(const gtsam::Point3& p) const {
-    return p.allFinite() && std::abs(tangent.dot(p)) <= span && up.dot(p) >= minimum_height - .25 && up.dot(p) <= maximum_height + .25;
+    const auto& floor = floors[normal.dot(p) >= center_offset ? 1 : 0];
+    return p.allFinite() && std::abs(tangent.dot(p)) <= span && up.dot(p) <= maximum_height + .25 && floor.signed_height(p) >= -floor.margin(p);
   }
 };
 inline LocalInstallationObservation
@@ -59,6 +62,8 @@ local_installation_observation(const std::vector<gtsam::Point3>& raw_body_points
   const double variance = C(1, 1) + 100 * C(0, 0) + 20 * std::abs(C(0, 1));
   result.sigma = std::sqrt(variance + result.surface_model_error * result.surface_model_error);
   if (!std::isfinite(result.sigma) || result.sigma <= 0) throw std::invalid_argument("LOCAL_WALL_UNCERTAINTY_INVALID");
+  for (size_t side = 0; side < 2; ++side)
+    result.floors[side] = local_floor_patch(points, result.normal, result.tangent, result.up, result.center_offset, result.width, side, range_sigma);
   return result;
 }
 class LocalInstallationFactor : public gtsam::NoiseModelFactor2<gtsam::Pose3, gtsam::Point3> {

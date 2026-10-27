@@ -147,3 +147,7 @@ data-run -- python3 tools/check_straight_reporter_delivery.py /home/dev/ws_iap/.
 基于上一项全 pending 的生产证据，新增不含全局 L 的 `LocalInstallationFactor(X,A)` 和有限观测域，合同见 `docs/spec/curved_tunnel_estimator_contract.md` C04 节。四个定向测试通过：body 墙面在旋转坐标下的中心/符号及范围检查、无半径输入的缓弯/强弯差异、右扰动/Anchor 导数有限差分（1e-7）、synthetic 元数据字段与来源拒绝。开发时先因缺模块失败，随后修复 GTSAM OptionalMatrixType 及显式 Point3 重载编译问题；未改变几何或数值判据。
 
 首个生产诊断预声明为 L 冻结包前 60 s，GPU、1×、原噪声，仅新增实际点云的有限局部约束和既有 synthetic 偏距；不读 Anchor 坐标/高度。观测与候选日志必须显示实际支持、分支及是否加入 A；A=0 仍为初始化未完成。该步骤不是完整 C04/C14 验收，也未实现 A-only 地图往返。
+
+首轮局部墙面 run `20261027T165014Z_522`（770db15）完成 60 s 输入合同：600 cloud、12001 IMU、3407 UWB、15408 clock，579 输出，发布 60.00144 s。**A=0，初始化未完成**；五次未解决分支，包含 id 3 的约 3.72 m 高度分离。墙面宽度约 11.197 m、中心约 1.875 m，但混合两侧的高度极值关联未提供足够区分。不能以输入 PASS 宣称 C04 通过。
+
+新增逐侧实测地面关联，预声明见合同；五项定向测试通过，新增独立水平地面解析用例检查地面距离、地下候选拒绝及外推余量增长。接下来在相同冻结 L 前 60 s 检查实际支持、分支及 A，仍非完整路线验收。

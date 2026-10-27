@@ -8,6 +8,9 @@ std::vector<gtsam::Point3> walls(const gtsam::Pose3& body, double radius = 0) {
   for (double x = -20; x <= 20; x += .5)
     for (double z = 0; z <= 4.8; z += .2)
       for (double side : {-1., 1.}) points.push_back(body.transformTo(gtsam::Point3(x, side * 5.6 + (radius ? x * x / (2 * radius) : 0), z)));
+  for (double x = -20; x <= 20; x += .5)
+    for (double side : {-1., 1.})
+      for (double offset = .1; offset <= .8; offset += .1) points.push_back(body.transformTo(gtsam::Point3(x, side * (5.6 - offset) + (radius ? x * x / (2 * radius) : 0), 0)));
   return points;
 }
 }  // namespace
@@ -71,4 +74,14 @@ TEST(LocalInstallation, ExactSyntheticMetadataRejectsCoordinatesAndFakeFieldUnce
   invalid = input;
   invalid["source"] = "field calibrated";
   EXPECT_THROW(SyntheticLocalOffsets::parse(invalid), std::invalid_argument);
+}
+
+TEST(LocalInstallation, FloorAssociationUsesMeasuredSurfaceAndRejectsSubfloorBranch) {
+  const gtsam::Pose3 body(gtsam::Rot3(), {0, -1.875, 1.66});
+  auto measurement = local_installation_observation(walls(body), body.rotation(), {10, 0, 0}, .02);
+  EXPECT_FALSE(measurement.supports(body.transformTo(gtsam::Point3(0, 5.52, -.3))));
+  EXPECT_TRUE(measurement.supports(body.transformTo(gtsam::Point3(0, 5.52, .3))));
+  const auto& floor = measurement.floors[1];
+  EXPECT_NEAR(floor.signed_height(body.transformTo(gtsam::Point3(0, 5.52, 0))), 0, 1e-8);
+  EXPECT_GT(floor.margin(body.transformTo(gtsam::Point3(10, 5.52, 0))), floor.margin(floor.center));
 }
