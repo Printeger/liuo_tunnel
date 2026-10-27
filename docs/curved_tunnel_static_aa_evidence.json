@@ -191,6 +191,38 @@
       "map_exported": false,
       "reuse_verified": false,
       "stage_acceptance": "INCOMPLETE"
+    },
+    "L_ANCHOR_ONLY_MAP_180_DIAGNOSTIC": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T173616Z_391",
+      "source_commit": "781b4f13b1b87eb9712aea20fa55464aa4e706dd",
+      "input_run": "/home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968",
+      "input_contract_result": "PASS",
+      "initialized_anchor_ids": [
+        3,
+        7,
+        14,
+        5
+      ],
+      "initialization_stamps": [
+        56.4,
+        100.2,
+        140.6,
+        178.8
+      ],
+      "actual_aa_fused": 0,
+      "output_count": 1779,
+      "max_vehicle_states": 101,
+      "map": "export/map/calibrated_map.json",
+      "map_sha256": "b5c9b65dd8720b5c49f85018db3d7412b7c5368a5c27b7a6309e1209287b45af",
+      "map_schema": "liuo_anchor_map_v3",
+      "map_dimension": 12,
+      "map_checkpoint_stamp": 180.0,
+      "map_minimum_eigenvalue": 0.00010981489674081098,
+      "cross_anchor_covariance_norm": 4.898923212289779,
+      "map_audit": "export/analysis/anchor_map_audit.json",
+      "position_rmse_fixed_start_m": 17.792848101595887,
+      "reuse_verified": false,
+      "stage_acceptance": "INCOMPLETE"
     }
   },
   "limitations": [
