@@ -27,6 +27,7 @@ def main():
     parser.add_argument("--uwb-boundary-fixture", action="store_true")
     parser.add_argument("--uwb-load-fixture", action="store_true")
     parser.add_argument('--static-lifecycle-fixture', action='store_true')
+    parser.add_argument('--static-negative-probes', action='store_true')
     parser.add_argument("--uwb-contract-fixture", action="store_true")
     parser.add_argument("--source-run", type=Path, required=True)
     parser.add_argument('--seconds', type=float, help='exact end-exclusive source prefix')
@@ -93,7 +94,7 @@ def main():
             if duration != 85:
                 raise ValueError('static lifecycle fixture requires exactly 85 seconds')
             from static_lifecycle_fixture import StaticLifecycleFixture
-            static_publisher = StaticLifecycleFixture(node,run,target_config['uwb']['static_edges'])
+            static_publisher = StaticLifecycleFixture(node,run,target_config['uwb']['static_edges'],args.static_negative_probes)
         else:
             from static_replay import StaticReplayPublisher
             static_publisher = StaticReplayPublisher(node, source, run, registry, target_config["uwb"]["static_edges"])

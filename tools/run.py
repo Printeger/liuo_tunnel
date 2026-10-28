@@ -53,6 +53,7 @@ def main():
     p.add_argument("--uwb-boundary-fixture", action="store_true", help="public queue capacity, expiry and clock-reset recovery test")
     p.add_argument("--uwb-load-fixture", action="store_true", help="60s synthetic 50Hz/5Hz protocol load with independent slow subscriber")
     p.add_argument('--static-lifecycle-fixture', action='store_true', help='bounded absorbed-AA software delivery stress with an independent slow observer')
+    p.add_argument('--static-negative-probes', action='store_true', help='three declared invalid/capacity packets in the static lifecycle fixture')
     p.add_argument("--uwb-contract-fixture", action="store_true", help="predeclared software callback fixture on frozen IMU/LiDAR/clock")
     p.add_argument("--replay-declared-contract", action="store_true", help="replay a captured negative contract case after its case audit passes")
     p.add_argument("--legacy-reference-run", type=Path, help="reference-only retained old binary; never unified-interface acceptance")
@@ -136,6 +137,8 @@ def main():
         p.error("wall timeout must be finite and positive")
     if args.replay_seconds is not None and not args.replay:
         p.error('--replay-seconds requires --replay')
+    if args.static_negative_probes and not args.static_lifecycle_fixture:
+        p.error('static negative probes require the declared lifecycle fixture')
     if args.static_lifecycle_fixture and (not args.replay or not args.map or args.replay_seconds != 85 or args.uwb_load_fixture or args.uwb_boundary_fixture or args.uwb_contract_fixture or args.delivery_profile or args.capture_derived):
         p.error('static lifecycle fixture requires map, exact 85s replay prefix, and no other transformations')
     if args.uwb_boundary_fixture and (not args.replay or args.uwb_load_fixture or args.uwb_contract_fixture or args.delivery_profile):
@@ -275,6 +278,9 @@ def main():
                 source / "export/simulation/truth.csv",
                 run / "export/simulation/truth.csv",
             )
+            if args.replay_seconds is not None:
+                from frozen_prefix_identity import write_truth_prefix
+                write_truth_prefix(source/'export/simulation/truth.csv',run/'export/simulation/truth.csv',frozen['prefix_last_cloud_stamp'])
         selected_backend = effective_config["odometry"]["backend"]
         map_path = None
         installation_path = None
@@ -503,6 +509,8 @@ def main():
             if args.static_lifecycle_fixture:
                 commands['simulation'] += ['--static-lifecycle-fixture']
                 identity['static_lifecycle_fixture_sha256'] = digest(ROOT/'tools/static_lifecycle_fixture.py')
+                if args.static_negative_probes:
+                    commands['simulation'] += ['--static-negative-probes']
             if args.uwb_contract_fixture:
                 from uwb_contract_fixture import prepare
                 prepare(run)

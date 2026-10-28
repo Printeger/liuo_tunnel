@@ -19,3 +19,13 @@ data-run -- bash tools/run.sh --formal --replay /home/dev/ws_iap/.runtime/0/liuo
 ```
 
 这组先验证重复压力、满容量重复、observer恢复及已吸收信息不增权；新增叶越容量的受控拒绝、部署epoch变化/必要重置仍须与既有单元/生产证据逐项核对，缺项才做最小负例，不把本组自动扩称全部A6通过。
+
+## 首轮结果与受影响回归声明
+
+首轮001651（源8b7a834）传感器前缀850云/17000IMU/5412UWB/17000clock全部匹配，8100静态交付全部到生产消费者、最大callback queue9/2048；慢observer收到3779、丢4321，55秒后丢失0。实际输出期间承受63.59秒负载，1077旧叶、1个联合prior，新增AA因子/叶/移除均为0。RSS生产最大349.133MiB，慢observer71.270MiB；原map字节未变。独立审计为INVARIANTS_OBSERVED_BUT_RUN_REPORT_FAILED，原run FAIL保留。
+
+原FAIL来自新前缀入口仍复制完整360秒truth.csv，旧检查器据其末行要求输出到360.9秒；实际最后输出85.9秒已匹配最后包含的扫描。只修owner产物为截取到独立预读实际最后cloud stamp的truth行（按纳秒比较以保留85.90000000000001等表示），不改原数据、结束验收容差或旧报告。解析反例验证包含最后扫描、排除86秒及完整末尾且原source不变。必须新run验证该修正，不将001651改判PASS。
+
+下一组仍固定同85秒原输入/原地图/车辆配置/满容量：用两条同端点、已吸收的原CAL叶验证累计版本。revision1携带第一叶，revision2携带两叶，再回到旧revision1；两条物理叶内容均不变，不能因版本增长或乱序重复增加权重。另加三个**明确负例包，不是新测量**：elapsed60改epoch，65保持原physical ID但range+0.25，70提交标记negative_capacity_probe的新ID。分别预期回调SOURCE_MISMATCH、owner事务IDENTITY_CONFLICT、BLOCK_CAPACITY；之后继续有效旧块直到83秒，图和账本不变。不是增加站点/改善几何/修改噪声来制造定位通过。前缀修复与这组负例各有独立反例/夹具检查，生产算法源码不变。
+
+命令使用上方85秒命令并加`--static-negative-probes`。验收脚本`tools/audit_static_lifecycle_load.py`将发送、生产与慢observer逐交付时间对照、核对原物理值和累计覆盖，要求生产0丢失、后段observer恢复、每次图更新0新AA/0移除、一个prior、负例明确拒绝且随后可继续。DDS内部占用不直接暴露，只报告配置depth、应用队列与实际回调延迟/丢失，不能虚报内部队列测量。
