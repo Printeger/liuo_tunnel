@@ -7,17 +7,19 @@ def _quaternion(row):
     return [float(row.get(k, 1 if k == "qw" else 0)) for k in ["qx", "qy", "qz", "qw"]]
 
 
-def _transform(records, truth, inverse):
+def _transform(records, truth, inverse, shared_datum=False):
     starts = {}
     for row in truth:
         starts.setdefault(row["session"], row)
     starts = list(starts.values())
     sessions = list(dict.fromkeys(r["session"] for r in records))
-    if len(sessions) > len(starts):
+    if shared_datum and len(starts) != 1:
+        raise ValueError('shared map datum must be unique')
+    if not shared_datum and len(sessions) > len(starts):
         raise ValueError("missing initial truth datum for evaluation session")
     output = []
     for row in records:
-        initial = starts[sessions.index(row["session"])]
+        initial = starts[0 if shared_datum else sessions.index(row["session"])]
         x, y, z, w = _quaternion(initial)
         yaw = math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
         angle = -yaw if inverse else yaw
@@ -86,9 +88,11 @@ def map_evaluation_datum(run):
 
 def run_world_estimates(run, trajectory, truth, mode):
     if mode in ("self_calibrate", "reuse_map"):
-        return _transform(trajectory, [map_evaluation_datum(run)], False)
+        return _transform(trajectory, [map_evaluation_datum(run)], False, shared_datum=(mode == "reuse_map"))
     return world_estimates(trajectory, truth, mode == "fuse")
 
 
 def map_local_truth(run, truth):
-    return _transform(truth, [map_evaluation_datum(run)], True)
+    import json
+    mode = json.loads((run / "metadata/config/phase1.json").read_text())["uwb"]["mode"]
+    return _transform(truth, [map_evaluation_datum(run)], True, shared_datum=(mode == "reuse_map"))

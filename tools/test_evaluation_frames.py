@@ -74,6 +74,15 @@ class CalibratedMapFrames(unittest.TestCase):
             restored = map_local_truth(second, [world])[0]
             for key in ("x", "y", "z", "vx", "vy", "vz", "qx", "qy", "qz", "qw"):
                 self.assertAlmostEqual(restored[key], row[key])
+            # A graph clock reset does not change the inherited map datum.
+            # Poisoned reuse truth must not become a per-session alignment.
+            reset_rows=[row,dict(row,session="2",x=30)]
+            reset_world=run_world_estimates(second,reset_rows,[dict(row,x=999)],"reuse_map")
+            self.assertAlmostEqual(reset_world[1]['x'],198)
+            self.assertAlmostEqual(reset_world[1]['y'],33)
+            reset_local=map_local_truth(second,reset_world)
+            self.assertAlmostEqual(reset_local[1]['x'],30)
+            self.assertEqual(reset_local[1]['session'],'2')
             (first / "metadata/config/scenario.json").unlink()
             with self.assertRaises(FileNotFoundError):
                 run_world_estimates(second, [row], [dict(row, x=999)], "reuse_map")
