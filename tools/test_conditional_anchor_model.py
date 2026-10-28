@@ -5,6 +5,19 @@ from conditional_anchor_model import AnchorProblem
 
 
 class ConditionalAnchorModelTest(unittest.TestCase):
+    def test_probe_cannot_spend_final_domain_tolerance_to_claim_descent(self):
+        class BoundaryProblem(AnchorProblem):
+            def __init__(self):
+                pass
+            def domain(self, flat):
+                return np.array([flat[0]+.0003*flat[1]])
+            def residual_jacobian(self, flat):
+                return np.sqrt(20000)*(1+self.domain(flat)), np.sqrt(20000)*np.array([[1.,.0003]])
+        result = BoundaryProblem().feasible_probe([0.,0.])
+        # A -0.1 mm y step leaves the domain by 3e-8 m; the old 1e-7
+        # acceptance would falsely report a roughly 0.0006 cost decrease.
+        self.assertEqual(min(p['minimum_cost_change'] for p in result['probes']),0.)
+
     def test_independent_finite_difference_gradient_and_raw_information(self):
         ta = [dict(anchor=4, tag=[x, 0., 0.], range=3.+x, variance=.01) for x in (0., 1., 2.)]
         aa = [dict(first=4, second=9, range=5., variance=.04)]

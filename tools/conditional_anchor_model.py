@@ -60,7 +60,9 @@ class AnchorProblem:
             for direction in directions:
                 trial = point+step*direction
                 margins = self.domain(trial)
-                if len(margins) and min(margins) < -1e-7:
+                # A final-solution serialization tolerance is not permission
+                # to move outside an active physical domain during a probe.
+                if len(margins) and min(margins) < -1e-12:
                     continue
                 residual, _ = self.residual_jacobian(trial)
                 before, _ = self.residual_jacobian(point)
@@ -68,7 +70,7 @@ class AnchorProblem:
                 change = np.sum((residual-before).astype(np.longdouble)*(residual+before).astype(np.longdouble))/2
                 changes.append(float(change))
             records.append(dict(step_m=step, feasible_probes=len(changes), minimum_cost_change=min([0.]+changes)))
-        return dict(cost=float(base), gradient_norm=float(np.linalg.norm(gradient)), probes=records,
+        return dict(cost=float(base), gradient_norm=float(np.linalg.norm(gradient)), probe_domain_roundoff_m=1e-12, probes=records,
                     limitation='No finite direction finding descent does not prove stationarity, especially at active boundaries.')
 
     def domain(self, flat):
