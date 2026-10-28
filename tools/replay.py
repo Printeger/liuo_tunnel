@@ -26,14 +26,20 @@ def main():
     parser.add_argument("--capture-derived", action="store_true")
     parser.add_argument("--uwb-boundary-fixture", action="store_true")
     parser.add_argument("--uwb-load-fixture", action="store_true")
+    parser.add_argument('--static-lifecycle-fixture', action='store_true')
     parser.add_argument("--uwb-contract-fixture", action="store_true")
     parser.add_argument("--source-run", type=Path, required=True)
+    parser.add_argument('--seconds', type=float, help='exact end-exclusive source prefix')
     parser.add_argument("--delivery-profile", type=Path)
     args = parser.parse_args()
     profile = json.loads(args.delivery_profile.read_text()) if args.delivery_profile else None
     source = args.source_run.resolve()
     run = Path(os.environ["LIUO_RUN_DIR"])
     duration = json.loads((source / "export/simulation/runtime.json").read_text())["simulation_s"]
+    if args.seconds is not None:
+        if not 3 <= args.seconds <= duration or args.delivery_profile:
+            raise ValueError('invalid frozen prefix')
+        duration = args.seconds
     reader = rosbag2_py.SequentialReader()
     reader.open(
         rosbag2_py.StorageOptions(uri=str(source / "export/capture/raw"), storage_id="mcap"),
@@ -83,8 +89,14 @@ def main():
     if "static_edges" in target_config["uwb"]:
         if args.capture_derived:
             raise RuntimeError("static derived recording must include its separate topic; not implemented")
-        from static_replay import StaticReplayPublisher
-        static_publisher = StaticReplayPublisher(node, source, run, registry, target_config["uwb"]["static_edges"])
+        if args.static_lifecycle_fixture:
+            if duration != 85:
+                raise ValueError('static lifecycle fixture requires exactly 85 seconds')
+            from static_lifecycle_fixture import StaticLifecycleFixture
+            static_publisher = StaticLifecycleFixture(node,run,target_config['uwb']['static_edges'])
+        else:
+            from static_replay import StaticReplayPublisher
+            static_publisher = StaticReplayPublisher(node, source, run, registry, target_config["uwb"]["static_edges"])
     legacy = None
     if args.legacy_reference:
         from legacy_uwb_reference import LegacyReference
@@ -176,6 +188,8 @@ def main():
                 first_stamp = record_ns
                 start_ns = time.monotonic_ns()
             if delivery_ns - first_stamp >= round(duration * 1e9):
+                if args.seconds is not None:
+                    break
                 raise RuntimeError(
                     "delivery profile extends beyond frozen duration; shorten its window"
                 )
@@ -220,6 +234,8 @@ def main():
             publishers[topic].publish(message)
             if static_publisher and kind == "uwb":
                 static_publisher.publish(message)
+            if args.static_lifecycle_fixture and kind == 'clock':
+                static_publisher.tick(message.clock)
             if load_delivery_csv and kind == "uwb":
                 load_delivery_csv.writerow([message.batch_seq, publish_wall_ns, len(message.observations)])
             if time.monotonic_ns() - deadline > 250_000_000:

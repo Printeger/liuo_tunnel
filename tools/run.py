@@ -52,6 +52,7 @@ def main():
     )
     p.add_argument("--uwb-boundary-fixture", action="store_true", help="public queue capacity, expiry and clock-reset recovery test")
     p.add_argument("--uwb-load-fixture", action="store_true", help="60s synthetic 50Hz/5Hz protocol load with independent slow subscriber")
+    p.add_argument('--static-lifecycle-fixture', action='store_true', help='bounded absorbed-AA software delivery stress with an independent slow observer')
     p.add_argument("--uwb-contract-fixture", action="store_true", help="predeclared software callback fixture on frozen IMU/LiDAR/clock")
     p.add_argument("--replay-declared-contract", action="store_true", help="replay a captured negative contract case after its case audit passes")
     p.add_argument("--legacy-reference-run", type=Path, help="reference-only retained old binary; never unified-interface acceptance")
@@ -61,6 +62,7 @@ def main():
     p.add_argument("--uwb-topic", default="/liuo/uwb/observations")
     p.add_argument("--uwb-qos-depth", type=int, default=100)
     p.add_argument("--duration", type=float, default=45)
+    p.add_argument('--replay-seconds', type=float, help='exact end-exclusive frozen prefix; original source remains unchanged')
     p.add_argument(
         "--sim-start",
         type=float,
@@ -132,6 +134,10 @@ def main():
         not math.isfinite(args.wall_timeout) or args.wall_timeout <= 0
     ):
         p.error("wall timeout must be finite and positive")
+    if args.replay_seconds is not None and not args.replay:
+        p.error('--replay-seconds requires --replay')
+    if args.static_lifecycle_fixture and (not args.replay or not args.map or args.replay_seconds != 85 or args.uwb_load_fixture or args.uwb_boundary_fixture or args.uwb_contract_fixture or args.delivery_profile or args.capture_derived):
+        p.error('static lifecycle fixture requires map, exact 85s replay prefix, and no other transformations')
     if args.uwb_boundary_fixture and (not args.replay or args.uwb_load_fixture or args.uwb_contract_fixture or args.delivery_profile):
         p.error("boundary fixture requires replay without other transformations")
     if args.uwb_load_fixture and (not args.replay or args.uwb_contract_fixture or args.delivery_profile):
@@ -244,6 +250,10 @@ def main():
                     "DEPLOYMENT_LAYOUT_INVALID: dense historical inputs are diagnostic only"
                 )
             args.duration = source_runtime["simulation_s"]
+            if args.replay_seconds is not None:
+                if not math.isfinite(args.replay_seconds) or not 3 <= args.replay_seconds <= args.duration or args.delivery_profile:
+                    raise ValueError('bounded replay prefix requires 3 <= seconds <= source duration and no transport profile')
+                args.duration = args.replay_seconds
             args.seed = source_scenario["seed"]
             frozen = {
                 "source_run": str(source),
@@ -253,6 +263,9 @@ def main():
                 "counts": source_audit["counts"],
                 "source_scenario": source_scenario,
             }
+            if args.replay_seconds is not None:
+                from frozen_prefix_identity import prefix_identity
+                frozen.update(prefix_identity(source,args.duration,source_config['uwb'].get('transport',{}).get('topic','/liuo/uwb/observations')))
             rd.write_subordinate_manifest(run, "frozen_input", frozen)
             manifest_path = run / "metadata/run_manifest.json"
             manifest = json.loads(manifest_path.read_text())
@@ -485,6 +498,11 @@ def main():
                 "--source-run",
                 frozen["source_run"],
             ]
+            if args.replay_seconds is not None:
+                commands['simulation'] += ['--seconds',str(args.replay_seconds)]
+            if args.static_lifecycle_fixture:
+                commands['simulation'] += ['--static-lifecycle-fixture']
+                identity['static_lifecycle_fixture_sha256'] = digest(ROOT/'tools/static_lifecycle_fixture.py')
             if args.uwb_contract_fixture:
                 from uwb_contract_fixture import prepare
                 prepare(run)
@@ -541,6 +559,9 @@ def main():
         commands["observer"] = [sys.executable, str(ROOT / "tools/observe.py")]
         commands["observer"] += ["--ros-args", "-p", "uwb_topic:=" + args.uwb_topic, "-p", f"uwb_qos_depth:={args.uwb_qos_depth}"]
         process_order = ["observer"]
+        if args.static_lifecycle_fixture:
+            commands['slow_static_subscriber'] = [sys.executable,str(ROOT/'tools/slow_static_subscriber.py')]
+            process_order.append('slow_static_subscriber')
         if args.uwb_load_fixture:
             commands["slow_subscriber"] = [sys.executable, str(ROOT / "tools/slow_uwb_subscriber.py"), "--ros-args", "-p", "uwb_topic:=" + args.uwb_topic]
             process_order.append("slow_subscriber")
