@@ -1,5 +1,9 @@
 # LIUO Tunnel
 
+当前开发Goal只验收静态AA/rolling/旧路线信息闭环工程能力，以及正常车辆固定失败片段的条件诊断；以[2026-10-27修订清单](docs/spec/engineering_diagnostic_scope_20261027.md)为准。新S/L全程有效定位、排名及完整性能开发已后移，历史失败不改判。[D1/D2/D3报告](docs/conditional_failure_diagnostics.md)包含冻结输入、命令、图与归因边界；目前A6静态生产压力/恢复验收仍未完成。
+
+独立D2入口为`tools/conditional_road_estimator.sh`，只允许明确标记、绑定原包SHA的oracle Anchor文件；普通入口不接受此诊断模式。D1使用`tools/extract_conditional_observations.py`冻结实际交付样本、`tools/solve_conditional_anchors.py`固定真实车辆轨迹求解，之后才由独立`tools/evaluate_conditional_anchors.py`读取Anchor真值评价。诊断目录位于`/home/dev/ws_iap/conditional_diagnostics_20261027/`，不能用作可部署地图或生产缓存输入。所有命令仍经data-run执行，具体固定参数见报告，禁止用这些条件结果宣称正常车辆全程有效。
+
 统一 UWB 接口使用 `liuo_uwb_msgs/msg/UwbObservationBatch`，默认
 `/liuo/uwb/observations`、best effort/volatile、depth 100。当前验收进展与失败见
 [接口统一结果](docs/uwb_observation_unification_results.md)：T01–T14 已通过声明范围的软件集成、

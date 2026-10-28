@@ -4618,7 +4618,30 @@
     "authority": "explicit user instruction in active thread",
     "contract": "docs/spec/engineering_diagnostic_scope_20261027.md",
     "stage_A": "INCOMPLETE_AUDIT_AND_PRODUCTION_LOAD_GAPS",
-    "stage_B": "S_L_D2_EXECUTED_D1_AND_D3_CONTEXT_PENDING",
+    "stage_B": "D1_D2_D3_EXECUTED_WITH_DECLARED_UNCERTAINTIES_REPORT_REVIEW_PENDING",
+    "conditional_anchor": {
+      "S": {
+        "directory": "/home/dev/ws_iap/conditional_diagnostics_20261027/S_D1_234440_normalized",
+        "probe_directory": "/home/dev/ws_iap/conditional_diagnostics_20261027/S_D1_234440_normalized_strict_probes",
+        "best_cost": 12268.411714428874,
+        "near_cost_candidates": 11,
+        "representative_pair": [24, 17],
+        "cost_difference": 0.5269725552989257,
+        "anchor_2_separation_m": 2.166989034164313,
+        "anchor_3_separation_m": 2.3189075148847698
+      },
+      "L": {
+        "directory": "/home/dev/ws_iap/conditional_diagnostics_20261027/L_D1_235022",
+        "probe_directory": "/home/dev/ws_iap/conditional_diagnostics_20261027/L_D1_235022_probes",
+        "best_cost": 3426.007859844226,
+        "near_cost_candidates": 8,
+        "representative_pair": [3, 7],
+        "cost_difference": 0.09542117740420508,
+        "anchor_7_separation_m": 3.4743076504356867
+      },
+      "scope": "fixed true vehicle trajectory; finite noisy-observation conditional candidates, not actual joint posterior or global uniqueness proof",
+      "truth_anchor_access": "separate post-solve evaluation only; no seed or branch selection"
+    },
     "legacy_current_loop": {
       "cal": "20261027T230820Z_728",
       "reuse": "20261027T231612Z_174",
