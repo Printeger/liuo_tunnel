@@ -34,8 +34,16 @@ def main():
         run=BASE/name
         raw=list((run/'export/capture/raw').glob('*.mcap'))
         assert raw and (run/'export/simulation').is_dir()
-        captured=json.loads((run/'metadata/manifests/captured_inputs.json').read_text())
-        roots.append(dict(role='retained_original_input',run=str(run),
+        capture_manifest=run/'metadata/manifests/captured_inputs.json'
+        if capture_manifest.exists():
+            captured=json.loads(capture_manifest.read_text())
+        else:
+            # The independently generated road scene uses its own artifact
+            # schema, not the rail capture owner's manifest schema.
+            capture_manifest=run/'metadata/manifests/scene_artifacts.json'
+            scene=json.loads(capture_manifest.read_text())
+            captured={name:value['sha256'] for name,value in scene['files'].items()}
+        roots.append(dict(role='retained_original_input',run=str(run),capture_manifest=str(capture_manifest),
             raw=[dict(path=str(f),bytes=f.stat().st_size,recorded_sha256=captured[str(f.relative_to(run))]) for f in raw],
             checksum_scope='Recorded original capture digest; current replay owners separately verified bytes. This inventory checks availability, not a fresh full-bag digest.'))
     for name,required in REPORTS.items():
