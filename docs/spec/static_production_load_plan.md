@@ -1,6 +1,6 @@
 # A6静态通道有界生产验收计划
 
-状态：执行前冻结，当前尚未通过。只补修订Goal的工程缺项，不是正常车辆精度或射频实验。
+状态：85秒负载及负例验收通过；单独补查静态图的实际时钟重置。只补修订Goal的工程缺项，不是正常车辆精度或射频实验。
 
 假设：已有地图精确吸收账本应使同一物理AA在反向报告、内容版本1/2重复及DDS发布者重建后始终不产生新信息；满账本不应因同块重传增长。慢observer的丢失与恢复不应被当作生产消费者丢失。
 
@@ -29,3 +29,21 @@ data-run -- bash tools/run.sh --formal --replay /home/dev/ws_iap/.runtime/0/liuo
 下一组仍固定同85秒原输入/原地图/车辆配置/满容量：用两条同端点、已吸收的原CAL叶验证累计版本。revision1携带第一叶，revision2携带两叶，再回到旧revision1；两条物理叶内容均不变，不能因版本增长或乱序重复增加权重。另加三个**明确负例包，不是新测量**：elapsed60改epoch，65保持原physical ID但range+0.25，70提交标记negative_capacity_probe的新ID。分别预期回调SOURCE_MISMATCH、owner事务IDENTITY_CONFLICT、BLOCK_CAPACITY；之后继续有效旧块直到83秒，图和账本不变。不是增加站点/改善几何/修改噪声来制造定位通过。前缀修复与这组负例各有独立反例/夹具检查，生产算法源码不变。
 
 命令使用上方85秒命令并加`--static-negative-probes`。验收脚本`tools/audit_static_lifecycle_load.py`将发送、生产与慢observer逐交付时间对照、核对原物理值和累计覆盖，要求生产0丢失、后段observer恢复、每次图更新0新AA/0移除、一个prior、负例明确拒绝且随后可继续。DDS内部占用不直接暴露，只报告配置depth、应用队列与实际回调延迟/丢失，不能虚报内部队列测量。
+
+## 85秒生产结果
+
+`20261028T002916Z_591`绑定干净dd67be7，实际节点1c7f413。原运行合同PASS，独立`export/analysis/static_lifecycle_load_audit.json`为PASS_STATIC_LIFECYCLE_LOAD：8103发送/生产接收，生产丢失0；慢observer收到3781、丢4322，55秒后丢失0。实际估计输出期间负载63.59秒，DDS发布者重建2次，未匹配机会0。应用队列峰15/2048，最大回调延迟0.379918秒；DDS内部占用未测。生产RSS峰355.313MiB、末333.879MiB，慢observer峰70.867MiB。1077旧叶保持，0新叶/显式因子，始终1个联合prior；epoch错误在回调拒绝，物理内容冲突与新ID越容量各在图前拒绝1次，之后有效重传继续。
+
+001651的原FAIL不变。驱动交付session变化/反向报告不改变物理身份的两个`test_static_replay.py`检查也通过；首次未加载消息overlay导致ImportError，补齐环境后通过，不改代码或断言。该测试与DDS publisher重建均不冒充整个ROS图的时钟回退验证。
+
+## 静态图时钟回退补项（执行前冻结）
+
+缺项：旧raw-UWB boundary已经验证TA队列在时钟回退清理，但不足以证明新增静态图在真实node reset后恢复。假设为同部署、同物理输入重复回放只重建被丢弃图；旧地图叶仍只在prior，本轮叶在每个新图中恰融合一次，驱动新session不增加物理身份。
+
+固定原独立REUSE031819、CAL230820地图、phase3_static_s_reuse_regression配置，GPU1×；使用已有`--uwb-boundary-fixture`，70秒交付由原前35秒重复两次，第二次仅驱动session更新，传感器时间真实回退至原启动。唯一实验变化是既有边界交付变换：过期/远未来/4097条未来TA、35秒seek、新driver及旧driver迟到；无新噪声或物理样本。保留原变换清单并单列软件负例，不能称原样70秒物理轨迹。
+
+预期：两次图session都持续输出；4096个未来TA被CLOCK_RESET清除且不融合，过期/旧driver拒绝；静态物理叶跨session相同，第二图恢复一份prior及本轮唯一AA，重置后无旧factor index残留/无双prior。既有raw boundary审计要求ACCEPT_AA，不适用于静态通道；新增审计必须核对static_edges实际图事件/账本与因子，而非删掉该项宣布通过。若失败保留，只诊断工程重置问题。
+
+```bash
+data-run -- bash tools/run.sh --formal --replay /home/dev/ws_iap/.runtime/0/liuo/20261027T031819Z_304 --replay-seconds 70 --config packages/liuo_tunnel/config/phase3_static_s_reuse_regression.json --map /home/dev/ws_iap/.runtime/0/liuo/20261027T230820Z_728/export/map/calibrated_map.json --use-aa --uwb-boundary-fixture --wall-timeout 150
+```
