@@ -281,6 +281,9 @@ def main():
             if args.replay_seconds is not None:
                 from frozen_prefix_identity import write_truth_prefix
                 write_truth_prefix(source/'export/simulation/truth.csv',run/'export/simulation/truth.csv',frozen['prefix_last_cloud_stamp'])
+            if args.uwb_boundary_fixture:
+                from frozen_prefix_identity import write_boundary_truth
+                write_boundary_truth(source/'export/simulation/truth.csv',run/'export/simulation/truth.csv',args.duration)
         selected_backend = effective_config["odometry"]["backend"]
         map_path = None
         installation_path = None

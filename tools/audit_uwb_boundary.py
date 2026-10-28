@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 
-def audit(run):
+def audit(run, static_channel=False):
     def rows(path):
         with (run/path).open() as f:return list(csv.DictReader(f))
     expected=rows('export/simulation/boundary_sent.csv')
@@ -36,16 +36,22 @@ def audit(run):
     new_driver=str(int(expired['driver_session'])+1000000000)
     accepted=[r for r in consumed if r['driver_session']==new_driver and r['reason'] in ['ACCEPT_TA','ACCEPT_AA']]
     check(any(r['reason']=='ACCEPT_TA' for r in accepted),'new dataset did not recover TA fusion')
-    check(any(r['reason']=='ACCEPT_AA' for r in accepted),'new dataset did not recover AA fusion')
+    static_result = None
+    if static_channel:
+        from audit_static_clock_reset import check_static_recovery
+        static_result = check_static_recovery(run, graph, consumed)
+    else:
+        check(any(r['reason']=='ACCEPT_AA' for r in accepted),'new dataset did not recover AA fusion')
     check({int(r['session']) for r in graph}=={1,2},'graph did not reset into a second session')
     identities=[tuple(r[k] for k in ['driver_session','producer','session','sequence','a_type','a','b_type','b']) for r in accepted]
     check(len(set(identities))==len(identities),'duplicate post-reset fusion')
     result=dict(result='FAIL' if failures else 'PASS',failures=failures,scope='public expired/future/capacity/ROS reset and production graph recovery',
                 planned_items=len(expected),future_drained=len(drained),future_fused=len(fused_future),queue_peak=max(int(r['queue_size']) for r in decisions),
                 callback_reasons=dict(Counter(r['reason'] for r in decisions)),consumer_reasons=dict(Counter(r['reason'] for r in consumed)),
-                post_reset_states=len(post),post_reset_fused=len(accepted))
+                post_reset_states=len(post),post_reset_fused=len(accepted),static_recovery=static_result)
     (run/'export/analysis/uwb_boundary_audit.json').write_text(json.dumps(result,indent=2)+'\n')
     return result
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('run',type=Path);r=audit(p.parse_args().run);print(json.dumps(r,indent=2));raise SystemExit(r['result']!='PASS')
+    p=argparse.ArgumentParser();p.add_argument('run',type=Path);p.add_argument('--static-channel',action='store_true')
+    args=p.parse_args();r=audit(args.run,args.static_channel);print(json.dumps(r,indent=2));raise SystemExit(r['result']!='PASS')

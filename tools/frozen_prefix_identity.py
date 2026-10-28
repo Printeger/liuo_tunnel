@@ -46,3 +46,30 @@ def write_truth_prefix(source,destination,last_cloud_stamp):
         for row in reader:
             if round(float(row['stamp'])*1e9) <= round(last_cloud_stamp*1e9):
                 writer.writerow(row)
+
+
+def write_boundary_truth(source,destination,duration):
+    """Evaluation-only truth for BoundaryFixture's original-prefix seek.
+
+    Both streams replay the exact original trajectory, never shift positions
+    or sensor time. Only the second delivery session label changes.
+    """
+    if not 60 <= duration <= 70:
+        raise ValueError('boundary fixture supplies at most 35+35 seconds')
+    with source.open() as stream:
+        reader=csv.DictReader(stream)
+        fields=reader.fieldnames
+        rows=list(reader)
+    if not rows or len({r['session'] for r in rows})!=1:
+        raise ValueError('boundary fixture requires one original session')
+    start=round(float(rows[0]['stamp'])*1e9)
+    with destination.open('w') as stream:
+        writer=csv.DictWriter(stream,fieldnames=fields)
+        writer.writeheader()
+        for index,seconds in enumerate((35,duration-35)):
+            for row in rows:
+                if round(float(row['stamp'])*1e9)-start >= round(seconds*1e9):
+                    break
+                transformed=dict(row)
+                transformed['session']=str(int(row['session'])+index*1000000000)
+                writer.writerow(transformed)

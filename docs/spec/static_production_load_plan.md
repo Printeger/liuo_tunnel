@@ -47,3 +47,7 @@ data-run -- bash tools/run.sh --formal --replay /home/dev/ws_iap/.runtime/0/liuo
 ```bash
 data-run -- bash tools/run.sh --formal --replay /home/dev/ws_iap/.runtime/0/liuo/20261027T031819Z_304 --replay-seconds 70 --config packages/liuo_tunnel/config/phase3_static_s_reuse_regression.json --map /home/dev/ws_iap/.runtime/0/liuo/20261027T230820Z_728/export/map/calibrated_map.json --use-aa --uwb-boundary-fixture --wall-timeout 150
 ```
+
+003614（af9f502）实际完成70秒交付和两次图初始化；独立边界审计观察4096未来TA清理/0融合、第二session156输出和2012 TA融合。210物理AA各交付两次，两个图各105有效叶/3边/1prior，第二图首更新恢复105叶之后0重复因子更新。该审计只判这些信息不变量，不代替原运行评价：原评价器报`missing initial truth datum for evaluation session`，失败保留。
+
+反例原因是既有BoundaryFixture seek两次35秒传感器，owner仍复制单session真值。仅修owner的独立评价文件：原35秒真值行重复，第二交付session加1e9，位置/姿态/速度/传感器时间均保持原值；60秒负载对应35+25，70对应35+35，超过70明确拒绝。真值不进入生产订阅。解析回归验证时序边界、两个session、原值/源文件不变及超界拒绝；原普通prefix检查仍通过。下一run固定上述全部输入/变换/算法，只修评价资料生成，不修改旧失败或评价容差。
