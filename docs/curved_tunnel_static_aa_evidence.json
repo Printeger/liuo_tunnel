@@ -1,6 +1,6 @@
 {
   "schema": "curved_tunnel_static_aa_development_evidence_v1",
-  "completion": "INCOMPLETE",
+  "completion": "COMPLETE_REVISED_ENGINEERING_AND_CONDITIONAL_DIAGNOSTIC_SCOPE",
   "scope": "User-revised goal: A engineering lifecycle/rolling/legacy information loop and B fixed S/L conditional diagnostics; full new-scene localization effectiveness deferred, historical failures unchanged",
   "runs": {
     "S_LEGACY_CAL_STATIC": {
@@ -4617,15 +4617,18 @@
     "date": "2026-10-27",
     "authority": "explicit user instruction in active thread",
     "contract": "docs/spec/engineering_diagnostic_scope_20261027.md",
-    "stage_A": "INCOMPLETE_AUDIT_AND_PRODUCTION_LOAD_GAPS",
-    "stage_B": "D1_D2_D3_EXECUTED_WITH_DECLARED_UNCERTAINTIES_REPORT_REVIEW_PENDING",
+    "stage_A": "PASS_DECLARED_ENGINEERING_CAPABILITIES",
+    "stage_B": "COMPLETE_D1_D2_D3_WITH_DECLARED_UNCERTAINTIES",
     "conditional_anchor": {
       "S": {
         "directory": "/home/dev/ws_iap/conditional_diagnostics_20261027/S_D1_234440_normalized",
         "probe_directory": "/home/dev/ws_iap/conditional_diagnostics_20261027/S_D1_234440_normalized_strict_probes",
         "best_cost": 12268.411714428874,
         "near_cost_candidates": 11,
-        "representative_pair": [24, 17],
+        "representative_pair": [
+          24,
+          17
+        ],
         "cost_difference": 0.5269725552989257,
         "anchor_2_separation_m": 2.166989034164313,
         "anchor_3_separation_m": 2.3189075148847698
@@ -4635,7 +4638,10 @@
         "probe_directory": "/home/dev/ws_iap/conditional_diagnostics_20261027/L_D1_235022_probes",
         "best_cost": 3426.007859844226,
         "near_cost_candidates": 8,
-        "representative_pair": [3, 7],
+        "representative_pair": [
+          3,
+          7
+        ],
         "cost_difference": 0.09542117740420508,
         "anchor_7_separation_m": 3.4743076504356867
       },
@@ -4649,12 +4655,15 @@
       "independent_new_explicit_leaves": 1080,
       "explicit_edges": 3,
       "joint_priors": 1,
-      "old_block_retransmission_production_test": "PENDING_A6"
+      "old_block_retransmission_production_test": "PASS_20261028T002916Z_591"
     },
     "conditional_vehicle": {
       "S": {
         "run": "20261027T232558Z_196",
-        "focus_ros_s": [180, 320],
+        "focus_ros_s": [
+          180,
+          320
+        ],
         "position_rmse_m": 0.29688689776325833,
         "maximum_error_m": 0.7730285502370616,
         "bootstrap_s": 8,
@@ -4662,11 +4671,22 @@
       },
       "L": {
         "run": "20261027T234156Z_163",
-        "focus_ros_s": [45, 120],
+        "focus_ros_s": [
+          45,
+          120
+        ],
         "position_rmse_m": 2.7176597983738913,
-        "along_cross_height_rmse_m": [0.02071449056568234, 0.6040899354745938, 2.6495888434692136],
+        "along_cross_height_rmse_m": [
+          0.02071449056568234,
+          0.6040899354745938,
+          2.6495888434692136
+        ],
         "bootstrap_s": 30,
-        "retained_startup_failures": ["20261027T233329Z_244", "20261027T233509Z_768", "20261027T233851Z_666"],
+        "retained_startup_failures": [
+          "20261027T233329Z_244",
+          "20261027T233509Z_768",
+          "20261027T233851Z_666"
+        ],
         "scope": "oracle anchors; height remains weak/incorrect; not full vehicle validity"
       }
     },
@@ -4676,6 +4696,162 @@
       "new solver/global curve/prior systems for performance",
       "repeat complete FAST/LIO-only/ablation matrix"
     ],
-    "pending_static_pair_S150": "superseded; reuse existing L information-equivalence evidence unless specific engineering gap found"
+    "pending_static_pair_S150": "superseded; reuse existing L information-equivalence evidence unless specific engineering gap found",
+    "acceptance_report": "docs/engineering_diagnostic_acceptance.md",
+    "artifact_inventory": "/home/dev/ws_iap/engineering_diagnostic_delivery_20261028/inventory.json",
+    "static_lifecycle_load": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261028T002916Z_591",
+      "audit": {
+        "result": "PASS_STATIC_LIFECYCLE_LOAD",
+        "original_run_report": "PASS",
+        "original_failures": [],
+        "scope": "declared absorbed-AA production delivery/ledger/resource workload only; no localization or RF acceptance",
+        "sent": 8103,
+        "production_received": 8103,
+        "production_lost": 0,
+        "observer_received": 3781,
+        "observer_lost": 4322,
+        "observer_late_lost": 0,
+        "active_estimation_load_seconds": 63.589999999999996,
+        "pressure_stamp_range": [
+          2.995,
+          83.99
+        ],
+        "publisher_recreations": 2,
+        "not_matched_opportunities": 0,
+        "callback_queue_leaves_max": 15,
+        "callback_queue_limit": 2048,
+        "dds_depths": {
+          "production": 100,
+          "observer": 37
+        },
+        "observer_max_callback_delay_s": 0.379917918,
+        "inherited_physical_leaves": 1077,
+        "new_fused_leaves": 0,
+        "new_static_factors": 0,
+        "joint_map_priors": 1,
+        "controlled_rejections": {
+          "STATIC_EDGE_IDENTITY_CONFLICT": 1,
+          "STATIC_EDGE_BLOCK_CAPACITY": 1
+        },
+        "resource_by_process": {
+          "observer": {
+            "max_rss_mib": 74.25,
+            "first_rss_mib": 68.91796875,
+            "last_rss_mib": 73.26953125
+          },
+          "odometry": {
+            "max_rss_mib": 355.3125,
+            "first_rss_mib": 140.6640625,
+            "last_rss_mib": 333.87890625
+          },
+          "simulation": {
+            "max_rss_mib": 92.27734375,
+            "first_rss_mib": 8.59375,
+            "last_rss_mib": 92.27734375
+          },
+          "slow_static_subscriber": {
+            "max_rss_mib": 70.8671875,
+            "first_rss_mib": 70.07421875,
+            "last_rss_mib": 70.8671875
+          }
+        },
+        "map_sha256": "89c3e21f1af3dc77d76b9ee372192d7fbea21ac74fd5447b43ae54d7b5eaafe8",
+        "source_prefix_verified": true,
+        "limitations": [
+          "DDS occupancy is not directly exposed; configured depths, callback queue and observed delivery delay/loss are separate.",
+          "Finite workload and bounded data structures do not certify arbitrary-duration leak freedom.",
+          "Publisher recreation is not a physical deployment change; changed epoch must be explicitly rejected."
+        ]
+      }
+    },
+    "static_clock_reset": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261028T003902Z_728",
+      "audit": {
+        "result": "PASS",
+        "failures": [],
+        "scope": "public expired/future/capacity/ROS reset and production graph recovery",
+        "planned_items": 4100,
+        "future_drained": 4096,
+        "future_fused": 0,
+        "queue_peak": 4096,
+        "callback_reasons": {
+          "QUEUED": 7558,
+          "AA_STATIC_CHANNEL_ONLY": 420,
+          "IDENTITY_TOO_OLD": 565,
+          "FUTURE_TIME_LIMIT": 1,
+          "QUEUE_LIMIT": 1,
+          "RETIRED_DRIVER_SESSION": 1
+        },
+        "consumer_reasons": {
+          "AA_STATIC_CHANNEL_ONLY": 420,
+          "ACCEPT_TA": 3455,
+          "IDENTITY_TOO_OLD": 565,
+          "WINDOW_EXPIRED": 1,
+          "FUTURE_TIME_LIMIT": 1,
+          "QUEUE_LIMIT": 1,
+          "CLOCK_RESET": 4096,
+          "RETIRED_DRIVER_SESSION": 1,
+          "SHUTDOWN_PENDING": 6
+        },
+        "post_reset_states": 156,
+        "post_reset_fused": 2012,
+        "static_recovery": {
+          "result": "PASS_STATIC_GRAPH_CLOCK_RECOVERY",
+          "inherited_leaves": 1077,
+          "unique_delivered_leaves": 210,
+          "deliveries_per_leaf": 2,
+          "eligible_leaves_each_graph": 105,
+          "explicit_edges_each_graph": 3,
+          "graph_sessions": 2,
+          "prior_per_graph": 1,
+          "second_graph_duplicate_factor_updates": 0,
+          "physical_content_sha256": "e685191bb8d618907b5cb5ec8454ad254099981cb3492e5cff90da22c68bda57",
+          "limitation": "Fixed synthetic-source clock seek and driver-session change; not hardware restart or localization certification"
+        }
+      }
+    },
+    "static_clock_reset_input": {
+      "run": "/home/dev/ws_iap/.runtime/0/liuo/20261028T003902Z_728",
+      "audit": {
+        "result": "PASS_DECLARED_BOUNDARY_TRANSFORM",
+        "source": "/home/dev/ws_iap/.runtime/0/liuo/20261027T031819Z_304",
+        "original_prefix_s": 35,
+        "replays": 2,
+        "negative_replacements": 12,
+        "received_uwb_batches": 4458,
+        "counts": {
+          "imu": 14000,
+          "cloud": 700,
+          "uwb": 4458,
+          "clock": 14000
+        },
+        "hashes": {
+          "clock": "d9c06874a70a0a3651a4bd4cddf0778b7b8de51ab61f66d3240ed67e833c4e7c",
+          "imu": "2ac14785726ce8f0c8b528d3b1c04a811ce782c999aa19c2ba21c2298a61919a",
+          "cloud": "403b54ab847383df68b9a138fe1da293b563fc958ab3fb3f915a50adaa078e0a",
+          "uwb": "c744a2b6ccb7b3ac631f740aae35e364da2fcd5a62bab328f2840adf85828450"
+        },
+        "scope": "exact original sensors repeated and independently reconstructed declared UWB faults; not identity with untransformed 70s source"
+      }
+    },
+    "retained_A6_failures": {
+      "20261028T001651Z_732": "original FAIL: full truth tail in 85s prefix",
+      "20261028T003614Z_856": "original evaluation error: missing evaluation session",
+      "20261028T003902Z_728": "original evaluation error; separate corrected-datum report remains FAIL comparing untransformed original70s against declared35+35 seek. Independent input and graph audits pass their declared mechanism only."
+    },
+    "conditional_joint": {
+      "S": {
+        "historical_run": "20261027T222403Z_836",
+        "supplement_run": "20261027T234440Z_254",
+        "scope": "same raw prefix, branch changed; numerical/scheduling cause not distinguished; original failure retained"
+      },
+      "L": {
+        "historical_run": "20261027T224427Z_941",
+        "supplement_run": "20261027T235022Z_325",
+        "scope": "same raw prefix; continued lateral drift"
+      }
+    },
+    "final_conclusion": "本 Goal 完成的是工程能力与可行性诊断；正常车辆场景的全程定位有效性尚未验收。"
   }
 }

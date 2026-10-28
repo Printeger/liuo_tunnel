@@ -1,6 +1,6 @@
 # LIUO Tunnel
 
-当前开发Goal只验收静态AA/rolling/旧路线信息闭环工程能力，以及正常车辆固定失败片段的条件诊断；以[2026-10-27修订清单](docs/spec/engineering_diagnostic_scope_20261027.md)为准。新S/L全程有效定位、排名及完整性能开发已后移，历史失败不改判。[D1/D2/D3报告](docs/conditional_failure_diagnostics.md)包含冻结输入、命令、图与归因边界；目前A6静态生产压力/恢复验收仍未完成。
+当前开发Goal只验收静态AA/rolling/旧路线信息闭环工程能力，以及正常车辆固定失败片段的条件诊断；以[2026-10-27修订清单](docs/spec/engineering_diagnostic_scope_20261027.md)为准。新S/L全程有效定位、排名及完整性能开发已后移，历史失败不改判。[D1/D2/D3报告](docs/conditional_failure_diagnostics.md)包含冻结输入、命令、图与归因边界；A/B逐项证据及保留失败见[工程/诊断验收](docs/engineering_diagnostic_acceptance.md)。本Goal完成的是工程能力与可行性诊断；正常车辆场景的全程定位有效性尚未验收。
 
 独立D2入口为`tools/conditional_road_estimator.sh`，只允许明确标记、绑定原包SHA的oracle Anchor文件；普通入口不接受此诊断模式。D1使用`tools/extract_conditional_observations.py`冻结实际交付样本、`tools/solve_conditional_anchors.py`固定真实车辆轨迹求解，之后才由独立`tools/evaluate_conditional_anchors.py`读取Anchor真值评价。诊断目录位于`/home/dev/ws_iap/conditional_diagnostics_20261027/`，不能用作可部署地图或生产缓存输入。所有命令仍经data-run执行，具体固定参数见报告，禁止用这些条件结果宣称正常车辆全程有效。
 
@@ -361,7 +361,7 @@ data-run -- bash -c '
 完整数据保留于 `/home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968`；
 `tools/road_scene_acceptance.py` 可独立复核文件摘要、贴墙几何、UWB遮挡与噪声统计。
 
-### 曲线/静态 AA 新版开发入口（尚未完成验收）
+### 曲线/静态 AA 工程入口（不代表全程定位有效）
 
 当前进展和失败证据见 [新版结果](docs/curved_tunnel_static_aa_results.md)。原生 L rolling GPU 接入可用：
 
@@ -369,7 +369,7 @@ data-run -- bash -c '
 data-run -- tools/road_estimator.sh --source-run /home/dev/ws_iap/.runtime/0/liuo/20261027T134947Z_968 --config packages/liuo_tunnel/config/road_rolling_lio.json --seconds 20
 ```
 
-这只是 LIO-only 接入检查；当前 L 长片段发生发散，不代表定位有效或未知站点已初始化。静态 AA 的旧 S 校准/独立复用命令和地图路径见结果文档，不能代替完整 S 普通路线。FAST-LIO2 数据盘构建及原生 rolling 入口见 [外部接入说明](tools/baselines/README.md)，完整共同输入对照尚未完成。
+这只是 LIO-only 接入检查；当前 L 长片段发生发散，不代表定位有效或未知站点已初始化。静态 AA 的旧 S 校准/独立复用命令和地图路径见结果文档，不能代替完整 S 普通路线。FAST-LIO2 数据盘构建及原生 rolling 入口见 [外部接入说明](tools/baselines/README.md)，已有完整共同输入对照失败保留，见新版结果；本轮不重复完整对照。
 
 当前曲线静态 AA 开发入口：`data-run -- tools/road_estimator.sh --source-run <冻结L-run> --config packages/liuo_tunnel/config/road_local_static_diagnostic.json --installation <冻结L-run>/metadata/config/installation_metadata.json --seconds 180`。配置中的源SHA256绑定现有冻结L包，不能直接改run路径混用来源。`data-run -- tools/check_road_static.sh <输出run>` 独立核查已交付原始AA、回调CDR和地图账本；不读全局物理日志。地图位于 `export/map/calibrated_map.json`，A-only格式保留联合协方差与精确吸收叶；旧reuse_map入口会拒绝，新的独立复用仍未完成。180秒诊断不是完整路线验收，当前结论及失败见 `docs/curved_tunnel_static_aa_results.md`。
 

@@ -1,6 +1,6 @@
 # A6静态通道有界生产验收计划
 
-状态：85秒负载及负例验收通过；单独补查静态图的实际时钟重置。只补修订Goal的工程缺项，不是正常车辆精度或射频实验。
+状态：85秒负载及独立静态图时钟重置验收通过；通用运行评价失败保留，适用边界见最终记录及[验收报告](../engineering_diagnostic_acceptance.md)。只补修订Goal的工程缺项，不是正常车辆精度或射频实验。
 
 假设：已有地图精确吸收账本应使同一物理AA在反向报告、内容版本1/2重复及DDS发布者重建后始终不产生新信息；满账本不应因同块重传增长。慢observer的丢失与恢复不应被当作生产消费者丢失。
 
@@ -51,3 +51,11 @@ data-run -- bash tools/run.sh --formal --replay /home/dev/ws_iap/.runtime/0/liuo
 003614（af9f502）实际完成70秒交付和两次图初始化；独立边界审计观察4096未来TA清理/0融合、第二session156输出和2012 TA融合。210物理AA各交付两次，两个图各105有效叶/3边/1prior，第二图首更新恢复105叶之后0重复因子更新。该审计只判这些信息不变量，不代替原运行评价：原评价器报`missing initial truth datum for evaluation session`，失败保留。
 
 反例原因是既有BoundaryFixture seek两次35秒传感器，owner仍复制单session真值。仅修owner的独立评价文件：原35秒真值行重复，第二交付session加1e9，位置/姿态/速度/传感器时间均保持原值；60秒负载对应35+25，70对应35+35，超过70明确拒绝。真值不进入生产订阅。解析回归验证时序边界、两个session、原值/源文件不变及超界拒绝；原普通prefix检查仍通过。下一run固定上述全部输入/变换/算法，只修评价资料生成，不修改旧失败或评价容差。
+
+## 最终时钟重置证据与停止回放
+
+003902（e2f0603、节点1c7f413）真实70秒结束，两图恢复不变量与003614相同；owner真值会话正确，但评价器仍在同一CAL地图datum处理两个session时抛错。独立解析反例精确复现，修复评价映射为每session共用原CAL固定datum，绝不按REUSE真值起点重对齐；3项回归通过。只另存离线评价`shared_map_datum_reassessment`，不重跑生产、不覆盖原失败。
+
+离线报告仍FAIL：四项均为通用评价器比较“原始前70秒”与“35+35秒seek故障输入”的hash不同，这是预声明变换，不删除检查来伪造PASS。专用`audit_boundary_input.py`独立重读原包、不导入fixture，逐topic核对原前35秒两遍传感器语义hash，并解码4458个实际生产UWB CDR逐字段验证独立构造的12个故障替换。PASS_DECLARED_BOUNDARY_TRANSFORM；700云/14000IMU/14000clock与原值匹配，生产/observer/发布者摘要相同。
+
+`audit_uwb_boundary.py --static-channel`保持所有原TA时间/容量/旧driver检查，新增static图恢复断言：4096未来TA清理且不融合，第二session156输出/2012接纳TA，210物理AA各重复两次而同ID内容不变；两个图各105有效叶/3边/1prior。第二图首次加入保留history，之后全部重复不新增或移除因子。未知端点仍拒绝UNKNOWN_ANCHOR。PASS仅限这些声明机制；通用报告及原失败均保留。该有界工作负载加85秒压力覆盖A6，不宣称任意硬件restart或定位有效。
